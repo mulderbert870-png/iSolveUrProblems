@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fade-opacity {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@layer components {
+  /* Inset button: white lettering inset in semi-transparent grey (button + text recessed) */
+  .btn-inset {
+    background: rgba(80, 80, 80, 0.55);
+    color: white;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Inset text: shadow makes white type look carved into the surface */
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.4),
+      0 -1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .btn-inset:hover:not(:disabled) {
+    background: rgba(90, 90, 90, 0.6);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+  .btn-inset:disabled {
+    opacity: 0.7;
+  }
+
+  /* Inset text: white lettering with carved/inset shadow (titles, status text) */
+  .text-inset {
+    color: white;
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.4),
+      0 -1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+
+@layer utilities {
+  .animate-fade-opacity {
+    animation: fade-opacity 4s ease-in-out infinite;
+  }
+}
