@@ -1,4 +1,9 @@
 import { API_URL } from "../../../secrets";
+import {
+  isLiveAvatarSuccessPayload,
+  recordSessionStreamStarted,
+  sessionTokenFromAuthHeader,
+} from "../../../../../src/lib/liveavatarCredits";
 
 export async function POST(request: Request) {
   const auth = request.headers.get("Authorization");
@@ -29,6 +34,10 @@ export async function POST(request: Request) {
       },
     });
     const data = await res.json();
+    if (res.ok && isLiveAvatarSuccessPayload(data)) {
+      const token = sessionTokenFromAuthHeader(auth);
+      if (token) await recordSessionStreamStarted(token);
+    }
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: { "Content-Type": "application/json" },

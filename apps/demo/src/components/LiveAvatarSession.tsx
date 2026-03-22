@@ -2140,7 +2140,7 @@ const LiveAvatarSessionComponent: React.FC<{
 
           {/* Status text above buttons - positioned just above Stop button */}
           {/* Do NOT show "Talk to Interrupt" when camera is ready to take pic (snapshot mode) */}
-          {/* {sessionState !== SessionState.DISCONNECTED &&
+          {sessionState !== SessionState.DISCONNECTED &&
             visionMode !== "streaming" &&
             !isCameraActive &&
             !isVideoActive && (
@@ -2155,11 +2155,11 @@ const LiveAvatarSessionComponent: React.FC<{
                   {isAvatarTalking ? "Talk to Interrupt" : ""}
                 </p>
               </div>
-            )} */}
+            )}
 
           {/* Analyzing text for vision recognition in streaming mode - ONLY show when actually processing */}
           {/* Positioned just above Stop button when four boxes are not visible */}
-          {/* {visionMode === "streaming" && isProcessingCameraQuestion && (
+          {visionMode === "streaming" && isProcessingCameraQuestion && (
             <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30">
               <p className="text-inset text-2xl font-semibold text-center drop-shadow-lg">
                 <span className="inline-flex items-center">
@@ -2168,25 +2168,13 @@ const LiveAvatarSessionComponent: React.FC<{
                 </span>
               </p>
             </div>
-          )} */}
+          )}
 
           {/* ss added - Go Live, Files, Camera, Video moved down; Camera and Video in same row as Stop */}
           {!isVideoActive && visionMode !== "streaming" && !isCameraActive && (
-            <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
-              <div className="flex justify-center mb-4">
-                <button
-                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap"
-                  onClick={async () => {
-                    // Unlock audio on button click (user interaction)
-                    await unlockAudio();
-                    handleStopSession();
-                  }}
-                >
-                  Finish
-                </button>
-              </div>
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
               {/* Row 1: Go Live, Files */}
-              {/* <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                   className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
                   onClick={async () => {
@@ -2205,9 +2193,9 @@ const LiveAvatarSessionComponent: React.FC<{
                 >
                   <Paperclip className="mr-2 w-5 h-5" /> Files
                 </button>
-              </div> */}
+              </div>
               {/* Row 2: Camera, Video, Stop (same row as Stop button) */}
-              {/* <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                   className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
                   onClick={async () => {
@@ -2227,7 +2215,19 @@ const LiveAvatarSessionComponent: React.FC<{
                   <Video className="mr-2 w-5 h-5" />
                   Video
                 </button>
-              </div> */}
+              </div>
+              <div className="flex justify-center mb-4">
+                <button
+                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap"
+                  onClick={async () => {
+                    // Unlock audio on button click (user interaction)
+                    await unlockAudio();
+                    handleStopSession();
+                  }}
+                >
+                  Stop
+                </button>
+              </div>
             </div>
           )}
         </>

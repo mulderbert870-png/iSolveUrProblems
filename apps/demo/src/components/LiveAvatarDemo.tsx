@@ -222,9 +222,11 @@ export const LiveAvatarDemo = () => {
         {/* Same position as "Finish Talking" in LiveAvatarSession */}
         <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
           {error && (
-            <p className="text-red-500 text-center text-sm max-w-md drop-shadow-md mb-2">
-              {error}
-            </p>
+            <div className="mb-3 max-w-xl mx-auto rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-white/10">
+              <p className="text-center text-white text-xl sm:text-2xl font-semibold leading-snug [text-shadow:0_2px_16px_rgba(0,0,0,0.9)]">
+                {error}
+              </p>
+            </div>
           )}
           <div className="flex justify-center mb-4">
             <button
@@ -233,7 +235,7 @@ export const LiveAvatarDemo = () => {
               disabled={isLoading}
               className="btn-inset p-4 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap"
             >
-              {isLoading ? "Starting…" : "Talk to iScott"}
+              {isLoading ? "Starting…" : "Talk to this guy"}
             </button>
           </div>
         </div>

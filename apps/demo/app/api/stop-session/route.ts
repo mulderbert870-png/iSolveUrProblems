@@ -1,4 +1,5 @@
 import { API_URL } from "../secrets";
+import { recordSessionStreamStopped } from "../../../src/lib/liveavatarCredits";
 
 export async function POST(request: Request) {
   try {
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
         },
       );
     }
+
+    await recordSessionStreamStopped(session_token);
 
     return new Response(
       JSON.stringify({

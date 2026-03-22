@@ -6,8 +6,17 @@ import {
   CONTEXT_ID,
   LANGUAGE,
 } from "../secrets";
+import { assertCanMintSessionToken } from "../../../src/lib/liveavatarCredits";
 
 export async function POST() {
+  const gate = await assertCanMintSessionToken();
+  if (!gate.ok) {
+    return new Response(JSON.stringify({ error: gate.message }), {
+      status: 429,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   let session_token = "";
   let session_id = "";
   try {
