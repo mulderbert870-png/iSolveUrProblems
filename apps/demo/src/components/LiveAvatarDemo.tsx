@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { LiveAvatarSession } from "./LiveAvatarSession";
-
+import Link from "next/link";
 export const LiveAvatarDemo = () => {
   const [sessionToken, setSessionToken] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -220,7 +220,7 @@ export const LiveAvatarDemo = () => {
           sizes="100vw"
         />
         {/* Same position as "Finish Talking" in LiveAvatarSession */}
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
           {error && (
             <div className="mb-3 max-w-xl mx-auto rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-white/10">
               <p className="text-center text-white text-xl sm:text-2xl font-semibold leading-snug [text-shadow:0_2px_16px_rgba(0,0,0,0.9)]">
@@ -238,6 +238,24 @@ export const LiveAvatarDemo = () => {
               {isLoading ? "Starting…" : "Talk to this guy"}
             </button>
           </div>
+          <p className="mb-2">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
+          <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Terms
+            </Link>
+            <span aria-hidden="true">•</span>
+            <Link href="/privacy" className="hover:text-white transition-colors">
+              Privacy
+            </Link>
+            <span aria-hidden="true">•</span>
+            <Link href="/disclaimer" className="hover:text-white transition-colors">
+              Disclaimer
+            </Link>
+            <span aria-hidden="true">•</span>
+            <Link href="/legal" className="hover:text-white transition-colors">
+              Legal
+            </Link>
+          </nav>
         </div>
       </div>
     );

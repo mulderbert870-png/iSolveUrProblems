@@ -8,6 +8,7 @@ import {
   useVoiceChat,
   useLiveAvatarContext,
 } from "../liveavatar";
+import Link from "next/link";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { Radio, Camera, Paperclip, Video } from "lucide-react";
@@ -2228,6 +2229,24 @@ const LiveAvatarSessionComponent: React.FC<{
                   Stop
                 </button>
               </div>
+              <p className="mb-2">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
+              <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                <Link href="/terms" className="hover:text-white transition-colors">
+                  Terms
+                </Link>
+                <span aria-hidden="true">•</span>
+                <Link href="/privacy" className="hover:text-white transition-colors">
+                  Privacy
+                </Link>
+                <span aria-hidden="true">•</span>
+                <Link href="/disclaimer" className="hover:text-white transition-colors">
+                  Disclaimer
+                </Link>
+                <span aria-hidden="true">•</span>
+                <Link href="/legal" className="hover:text-white transition-colors">
+                  Legal
+                </Link>
+              </nav>
             </div>
           )}
         </>
