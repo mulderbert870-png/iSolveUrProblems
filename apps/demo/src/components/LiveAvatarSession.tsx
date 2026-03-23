@@ -2175,7 +2175,7 @@ const LiveAvatarSessionComponent: React.FC<{
           {!isVideoActive && visionMode !== "streaming" && !isCameraActive && (
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
               {/* Row 1: Go Live, Files */}
-              {/* <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                   className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
                   onClick={async () => {
@@ -2194,9 +2194,9 @@ const LiveAvatarSessionComponent: React.FC<{
                 >
                   <Paperclip className="mr-2 w-5 h-5" /> Files
                 </button>
-              </div> */}
+              </div>
               {/* Row 2: Camera, Video, Stop (same row as Stop button) */}
-              {/* <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                   className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
                   onClick={async () => {
@@ -2216,8 +2216,8 @@ const LiveAvatarSessionComponent: React.FC<{
                   <Video className="mr-2 w-5 h-5" />
                   Video
                 </button>
-              </div> */}
-              {/* <div className="flex justify-center mb-4">
+              </div>
+              <div className="flex justify-center mb-4">
                 <button
                   className="btn-inset p-3 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap"
                   onClick={async () => {
@@ -2228,25 +2228,27 @@ const LiveAvatarSessionComponent: React.FC<{
                 >
                   Stop
                 </button>
-              </div> */}
-              {/* <p className="mb-2">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
-              <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                <Link href="/terms" className="hover:text-white transition-colors">
-                  Terms
-                </Link>
-                <span aria-hidden="true">•</span>
-                <Link href="/privacy" className="hover:text-white transition-colors">
-                  Privacy
-                </Link>
-                <span aria-hidden="true">•</span>
-                <Link href="/disclaimer" className="hover:text-white transition-colors">
-                  Disclaimer
-                </Link>
-                <span aria-hidden="true">•</span>
-                <Link href="/legal" className="hover:text-white transition-colors">
-                  Legal
-                </Link>
-              </nav> */}
+              </div>
+              <div className="flex flex-col items-center justify-center text-sm">
+                <p className="mb-2 text-center">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
+                <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  <Link href="/terms" className="hover:text-white transition-colors">
+                    Terms
+                  </Link>
+                  <span aria-hidden="true">•</span>
+                  <Link href="/privacy" className="hover:text-white transition-colors">
+                    Privacy
+                  </Link>
+                  <span aria-hidden="true">•</span>
+                  <Link href="/disclaimer" className="hover:text-white transition-colors">
+                    Disclaimer
+                  </Link>
+                  <span aria-hidden="true">•</span>
+                  <Link href="/legal" className="hover:text-white transition-colors">
+                    Legal
+                  </Link>
+                </nav>
+              </div>
             </div>
           )}
         </>

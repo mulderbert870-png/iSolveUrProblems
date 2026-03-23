@@ -238,24 +238,26 @@ export const LiveAvatarDemo = () => {
               {isLoading ? "Starting…" : "Talk to this guy"}
             </button>
           </div>
-          <p className="mb-2">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
-          <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            <Link href="/terms" className="hover:text-white transition-colors">
-              Terms
-            </Link>
-            <span aria-hidden="true">•</span>
-            <Link href="/privacy" className="hover:text-white transition-colors">
-              Privacy
-            </Link>
-            <span aria-hidden="true">•</span>
-            <Link href="/disclaimer" className="hover:text-white transition-colors">
-              Disclaimer
-            </Link>
-            <span aria-hidden="true">•</span>
-            <Link href="/legal" className="hover:text-white transition-colors">
-              Legal
-            </Link>
-          </nav>
+          <div>
+            <p className="mb-2 text-center">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
+            <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              <Link href="/terms" className="hover:text-white transition-colors">
+                Terms
+              </Link>
+              <span aria-hidden="true">•</span>
+              <Link href="/privacy" className="hover:text-white transition-colors">
+                Privacy
+              </Link>
+              <span aria-hidden="true">•</span>
+              <Link href="/disclaimer" className="hover:text-white transition-colors">
+                Disclaimer
+              </Link>
+              <span aria-hidden="true">•</span>
+              <Link href="/legal" className="hover:text-white transition-colors">
+                Legal
+              </Link>
+              </nav>
+            </div>
         </div>
       </div>
     );
