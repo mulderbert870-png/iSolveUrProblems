@@ -1926,6 +1926,14 @@ const LiveAvatarSessionComponent: React.FC<{
 
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
+        <div className="text-center px-4 mb-2">
+          <h1 className="text-white text-2xl md:text-3xl font-bold tracking-tight">
+            iSolveUrProblems.ai - beta
+          </h1>
+          <p className="text-white text-sm md:text-base font-medium mt-1">
+            Everything. All the Time.
+          </p>
+        </div>
         {microphoneWarning && (
           <div className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded-md max-w-2xl text-center">
             <p className="font-semibold">⚠️ Warning: {microphoneWarning}</p>
@@ -2145,15 +2153,15 @@ const LiveAvatarSessionComponent: React.FC<{
             visionMode !== "streaming" &&
             !isCameraActive &&
             !isVideoActive && (
-              <div className="fixed bottom-[14rem] left-1/2 -translate-x-1/2 z-30">
+              <div className="fixed bottom-[16rem] left-1/2 -translate-x-1/2 z-30">
                 <p
-                  className={`text-inset text-2xl font-semibold text-center drop-shadow-lg ${
+                  className={`text-inset text-md font-semibold text-center drop-shadow-lg ${
                     isStreamReady && !isAvatarTalking
                       ? "animate-fade-opacity"
                       : ""
                   }`}
                 >
-                  {isAvatarTalking ? "Talk to Interrupt" : ""}
+                  {isAvatarTalking ? "" : "Ask About Any Problem"}
                 </p>
               </div>
             )}
@@ -2229,25 +2237,9 @@ const LiveAvatarSessionComponent: React.FC<{
                   Stop
                 </button>
               </div>
-              <div className="flex flex-col items-center justify-center text-sm">
-                <p className="mb-2 text-center">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
-                <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                  <Link href="/terms" className="hover:text-white transition-colors">
-                    Terms
-                  </Link>
-                  <span aria-hidden="true">•</span>
-                  <Link href="/privacy" className="hover:text-white transition-colors">
-                    Privacy
-                  </Link>
-                  <span aria-hidden="true">•</span>
-                  <Link href="/disclaimer" className="hover:text-white transition-colors">
-                    Disclaimer
-                  </Link>
-                  <span aria-hidden="true">•</span>
-                  <Link href="/legal" className="hover:text-white transition-colors">
-                    Legal
-                  </Link>
-                </nav>
+              <div className="bottom-6 w-[95%] max-w-7xl z-20 px-4">
+                <p className="mb-2 text-center text-sm">© 2026 iSolveYourProblems.ai • <Link href="/legal" className="hover:text-white transition-colors">
+                Legal</Link> </p>
               </div>
             </div>
           )}

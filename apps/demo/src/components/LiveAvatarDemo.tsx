@@ -240,24 +240,8 @@ export const LiveAvatarDemo = () => {
           </div>
         </div>
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
-          <p className="mb-2 text-center">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
-          <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            <Link href="/terms" className="hover:text-white transition-colors">
-              Terms
-            </Link>
-            <span aria-hidden="true">•</span>
-            <Link href="/privacy" className="hover:text-white transition-colors">
-              Privacy
-            </Link>
-            <span aria-hidden="true">•</span>
-            <Link href="/disclaimer" className="hover:text-white transition-colors">
-              Disclaimer
-            </Link>
-            <span aria-hidden="true">•</span>
-            <Link href="/legal" className="hover:text-white transition-colors">
-              Legal
-            </Link>
-          </nav>
+          <p className="mb-2 text-center text-sm">© 2026 iSolveYourProblems.ai • <Link href="/legal" className="hover:text-white transition-colors">
+          Legal</Link> </p>
         </div>
       </div>
     );
