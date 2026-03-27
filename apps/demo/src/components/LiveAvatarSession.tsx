@@ -1927,10 +1927,10 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="text-white text-2xl md:text-3xl font-bold tracking-tight">
+          <h1 className="text-white text-xl font-bold tracking-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="text-white text-sm md:text-base font-medium mt-1">
+          <p className="text-white text-sm font-medium mt-1">
             Everything. All the Time.
           </p>
         </div>
@@ -2153,7 +2153,7 @@ const LiveAvatarSessionComponent: React.FC<{
             visionMode !== "streaming" &&
             !isCameraActive &&
             !isVideoActive && (
-              <div className="fixed bottom-[16rem] left-1/2 -translate-x-1/2 z-30">
+              <div className="absolute bottom-[18rem]  left-1/2 -translate-x-1/2 z-30">
                 <p
                   className={`text-inset text-md font-semibold text-center drop-shadow-lg ${
                     isStreamReady && !isAvatarTalking
@@ -2239,7 +2239,7 @@ const LiveAvatarSessionComponent: React.FC<{
               </div>
               <div className="bottom-6 w-[95%] max-w-7xl z-20 px-4">
                 <p className="mb-2 text-center text-sm">© 2026 iSolveYourProblems.ai • <Link href="/legal" className="hover:text-white transition-colors">
-                Legal</Link> </p>
+                Terms</Link> </p>
               </div>
             </div>
           )}

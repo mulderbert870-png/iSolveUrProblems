@@ -200,7 +200,7 @@ export const LiveAvatarDemo = () => {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-4">
         <div className="text-inset text-2xl font-semibold">Session Ended</div>
-        <div className="text-inset text-lg opacity-90">
+        <div className="text-inset text-center text-lg opacity-90">
           Thank you for using iSolveUrProblems.ai
         </div>
       </div>
@@ -219,6 +219,14 @@ export const LiveAvatarDemo = () => {
           priority
           sizes="100vw"
         />
+        <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
+          <h1 className="text-white text-xl font-bold tracking-tight">
+            iSolveUrProblems.ai - beta
+          </h1>
+          <p className="text-white text-sm font-medium mt-1">
+            Everything. All the Time.
+          </p>
+        </div>
         {/* Same position as "Finish Talking" in LiveAvatarSession */}
         <div className="fixed bottom-40 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
           {error && (
@@ -240,8 +248,8 @@ export const LiveAvatarDemo = () => {
           </div>
         </div>
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
-          <p className="mb-2 text-center text-sm">© 2026 iSolveYourProblems.ai • <Link href="/legal" className="hover:text-white transition-colors">
-          Legal</Link> </p>
+          <p className="mb-2 text-center text-sm text-white">© 2026 iSolveYourProblems.ai • <Link href="/terms" className="text-white hover:text-white transition-colors">
+          Terms</Link> </p>
         </div>
       </div>
     );
