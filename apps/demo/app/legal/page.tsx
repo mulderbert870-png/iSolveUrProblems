@@ -106,7 +106,7 @@ const sections: Array<{
     title: "8. INTELLECTUAL PROPERTY",
     paragraphs: [
       "All content and technology, including:",
-      "are the exclusive property of iSolveYourProblems.ai.",
+      "are the exclusive property of iSolveUrProblems.ai.",
       "You may not:",
       "any part of the Service.",
     ],
@@ -129,7 +129,7 @@ const sections: Array<{
     title: "9. LIMITATION OF LIABILITY",
     paragraphs: [
       "TO THE MAXIMUM EXTENT PERMITTED BY LAW:",
-      "iSolveYourProblems.ai shall not be liable for:",
+      "iSolveUrProblems.ai shall not be liable for:",
       "arising from:",
       "TOTAL LIABILITY SHALL NOT EXCEED $0.",
     ],
@@ -149,7 +149,7 @@ const sections: Array<{
   {
     title: "10. INDEMNIFICATION",
     paragraphs: [
-      "You agree to indemnify, defend, and hold harmless iSolveYourProblems.ai from any claims, damages, losses, or expenses arising from:",
+      "You agree to indemnify, defend, and hold harmless iSolveUrProblems.ai from any claims, damages, losses, or expenses arising from:",
     ],
     bullets: [
       "your use of the Service",
@@ -198,7 +198,7 @@ const sections: Array<{
   {
     title: "17. CONTACT",
     paragraphs: ["For legal inquiries:"],
-    bullets: ["legal@iSolveYourProblems.ai"],
+    bullets: ["legal@iSolveUrProblems.ai"],
   },
 ];
 
@@ -213,12 +213,12 @@ export default function LegalPage() {
         </Link>
       <article className="mx-auto w-full max-w-4xl rounded-xl border border-white/10 bg-zinc-900/70 p-5 shadow-lg backdrop-blur sm:p-8">
         
-        <h1 className="text-3xl font-bold tracking-wide text-white sm:text-4xl">LEGAL</h1>
+        <h1 className="text-3xl font-bold tracking-wide text-white sm:text-4xl">Terms</h1>
         <p className="mt-3 text-sm text-zinc-300 sm:text-base">Effective Date: Jan 01, 2026</p>
 
         <div className="mt-6 space-y-4 text-sm leading-relaxed text-zinc-200 sm:text-base">
           <p>
-            Welcome to iSolveYourProblems.ai ("Company," "we," "our," or "us"). By accessing or using this website,
+            Welcome to iSolveUrProblems.ai ("Company," "we," "our," or "us"). By accessing or using this website,
             platform, or any associated services (collectively, the "Service"), you agree to the following terms.
           </p>
           <p>If you do not agree, you must not use the Service.</p>

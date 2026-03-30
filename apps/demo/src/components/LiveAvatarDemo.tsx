@@ -220,12 +220,12 @@ export const LiveAvatarDemo = () => {
           sizes="100vw"
         />
         <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
-          <h1 className="text-white text-xl font-bold tracking-tight">
+          <h1 className="text-white text-2xl font-bold tracking-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="text-white text-sm font-medium mt-1">
+          {/* <p className="text-white text-sm font-medium mt-1">
             Everything. All the Time.
-          </p>
+          </p> */}
         </div>
         {/* Same position as "Finish Talking" in LiveAvatarSession */}
         <div className="fixed bottom-40 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
@@ -248,8 +248,22 @@ export const LiveAvatarDemo = () => {
           </div>
         </div>
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
-          <p className="mb-2 text-center text-sm text-white">© 2026 iSolveYourProblems.ai • <Link href="/terms" className="text-white hover:text-white transition-colors">
-          Terms</Link> </p>
+          <p className="mb-2 text-center text-sm text-white flex flex-wrap items-center justify-center gap-x-1.5">
+            <Link
+              href="https://wildworks.live"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white hover:text-white transition-colors"
+            >
+              Wildworks.Live
+            </Link>
+            <span aria-hidden="true">•</span>
+            <span>© 2026 iSolveUrProblems.ai</span>
+            <span aria-hidden="true">•</span>
+            <Link href="/terms" className="text-white hover:text-white transition-colors">
+              Terms
+            </Link>
+          </p>
         </div>
       </div>
     );

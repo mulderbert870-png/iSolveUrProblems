@@ -1927,12 +1927,12 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="text-white text-xl font-bold tracking-tight">
+          <h1 className="text-white text-2xl font-bold tracking-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="text-white text-sm font-medium mt-1">
+          {/* <p className="text-white text-sm font-medium mt-1">
             Everything. All the Time.
-          </p>
+          </p> */}
         </div>
         {microphoneWarning && (
           <div className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded-md max-w-2xl text-center">
@@ -2154,15 +2154,28 @@ const LiveAvatarSessionComponent: React.FC<{
             !isCameraActive &&
             !isVideoActive && (
               <div className="absolute bottom-[18rem]  left-1/2 -translate-x-1/2 z-30">
-                <p
-                  className={`text-inset text-md font-semibold text-center drop-shadow-lg ${
-                    isStreamReady && !isAvatarTalking
-                      ? "animate-fade-opacity"
-                      : ""
-                  }`}
-                >
-                  {isAvatarTalking ? "" : "Ask About Any Problem"}
-                </p>
+                {isAvatarTalking ? null : (
+                  <p className="text-inset text-base font-semibold text-center drop-shadow-lg flex flex-wrap items-baseline justify-center gap-x-1">
+                    <span
+                      className={
+                        isStreamReady
+                          ? "inline-block animate-ask-first"
+                          : "inline-block"
+                      }
+                    >
+                      Ask.
+                    </span>
+                    <span
+                      className={
+                        isStreamReady
+                          ? "inline-block ask-anything-word pl-0.5"
+                          : "inline-block pl-0.5"
+                      }
+                    >
+                      Anything
+                    </span>
+                  </p>
+                )}
               </div>
             )}
 
@@ -2181,53 +2194,54 @@ const LiveAvatarSessionComponent: React.FC<{
 
           {/* ss added - Go Live, Files, Camera, Video moved down; Camera and Video in same row as Stop */}
           {!isVideoActive && visionMode !== "streaming" && !isCameraActive && (
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+            <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+              <div className="mx-auto w-full max-w-sm">
               {/* Row 1: Go Live, Files */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
-                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
+                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
                   onClick={async () => {
                     await unlockAudio();
                     handleGoLive();
                   }}
                 >
-                  <Radio className="mr-2 w-5 h-5" /> Go Live
+                  <Radio className="mr-1.5 w-4 h-4 shrink-0" /> Go Live
                 </button>
                 <button
-                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
+                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
                   onClick={async () => {
                     await unlockAudio();
                     handleFileUploadClick("image");
                   }}
                 >
-                  <Paperclip className="mr-2 w-5 h-5" /> Files
+                  <Paperclip className="mr-1.5 w-4 h-4 shrink-0" /> Files
                 </button>
               </div>
               {/* Row 2: Camera, Video, Stop (same row as Stop button) */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
-                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
+                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
                   onClick={async () => {
                     await unlockAudio();
                     handleCameraClick();
                   }}
                 >
-                  <Camera className="mr-2 w-5 h-5" /> Camera
+                  <Camera className="mr-1.5 w-4 h-4 shrink-0" /> Camera
                 </button>
                 <button
-                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
+                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
                   onClick={async () => {
                     await unlockAudio();
                     handleFileUploadClick("video");
                   }}
                 >
-                  <Video className="mr-2 w-5 h-5" />
+                  <Video className="mr-1.5 w-4 h-4 shrink-0" />
                   Video
                 </button>
               </div>
               <div className="flex justify-center mb-4">
                 <button
-                  className="btn-inset p-3 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap"
+                  className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
                   onClick={async () => {
                     // Unlock audio on button click (user interaction)
                     await unlockAudio();
@@ -2237,9 +2251,24 @@ const LiveAvatarSessionComponent: React.FC<{
                   Stop
                 </button>
               </div>
+              </div>
               <div className="bottom-6 w-[95%] max-w-7xl z-20 px-4">
-                <p className="mb-2 text-center text-sm">© 2026 iSolveYourProblems.ai • <Link href="/legal" className="hover:text-white transition-colors">
-                Terms</Link> </p>
+                <p className="mb-2 text-center text-sm text-white flex flex-wrap items-center justify-center gap-x-1.5">
+                  <Link
+                    href="https://wildworks.live"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-white transition-colors"
+                  >
+                    Wildworks.Live
+                  </Link>
+                  <span aria-hidden="true">•</span>
+                  <span>© 2026 iSolveUrProblems.ai</span>
+                  <span aria-hidden="true">•</span>
+                  <Link href="/terms" className="text-white hover:text-white transition-colors">
+                    Terms
+                  </Link>
+                </p>
               </div>
             </div>
           )}
@@ -2248,10 +2277,10 @@ const LiveAvatarSessionComponent: React.FC<{
 
       {/* Stop button shown when four buttons are hidden (Camera / Video / Go Live mode) - same position as bottom row above */}
       {((isVideoActive || visionMode === "streaming" || isCameraActive)) && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+        <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
           <div className="flex justify-center">
             <button
-              className="btn-inset p-3 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap w-1/4 md:w-[12.5%]"
+              className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
               onClick={async () => {
                 // Unlock audio on button click (user interaction)
                 await unlockAudio();

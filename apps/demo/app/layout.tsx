@@ -12,7 +12,7 @@ export default function RootLayout({
         {/* <main className="w-full flex-1">{children}</main> */}
         {children}
         {/* <footer className="w-full border-t border-white/10 px-4 py-4 text-center text-xs sm:text-sm text-zinc-300">
-          <p className="mb-2">© 2026 iSolveYourProblems.ai — All Rights Reserved</p>
+          <p className="mb-2">© 2026 iSolveUrProblems.ai — All Rights Reserved</p>
           <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             <Link href="/terms" className="hover:text-white transition-colors">
               Terms

@@ -11,6 +11,31 @@
   }
 }
 
+/* "Ask. Anything" hero line — soft staggered float + slow highlight on second word */
+@keyframes ask-word-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes ask-shimmer-pass {
+  0%,
+  24% {
+    background-position: 100% 50%;
+  }
+  32% {
+    background-position: 0% 50%;
+  }
+  40%,
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
 @layer components {
   /* Inset button: white lettering inset in semi-transparent grey (button + text recessed) */
   .btn-inset {
@@ -43,5 +68,44 @@
 @layer utilities {
   .animate-fade-opacity {
     animation: fade-opacity 4s ease-in-out infinite;
+  }
+
+  .animate-ask-first {
+    animation: ask-word-float 3.5s ease-in-out infinite;
+  }
+
+  .ask-anything-word {
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.82) 0%,
+      rgba(255, 255, 255, 0.82) 40%,
+      rgba(255, 255, 255, 1) 50%,
+      rgba(255, 255, 255, 0.82) 60%,
+      rgba(255, 255, 255, 0.82) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+    animation:
+      ask-word-float 3.5s ease-in-out infinite,
+      ask-shimmer-pass 12s ease-in-out infinite;
+    animation-delay: -1.75s, 0s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ask-first,
+  .ask-anything-word {
+    animation: none !important;
+  }
+
+  .ask-anything-word {
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: inherit;
+    filter: none;
   }
 }
