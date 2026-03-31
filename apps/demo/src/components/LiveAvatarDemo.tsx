@@ -248,7 +248,7 @@ export const LiveAvatarDemo = () => {
           </div>
         </div>
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
-          <p className="mb-2 text-center text-sm text-white flex flex-wrap items-center justify-center gap-x-1.5">
+          <p className="mb-2 text-center text-xs text-white flex flex-wrap items-center justify-center gap-x-1.5">
             <Link
               href="https://wildworks.live"
               target="_blank"
