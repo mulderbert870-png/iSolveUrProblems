@@ -2252,7 +2252,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 </button>
               </div>
               </div>
-              <div className="bottom-6 w-[95%] max-w-7xl z-20 pl-4">
+              <div className="bottom-6 w-full max-w-7xl z-20 px-4">
                 <p className="mb-2 text-center text-xs text-white flex flex-wrap items-center justify-center">
                   <Link
                     href="https://wildworks.live"
