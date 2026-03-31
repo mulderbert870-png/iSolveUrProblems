@@ -62,15 +62,23 @@ export async function POST() {
     session_id = data.data.session_id;
   } catch (error) {
     console.error("Error retrieving session token:", error);
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: "Failed to retrieve session token" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   if (!session_token) {
-    return new Response("Failed to retrieve session token", {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: "Failed to retrieve session token" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
   return new Response(JSON.stringify({ session_token, session_id }), {
     status: 200,

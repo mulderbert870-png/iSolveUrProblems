@@ -1,4 +1,12 @@
+import {
+  MAX_VIDEO_FRAMES,
+  isReasonableBase64Frame,
+} from "../../../src/lib/apiRouteSecurity";
 import { GROKAI_API_KEY } from "../secrets";
+
+type VisionContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +25,32 @@ export async function POST(request: Request) {
       );
     }
 
+    if (frames.length > MAX_VIDEO_FRAMES) {
+      return new Response(
+        JSON.stringify({
+          error: `At most ${MAX_VIDEO_FRAMES} frames are allowed`,
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const frameStrings: string[] = [];
+    for (const frame of frames) {
+      if (!isReasonableBase64Frame(frame)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid frame data" }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      frameStrings.push(frame);
+    }
+
     if (!GROKAI_API_KEY) {
       return new Response(
         JSON.stringify({ error: "GrokAI API key not configured" }),
@@ -30,22 +64,21 @@ export async function POST(request: Request) {
     }
 
     // Prepare content array for GrokAI
-    const content: any[] = [
+    const content: VisionContentPart[] = [
       {
         type: "text",
         text: "Briefly describe what you see in this video across these frames in 2-3 sentences. Be direct and concise.",
       },
     ];
 
-    // Add all frames to the content
-    frames.forEach((frame: string) => {
+    for (const frame of frameStrings) {
       content.push({
         type: "image_url",
         image_url: {
           url: `data:image/jpeg;base64,${frame}`,
         },
       });
-    });
+    }
 
     // Call GrokAI (xAI) Vision API
     const res = await fetch("https://api.x.ai/v1/chat/completions", {
@@ -72,10 +105,9 @@ export async function POST(request: Request) {
       return new Response(
         JSON.stringify({
           error: "Failed to analyze video",
-          details: errorData,
         }),
         {
-          status: res.status,
+          status: res.status <= 599 ? res.status : 502,
           headers: {
             "Content-Type": "application/json",
           },

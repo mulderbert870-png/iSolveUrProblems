@@ -1,18 +1,22 @@
+import {
+  MAX_ANALYZE_IMAGE_BYTES,
+  MAX_ANALYZE_IMAGE_QUESTION_CHARS,
+  isAllowedImageMime,
+  truncateUtf8String,
+} from "../../../src/lib/apiRouteSecurity";
 import { GROKAI_API_KEY } from "../secrets";
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const keys = [...formData.keys()];
     const fileOrBlob = formData.get("image");
     const question = formData.get("question") as string | null;
 
     if (!fileOrBlob) {
-      console.error("analyze-image: missing image. Keys received:", keys);
+      console.error("analyze-image: missing image field");
       return new Response(
         JSON.stringify({
           error: "Image file is required",
-          details: keys.length ? `Form keys: ${keys.join(", ")}` : "No form keys received",
         }),
         {
           status: 400,
@@ -35,7 +39,6 @@ export async function POST(request: Request) {
       return new Response(
         JSON.stringify({
           error: "Image file is required",
-          details: `Unexpected type: ${typeof fileOrBlob}`,
         }),
         {
           status: 400,
@@ -47,6 +50,16 @@ export async function POST(request: Request) {
     if (file.size === 0) {
       return new Response(
         JSON.stringify({ error: "Image file is empty" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    if (file.size > MAX_ANALYZE_IMAGE_BYTES) {
+      return new Response(
+        JSON.stringify({ error: "Image file is too large" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -69,13 +82,30 @@ export async function POST(request: Request) {
     // Convert file to base64
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
-    const mimeType = file.type || "image/jpeg";
+    const mimeType = (file.type || "image/jpeg").split(";")[0].trim();
+    if (!isAllowedImageMime(mimeType)) {
+      return new Response(
+        JSON.stringify({ error: "Unsupported image type" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const q =
+      typeof question === "string"
+        ? truncateUtf8String(
+            question.trim(),
+            MAX_ANALYZE_IMAGE_QUESTION_CHARS,
+          )
+        : "";
 
     // Build the prompt based on whether there's a question
     let promptText: string;
-    if (question && question.trim()) {
+    if (q) {
       // If there's a question, answer it based on what's in the image
-      promptText = `Look at this image and answer: "${question}". Be direct and concise (2-3 sentences max). Be friendly but brief.`;
+      promptText = `Look at this image and answer: "${q}". Be direct and concise (2-3 sentences max). Be friendly but brief.`;
     } else {
       // Default analysis prompt - VERY concise
       promptText =
@@ -118,10 +148,9 @@ export async function POST(request: Request) {
       return new Response(
         JSON.stringify({
           error: "Failed to analyze image",
-          details: errorData,
         }),
         {
-          status: res.status,
+          status: res.status <= 599 ? res.status : 502,
           headers: {
             "Content-Type": "application/json",
           },

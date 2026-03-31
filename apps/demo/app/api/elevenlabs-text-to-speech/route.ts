@@ -1,11 +1,18 @@
+import {
+  MAX_ELEVENLABS_TEXT_CHARS,
+  isSafeElevenLabsVoiceId,
+  truncateUtf8String,
+} from "../../../src/lib/apiRouteSecurity";
 import { ELEVENLABS_API_KEY } from "../secrets";
+
+const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { text, voice_id = "21m00Tcm4TlvDq8ikWAM" } = body;
+    const { text: rawText, voice_id: rawVoiceId } = body;
 
-    if (!text) {
+    if (typeof rawText !== "string" || !rawText.trim()) {
       return new Response(JSON.stringify({ error: "text is required" }), {
         status: 400,
         headers: {
@@ -13,6 +20,11 @@ export async function POST(request: Request) {
         },
       });
     }
+
+    const voice_id = isSafeElevenLabsVoiceId(rawVoiceId)
+      ? rawVoiceId
+      : DEFAULT_VOICE_ID;
+    const text = truncateUtf8String(rawText, MAX_ELEVENLABS_TEXT_CHARS);
 
     if (!ELEVENLABS_API_KEY) {
       return new Response(
@@ -47,10 +59,9 @@ export async function POST(request: Request) {
       return new Response(
         JSON.stringify({
           error: "Failed to generate speech",
-          details: errorData,
         }),
         {
-          status: res.status,
+          status: res.status <= 599 ? res.status : 502,
           headers: {
             "Content-Type": "application/json",
           },

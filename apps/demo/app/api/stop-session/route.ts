@@ -1,12 +1,16 @@
+import {
+  authorizationBearerHeader,
+  parseSafeBearerToken,
+} from "../../../src/lib/apiRouteSecurity";
 import { API_URL } from "../secrets";
 import { recordSessionStreamStopped } from "../../../src/lib/liveavatarCredits";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { session_token } = body;
+    const token = parseSafeBearerToken(body?.session_token);
 
-    if (!session_token) {
+    if (!token) {
       return new Response(
         JSON.stringify({ error: "session_token is required" }),
         {
@@ -21,7 +25,7 @@ export async function POST(request: Request) {
     const res = await fetch(`${API_URL}/v1/sessions`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${session_token}`,
+        Authorization: authorizationBearerHeader(token),
         "Content-Type": "application/json",
       },
     });
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await recordSessionStreamStopped(session_token);
+    await recordSessionStreamStopped(token);
 
     return new Response(
       JSON.stringify({

@@ -45,14 +45,18 @@ export async function POST() {
       });
     }
     const data = await res.json();
-    console.log(data);
 
     session_token = data.data.session_token;
     session_id = data.data.session_id;
   } catch (error: unknown) {
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
-      status: 500,
-    });
+    console.error("start-custom-session:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to retrieve session token" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   if (!session_token) {

@@ -1,8 +1,14 @@
 import { API_URL } from "../../../secrets";
+import {
+  authorizationBearerHeader,
+  sessionTokenFromRequestAuthHeader,
+} from "../../../../../src/lib/apiRouteSecurity";
 
 export async function POST(request: Request) {
-  const auth = request.headers.get("Authorization");
-  if (!auth) {
+  const token = sessionTokenFromRequestAuthHeader(
+    request.headers.get("Authorization"),
+  );
+  if (!token) {
     return new Response(
       JSON.stringify({
         code: 403,
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
     const res = await fetch(`${API_URL}/v1/sessions/keep-alive`, {
       method: "POST",
       headers: {
-        Authorization: auth,
+        Authorization: authorizationBearerHeader(token),
         "Content-Type": "application/json",
       },
     });
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
     return new Response(
       JSON.stringify({
         code: 500,
-        data: { message: (err as Error).message },
+        data: { message: "Keep-alive failed" },
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
