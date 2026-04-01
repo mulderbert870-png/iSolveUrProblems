@@ -220,7 +220,7 @@ export const LiveAvatarDemo = () => {
           sizes="100vw"
         />
         <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
-          <h1 className="text-white text-2xl font-bold tracking-tight">
+          <h1 className="text-white text-xl font-bold tracking-tight">
             iSolveUrProblems.ai - beta
           </h1>
           {/* <p className="text-white text-sm font-medium mt-1">
