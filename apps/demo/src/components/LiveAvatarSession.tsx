@@ -11,24 +11,7 @@ import {
 import Link from "next/link";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
-import { Radio, Camera, Paperclip, Video } from "lucide-react";
-
-// Then in your buttons:
-const Button: React.FC<{
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-}> = ({ onClick, disabled, children }) => {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="btn-inset px-4 py-2 rounded-md"
-    >
-      {children}
-    </button>
-  );
-};
+import { Radio, Camera, Images, Video } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -92,7 +75,6 @@ const LiveAvatarSessionComponent: React.FC<{
   const lastVisionResponseTimeRef = useRef<number>(0);
   const hasAutoAnalyzedRef = useRef<boolean>(false);
 
-  const [uploadType, setUploadType] = useState<string>("image");
   const isAttachedRef = useRef<boolean>(false);
   const greetingTriggeredRef = useRef<boolean>(false);
   const audioUnlockedRef = useRef<boolean>(false);
@@ -102,20 +84,20 @@ const LiveAvatarSessionComponent: React.FC<{
   /** Cursor for GET /v1/sessions/{id}/transcript (LiveAvatar `next_timestamp`). */
   const transcriptCursorRef = useRef<number | null>(null);
   const lastSyncedLaSessionIdRef = useRef<string | null>(null);
+  /** Mic/voice chat is held inactive until the user taps Start (SDK enables voice on connect). */
+  const voiceHeldUntilUserStartRef = useRef(false);
+  const [hasUserPressedVoiceStart, setHasUserPressedVoiceStart] = useState(false);
+  const [voiceStartAwaitingReady, setVoiceStartAwaitingReady] = useState(false);
 
   // Vision mode state: 'streaming' for Go Live, 'snapshot' for Camera button, null for inactive
   const [visionMode, setVisionMode] = useState<"streaming" | "snapshot" | null>(
     null,
   );
 
-  // Video recording state
-  const [isVideoActive, setIsVideoActive] = useState(false);
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoBlob, setRecordedVideoBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const videoPreviewRef = useRef<HTMLVideoElement>(null);
 
   // When session fails to start (e.g. no credits), show message and don't auto-restart
   const [sessionStartError, setSessionStartError] = useState<string | null>(
@@ -224,16 +206,10 @@ const LiveAvatarSessionComponent: React.FC<{
     setIsCameraActive(false);
     setVisionMode(null);
 
-    // Close video recording if active
-    if (videoStream) {
-      videoStream.getTracks().forEach((track) => track.stop());
-      setVideoStream(null);
-    }
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
-    setIsVideoActive(false);
     setRecordedVideoBlob(null);
     recordedChunksRef.current = [];
 
@@ -266,7 +242,6 @@ const LiveAvatarSessionComponent: React.FC<{
     cameraStream,
     fallbackImage,
     fallbackImagePreview,
-    videoStream,
     isRecording,
   ]);
 
@@ -274,18 +249,11 @@ const LiveAvatarSessionComponent: React.FC<{
   const isOnHomeScreen = useCallback(() => {
     return (
       !isCameraActive &&
-      !isVideoActive &&
       !imageAnalysis &&
       !isAnalyzingImage &&
       !isAnalyzingVideo
     );
-  }, [
-    isCameraActive,
-    isVideoActive,
-    imageAnalysis,
-    isAnalyzingImage,
-    isAnalyzingVideo,
-  ]);
+  }, [isCameraActive, imageAnalysis, isAnalyzingImage, isAnalyzingVideo]);
 
   // Wrapper for stopSession - on home screen stop session (parent shows start screen); otherwise reset to home screen
   const handleStopSession = useCallback(() => {
@@ -299,47 +267,121 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   }, [isOnHomeScreen, resetToHomeScreen, stopSession]);
 
-  // Function to unlock audio on Android (requires user interaction)
-  const unlockAudio = useCallback(async () => {
-    if (audioUnlockedRef.current || !videoRef.current) {
+  // SDK starts voice chat on connect; hold mic inactive until the user taps Start.
+  useEffect(() => {
+    if (sessionState === SessionState.DISCONNECTED) {
+      voiceHeldUntilUserStartRef.current = false;
       return;
     }
+    if (sessionState !== SessionState.CONNECTED || !isStreamReady) {
+      return;
+    }
+    if (voiceHeldUntilUserStartRef.current) {
+      return;
+    }
+    voiceHeldUntilUserStartRef.current = true;
+    stop();
+  }, [sessionState, isStreamReady, stop]);
 
+  // No avatar speech without audible output: interrupt if the agent starts speaking before audio is unlocked.
+  useEffect(() => {
+    const session = sessionRef.current;
+    if (!session) {
+      return;
+    }
+    const onAvatarSpeakStarted = () => {
+      if (!audioUnlockedRef.current) {
+        void interrupt();
+      }
+    };
+    session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
+    return () => {
+      session.removeListener(
+        AgentEventsEnum.AVATAR_SPEAK_STARTED,
+        onAvatarSpeakStarted,
+      );
+    };
+  }, [sessionRef, interrupt]);
+
+  /** Ensure remote avatar audio can play (mobile autoplay policies). Call from explicit button taps only. */
+  const ensureAudioOutputReady = useCallback(async (): Promise<boolean> => {
+    if (!videoRef.current || !isStreamReady) {
+      return false;
+    }
     const video = videoRef.current;
     try {
-      // For Android: explicitly play the video to unlock audio on mobile browsers
-      // Set volume to max and unmute
       video.volume = 1.0;
       video.muted = false;
-
-      // Try to play the video
-      await video.play();
-
-      // Ensure audio tracks are enabled
       if (video.srcObject && video.srcObject instanceof MediaStream) {
         video.srcObject.getAudioTracks().forEach((track) => {
           track.enabled = true;
         });
       }
-
+      await video.play();
       audioUnlockedRef.current = true;
-      console.log("Audio unlocked successfully for Android/mobile");
-
-      // Force a second attempt after a short delay for stubborn Android devices
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.volume = 1.0;
           videoRef.current.muted = false;
-          videoRef.current.play().catch(() => {
-            // Ignore errors on second attempt
-          });
+          videoRef.current.play().catch(() => {});
         }
       }, 100);
+      await new Promise<void>((resolve) => {
+        const done = () => resolve();
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          requestAnimationFrame(done);
+          return;
+        }
+        video.addEventListener("canplay", done, { once: true });
+        setTimeout(done, 2500);
+      });
+      return true;
     } catch (error) {
-      console.warn("Failed to unlock audio:", error);
-      // Audio might still be blocked, but we'll try again on next interaction
+      console.warn("Audio output not ready:", error);
+      return false;
     }
-  }, []);
+  }, [isStreamReady]);
+
+  /** Idempotent unlock for Go Live / Camera / Gallery (after user gesture). */
+  const unlockAudio = useCallback(async () => {
+    if (audioUnlockedRef.current) {
+      return;
+    }
+    await ensureAudioOutputReady();
+  }, [ensureAudioOutputReady]);
+
+  const handleVoiceStartStop = useCallback(async () => {
+    if (isActive) {
+      stop();
+      return;
+    }
+    if (sessionState !== SessionState.CONNECTED || !isStreamReady) {
+      return;
+    }
+    setVoiceStartAwaitingReady(true);
+    try {
+      const ok = await ensureAudioOutputReady();
+      if (!ok) {
+        return;
+      }
+      await start();
+      if (mode === "FULL") {
+        startListening();
+      }
+      setHasUserPressedVoiceStart(true);
+    } finally {
+      setVoiceStartAwaitingReady(false);
+    }
+  }, [
+    isActive,
+    stop,
+    start,
+    mode,
+    startListening,
+    sessionState,
+    isStreamReady,
+    ensureAudioOutputReady,
+  ]);
 
   useEffect(() => {
     // console.log("isStreamReady: ", isStreamReady);
@@ -357,12 +399,12 @@ const LiveAvatarSessionComponent: React.FC<{
         console.warn("Autoplay (muted) failed:", err);
       });
 
-      // If user already unlocked audio earlier, restore sound
+      // If user already unlocked audio earlier (e.g. re-attach), restore sound
       if (audioUnlockedRef.current) {
-        unlockAudio();
+        void ensureAudioOutputReady();
       }
     }
-  }, [attachElement, isStreamReady, unlockAudio]);
+  }, [attachElement, isStreamReady, ensureAudioOutputReady]);
 
   // Ensure video has volume and is not muted whenever video element is available
   // Only unmute after user interaction (audio unlock) - CRITICAL to prevent mouth movement during loading
@@ -384,60 +426,6 @@ const LiveAvatarSessionComponent: React.FC<{
       video.volume = 0;
     }
   }, [isStreamReady, audioUnlockedRef]);
-
-  // Auto-unlock audio on mount for Android (try immediately, then on user interaction)
-  useEffect(() => {
-    // Try to unlock audio immediately on mount (for Android)
-    if (isStreamReady && videoRef.current) {
-      // Small delay to ensure video element is ready
-      setTimeout(() => {
-        unlockAudio().catch(() => {
-          // If auto-unlock fails, wait for user interaction
-        });
-      }, 500);
-    }
-  }, [isStreamReady, unlockAudio]);
-
-  // Add user interaction listeners to unlock audio on first interaction
-  // Critical for Android devices to enable audio playback
-  useEffect(() => {
-    if (audioUnlockedRef.current) {
-      return;
-    }
-
-    const handleUserInteraction = async () => {
-      await unlockAudio();
-      // Remove listeners after first successful unlock
-      if (audioUnlockedRef.current) {
-        document.removeEventListener("click", handleUserInteraction);
-        document.removeEventListener("touchstart", handleUserInteraction);
-        document.removeEventListener("touchend", handleUserInteraction);
-        document.removeEventListener("pointerdown", handleUserInteraction);
-      }
-    };
-
-    // Listen for various user interaction events - especially important for Android
-    document.addEventListener("click", handleUserInteraction, {
-      passive: true,
-    });
-    document.addEventListener("touchstart", handleUserInteraction, {
-      passive: true,
-    });
-    document.addEventListener("touchend", handleUserInteraction, {
-      passive: true,
-    });
-    // Add pointer events for better Android support
-    document.addEventListener("pointerdown", handleUserInteraction, {
-      passive: true,
-    });
-
-    return () => {
-      document.removeEventListener("click", handleUserInteraction);
-      document.removeEventListener("touchstart", handleUserInteraction);
-      document.removeEventListener("touchend", handleUserInteraction);
-      document.removeEventListener("pointerdown", handleUserInteraction);
-    };
-  }, [unlockAudio]);
 
   // DISABLED: Function to trigger greeting - removed to prevent automatic "Hi" on load
   // Greeting should only happen on explicit user action, not automatically
@@ -591,15 +579,11 @@ const LiveAvatarSessionComponent: React.FC<{
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop());
       }
-      if (videoStream) {
-        videoStream.getTracks().forEach((track) => track.stop());
-      }
-      // Cleanup timeout on unmount
       if (processingTimeoutRef.current) {
         clearTimeout(processingTimeoutRef.current);
       }
     };
-  }, [cameraStream, videoStream]);
+  }, [cameraStream]);
 
   // Set camera stream to video element when both are available
   useEffect(() => {
@@ -1073,10 +1057,10 @@ const LiveAvatarSessionComponent: React.FC<{
         visionMode,
       );
 
-      // Skip transcription when video is recording - avatar should be quiet during recording
-      if (isVideoActive && isRecording) {
+      // Skip transcription while any camera video recording is in progress
+      if (isRecording) {
         console.log(
-          "Video is recording, skipping transcription - avatar should be quiet",
+          "Recording in progress, skipping transcription - avatar should be quiet",
         );
         return;
       }
@@ -1266,7 +1250,6 @@ const LiveAvatarSessionComponent: React.FC<{
     sessionRef,
     visionMode,
     processCameraQuestion,
-    isVideoActive,
     isRecording,
     interrupt,
     mode,
@@ -1539,74 +1522,23 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   };
 
-  const handleFileUploadClick = (value: string) => {
-    // If video, handle video recording instead of file upload
-    if (value === "video") {
-      handleVideoClick();
-      return;
+  const handleGalleryClick = useCallback(async () => {
+    await unlockAudio();
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute("accept", "image/*,video/*");
+      fileInputRef.current.click();
     }
+  }, [unlockAudio]);
 
-    setUploadType(value);
-    fileInputRef.current?.setAttribute("accept", `${value}/*`);
-    fileInputRef.current?.click();
-  };
-
-  // Handle video recording
-  const handleVideoClick = async () => {
-    if (isVideoActive) {
-      // Stop video recording if already active
-      if (videoStream) {
-        videoStream.getTracks().forEach((track) => track.stop());
-        setVideoStream(null);
-      }
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-        setIsRecording(false);
-      }
-      setIsVideoActive(false);
-      setRecordedVideoBlob(null);
-      recordedChunksRef.current = [];
-      return;
-    }
-
-    try {
-      // Get video stream
-      let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-      } catch (error) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" },
-          });
-        } catch (error2) {
-          console.error("Error accessing camera for video:", error2);
-          alert("Unable to access camera for video recording");
-          return;
-        }
-      }
-
-      if (stream) {
-        setVideoStream(stream);
-        setIsVideoActive(true);
-      }
-    } catch (error) {
-      console.error("Error accessing camera for video:", error);
-      alert("Unable to access camera for video recording");
-    }
-  };
-
-  // Start video recording
+  // Record video from the live camera preview (snapshot mode only)
   const handleStartRecording = useCallback(() => {
-    if (!videoStream || !videoPreviewRef.current) {
+    if (visionMode !== "snapshot" || !cameraStream) {
       return;
     }
+    const stream = cameraStream;
 
     recordedChunksRef.current = [];
 
-    // Check for supported MIME types
     let mimeType = "video/webm;codecs=vp9,opus";
     if (!MediaRecorder.isTypeSupported(mimeType)) {
       mimeType = "video/webm;codecs=vp8,opus";
@@ -1619,7 +1551,7 @@ const LiveAvatarSessionComponent: React.FC<{
     }
 
     const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
-    const mediaRecorder = new MediaRecorder(videoStream, options);
+    const mediaRecorder = new MediaRecorder(stream, options);
 
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
@@ -1631,7 +1563,20 @@ const LiveAvatarSessionComponent: React.FC<{
       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
       setRecordedVideoBlob(blob);
 
-      // Analyze the video
+      stream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+      setIsCameraActive(false);
+      setVisionMode(null);
+      if (
+        fallbackImagePreview &&
+        fallbackImage &&
+        fallbackImage.name !== "2c44c052-e58a-4f6d-a6c8-dba901ff0e9e.jpg"
+      ) {
+        URL.revokeObjectURL(fallbackImagePreview);
+      }
+      setFallbackImage(null);
+      setFallbackImagePreview(null);
+
       setIsAnalyzingVideo(true);
       try {
         const videoFile = new File([blob], "recorded-video.webm", {
@@ -1655,18 +1600,13 @@ const LiveAvatarSessionComponent: React.FC<{
         const data = await response.json();
         console.log("Video analyzed successfully");
 
-        // Store video analysis in state so it persists even after closing video button
         setVideoAnalysis(data.analysis);
 
-        // For FULL mode, send the analysis as context to the AI
         if (mode === "FULL" && sessionRef.current) {
-          // Ask ONLY the short question FIRST using repeat() - direct speech, no AI processing
           await repeat(
             "What problems can I help you solve that are in this video?",
           );
 
-          // Then send context in background (non-blocking) for future questions
-          // Use setTimeout to ensure prompt is spoken first
           const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences).`;
           setTimeout(() => {
             if (sessionRef.current) {
@@ -1675,7 +1615,6 @@ const LiveAvatarSessionComponent: React.FC<{
           }, 100);
         }
 
-        // Keep video active for discussion - don't auto-return to home screen
         setIsAnalyzingVideo(false);
       } catch (error) {
         console.error("Error analyzing video:", error);
@@ -1688,27 +1627,25 @@ const LiveAvatarSessionComponent: React.FC<{
     mediaRecorder.start();
     setIsRecording(true);
 
-    // Stop listening and mute microphone during video recording to prevent AI from processing audio
-    // The AI should only analyze the video after recording is complete
     if (mode === "FULL") {
       stopListening();
-      // Mute microphone to prevent any audio from being sent to the backend during recording
-      // Store the current mute state so we can restore it after recording
       wasMutedBeforeRecordingRef.current = isMuted;
       if (isActive && !isMuted) {
         mute();
       }
     }
   }, [
-    videoStream,
+    visionMode,
+    cameraStream,
     mode,
     sessionRef,
     repeat,
-    resetToHomeScreen,
     stopListening,
     isActive,
     isMuted,
     mute,
+    fallbackImagePreview,
+    fallbackImage,
   ]);
 
   // Stop video recording
@@ -1731,18 +1668,6 @@ const LiveAvatarSessionComponent: React.FC<{
       }
     }
   }, [isRecording, mode, startListening, isActive, isMuted, unmute]);
-
-  // Set video stream to video element when both are available
-  useEffect(() => {
-    if (videoStream && videoPreviewRef.current) {
-      const video = videoPreviewRef.current;
-      video.srcObject = videoStream;
-
-      video.play().catch((error) => {
-        console.error("Error playing video stream:", error);
-      });
-    }
-  }, [videoStream, isVideoActive]);
 
   const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1970,39 +1895,6 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   };
 
-  const VoiceChatComponents = (
-    <>
-      <p>Voice Chat Active: {isActive ? "true" : "false"}</p>
-      <p>Voice Chat Loading: {isLoading ? "true" : "false"}</p>
-      {isActive && <p>Muted: {isMuted ? "true" : "false"}</p>}
-      <Button
-        onClick={() => {
-          if (isActive) {
-            stop();
-          } else {
-            start();
-          }
-        }}
-        disabled={isLoading}
-      >
-        {isActive ? "Stop Voice Chat" : "Start Voice Chat"}
-      </Button>
-      {isActive && (
-        <Button
-          onClick={() => {
-            if (isMuted) {
-              unmute();
-            } else {
-              mute();
-            }
-          }}
-        >
-          {isMuted ? "Unmute" : "Mute"}
-        </Button>
-      )}
-    </>
-  );
-
   return (
     <div className="fixed inset-0 w-screen h-screen bg-black flex flex-col">
       {/* Session start error (e.g. no credits) - show message and do not auto-restart */}
@@ -2041,9 +1933,9 @@ const LiveAvatarSessionComponent: React.FC<{
           <h1 className="text-white text-xl font-bold tracking-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          {/* <p className="text-white text-sm font-medium mt-1">
-            Everything. All the Time.
-          </p> */}
+          <p className="text-white text-sm font-medium mt-1 text-white/90">
+            Your Home &amp; Garden Solution Center
+          </p>
         </div>
         {microphoneWarning && (
           <div className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded-md max-w-2xl text-center">
@@ -2064,9 +1956,9 @@ const LiveAvatarSessionComponent: React.FC<{
 
       {/* Full screen video */}
       <div
-        className={`relative w-full flex-1 flex items-center justify-center ${isCameraActive || isVideoActive ? "pt-24" : ""}`}
+        className={`relative w-full flex-1 flex items-center justify-center ${isCameraActive ? "pt-24" : ""}`}
       >
-        {/* Avatar video - full screen when camera/video inactive, small overlay in left corner when active */}
+        {/* Avatar video - full screen when camera inactive, small overlay in left corner when active */}
         <video
           ref={videoRef}
           autoPlay // Native autoplay
@@ -2074,7 +1966,7 @@ const LiveAvatarSessionComponent: React.FC<{
           preload="auto"
           muted={true} // Start muted to prevent mouth movement during loading
           className={`${
-            isCameraActive || isVideoActive
+            isCameraActive
               ? "absolute top-24 left-4 w-24 h-44 object-contain z-20 rounded-lg border-2 border-white shadow-2xl"
               : "h-full w-full object-contain"
           }`}
@@ -2093,27 +1985,15 @@ const LiveAvatarSessionComponent: React.FC<{
             <input
               ref={fileInputRef}
               type="file"
-              accept={`${uploadType}/*`}
+              accept="image/*,video/*"
               className="hidden"
               onChange={handleFileChange}
             />
           </>
         )}
 
-        {/* Video Recording Preview - full screen under header when active */}
-        {isVideoActive && (
-          <div className="absolute inset-0 pt-24 flex items-center justify-center z-10">
-            <video
-              ref={videoPreviewRef}
-              autoPlay
-              playsInline
-              className="max-h-[calc(100vh-6rem)] w-full object-contain"
-            />
-          </div>
-        )}
-
         {/* Camera Preview - full screen under header when active */}
-        {isCameraActive && !isVideoActive && (
+        {isCameraActive && (
           <div className="absolute inset-0 pt-24 flex items-center justify-center z-10">
             {cameraAvailable === false && fallbackImagePreview ? (
               // Fallback image preview (default image from public folder)
@@ -2178,33 +2058,38 @@ const LiveAvatarSessionComponent: React.FC<{
           </div>
         )}
 
-        {/* Snap Photo Button - shown only in snapshot mode (Camera button) */}
-        {isCameraActive && !isVideoActive && visionMode === "snapshot" && (
-          <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-30">
+        {/* Snapshot: photo capture + optional video record (same camera session) */}
+        {isCameraActive && visionMode === "snapshot" && (
+          <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-30 flex gap-4 items-center justify-center">
             <button
-              onClick={handleSnapPhoto}
-              disabled={isAnalyzingImage || isProcessingCameraQuestion}
+              type="button"
+              onClick={() => void handleSnapPhoto()}
+              disabled={
+                isRecording ||
+                isAnalyzingImage ||
+                isProcessingCameraQuestion ||
+                (!cameraStream && !fallbackImage)
+              }
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-2xl border-4 border-white"
+              aria-label="Capture photo"
             >
               <Camera className="w-10 h-10" />
             </button>
-          </div>
-        )}
-
-        {/* Video Recording Controls - shown when video is active */}
-        {isVideoActive && (
-          <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-30 flex gap-4">
             {!isRecording ? (
               <button
-                onClick={handleStartRecording}
-                className="bg-red-600 hover:bg-red-700 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-2xl border-4 border-white"
+                type="button"
+                onClick={() => handleStartRecording()}
+                disabled={!cameraStream || isAnalyzingImage}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-2xl border-4 border-white"
+                aria-label="Record video"
               >
                 <Video className="w-10 h-10" />
               </button>
             ) : (
               <button
-                onClick={handleStopRecording}
-                className="bg-red-600 hover:bg-red-700 text-white rounded-lg px-6 py-3 flex items-center justify-center shadow-2xl border-4 border-white"
+                type="button"
+                onClick={() => handleStopRecording()}
+                className="bg-red-600 hover:bg-red-700 text-white rounded-lg px-6 py-3 flex items-center justify-center shadow-2xl border-4 border-white text-sm font-semibold"
               >
                 Stop Recording
               </button>
@@ -2262,29 +2147,13 @@ const LiveAvatarSessionComponent: React.FC<{
           {/* Do NOT show "Talk to Interrupt" when camera is ready to take pic (snapshot mode) */}
           {sessionState !== SessionState.DISCONNECTED &&
             visionMode !== "streaming" &&
-            !isCameraActive &&
-            !isVideoActive && (
-              <div className="absolute bottom-[18rem]  left-1/2 -translate-x-1/2 z-30">
+            !isCameraActive && (
+              <div className="absolute bottom-[18rem] left-1/2 -translate-x-1/2 z-30 max-w-[min(100%,24rem)] px-4">
                 {isAvatarTalking ? null : (
-                  <p className="text-inset text-base font-semibold text-center drop-shadow-lg flex flex-wrap items-baseline justify-center gap-x-1">
-                    <span
-                      className={
-                        isStreamReady
-                          ? "inline-block animate-ask-first"
-                          : "inline-block"
-                      }
-                    >
-                      Ask.
-                    </span>
-                    <span
-                      className={
-                        isStreamReady
-                          ? "inline-block ask-anything-word pl-0.5"
-                          : "inline-block pl-0.5"
-                      }
-                    >
-                      Anything
-                    </span>
+                  <p className="text-inset text-base font-semibold text-center drop-shadow-lg">
+                    {hasUserPressedVoiceStart
+                      ? "Tell 6 What's Wrong — or Show Him"
+                      : "Tap Start to Begin"}
                   </p>
                 )}
               </div>
@@ -2303,91 +2172,70 @@ const LiveAvatarSessionComponent: React.FC<{
             </div>
           )}
 
-          {/* ss added - Go Live, Files, Camera, Video moved down; Camera and Video in same row as Stop */}
-          {!isVideoActive && visionMode !== "streaming" && !isCameraActive && (
+          {visionMode !== "streaming" && !isCameraActive && (
             <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
               <div className="mx-auto w-full max-w-sm">
-              {/* Row 1: Go Live, Files */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <button
-                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
-                  onClick={async () => {
-                    await unlockAudio();
-                    handleGoLive();
-                  }}
-                >
-                  <Radio className="mr-1.5 w-4 h-4 shrink-0" /> Go Live
-                </button>
-                <button
-                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
-                  onClick={async () => {
-                    await unlockAudio();
-                    handleFileUploadClick("image");
-                  }}
-                >
-                  <Paperclip className="mr-1.5 w-4 h-4 shrink-0" /> Files
-                </button>
-              </div>
-              {/* Row 2: Camera, Video, Stop (same row as Stop button) */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <button
-                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
-                  onClick={async () => {
-                    await unlockAudio();
-                    handleCameraClick();
-                  }}
-                >
-                  <Camera className="mr-1.5 w-4 h-4 shrink-0" /> Camera
-                </button>
-                <button
-                  className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap"
-                  onClick={async () => {
-                    await unlockAudio();
-                    handleFileUploadClick("video");
-                  }}
-                >
-                  <Video className="mr-1.5 w-4 h-4 shrink-0" />
-                  Video
-                </button>
-              </div>
-              <div className="flex justify-center mb-4">
-                <button
-                  className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
-                  onClick={async () => {
-                    // Unlock audio on button click (user interaction)
-                    await unlockAudio();
-                    handleStopSession();
-                  }}
-                >
-                  Stop
-                </button>
-              </div>
-              </div>
-              <div className="bottom-6 w-full max-w-7xl z-20 px-4">
-                <p className="mb-2 text-center text-xs text-white flex flex-wrap items-center justify-center">
-                  <Link
-                    href="https://wildworks.live"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white hover:text-white transition-colors"
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <button
+                    type="button"
+                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    disabled={
+                      sessionState !== SessionState.CONNECTED ||
+                      !isStreamReady ||
+                      voiceStartAwaitingReady ||
+                      (isLoading && !isActive)
+                    }
+                    onClick={() => void handleVoiceStartStop()}
                   >
-                    Wildworks.Live
-                  </Link>
-                  <span aria-hidden="true">•</span>
-                  <span>© 2026 iSolveUrProblems.ai</span>
-                  <span aria-hidden="true">•</span>
-                  <Link href="/terms" className="text-white hover:text-white transition-colors">
-                    Terms
-                  </Link>
-                </p>
+                    {isActive ? "Stop" : "Start"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    onClick={async () => {
+                      await unlockAudio();
+                      handleGoLive();
+                    }}
+                  >
+                    <Radio className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    Go Live
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <button
+                    type="button"
+                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    onClick={async () => {
+                      await unlockAudio();
+                      void handleCameraClick();
+                    }}
+                  >
+                    <Camera className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    Camera
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    onClick={() => void handleGalleryClick()}
+                  >
+                    <Images className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    Gallery
+                  </button>
+                </div>
               </div>
+              <Link
+                href="/terms"
+                className="mt-1 block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-2"
+              >
+                © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
+              </Link>
             </div>
           )}
         </>
       )}
 
-      {/* Stop button shown when four buttons are hidden (Camera / Video / Go Live mode) - same position as bottom row above */}
-      {((isVideoActive || visionMode === "streaming" || isCameraActive)) && (
+      {/* Stop: exit Go Live / camera overlay (or end session when already on home) */}
+      {(visionMode === "streaming" || isCameraActive) && (
         <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
           <div className="flex justify-center">
             <button

@@ -3,8 +3,17 @@ import {
   isSafeTranscriptionSessionId,
   truncateUtf8String,
 } from "../../../../../src/lib/apiRouteSecurity";
+import { persistUserUtteranceLeadCapture } from "../../../../../src/lib/leadCaptureFromUserText";
 import { getSupabaseAdminConfig } from "../../../../../src/lib/supabaseAdmin";
 import { API_KEY, API_URL } from "../../../secrets";
+
+/** Skip lead extraction for long context lines mis-tagged as user or internal prompts. */
+function shouldRunLeadCaptureOnUserTranscript(text: string): boolean {
+  const t = text.trim();
+  if (t.length > 500) return false;
+  if (/^you are directly viewing (an image|a video)/i.test(t)) return false;
+  return true;
+}
 
 type TranscriptRow = {
   role: "user" | "avatar";
@@ -166,12 +175,26 @@ export async function POST(request: Request) {
       }
     }
 
+    let leadCaptureErrors = 0;
+    for (const row of parsed.transcriptData) {
+      if (row.role !== "user") continue;
+      const line = row.transcript.trim();
+      if (!line || !shouldRunLeadCaptureOnUserTranscript(line)) continue;
+      try {
+        await persistUserUtteranceLeadCapture(liveAvatarSessionId, line);
+      } catch (err) {
+        leadCaptureErrors++;
+        console.error("Lead capture from transcript sync failed:", err);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         sessionActive: parsed.sessionActive,
         nextTimestamp: parsed.nextTimestamp,
         received: parsed.transcriptData.length,
+        leadCaptureErrors,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
