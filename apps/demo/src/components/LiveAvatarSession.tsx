@@ -97,6 +97,11 @@ const LiveAvatarSessionComponent: React.FC<{
   const greetingTriggeredRef = useRef<boolean>(false);
   const audioUnlockedRef = useRef<boolean>(false);
   const wasMutedBeforeRecordingRef = useRef<boolean>(false);
+  /** LiveAvatar server session id — used for DB + official transcript API (set when CONNECTED). */
+  const dbSessionIdRef = useRef<string | null>(null);
+  /** Cursor for GET /v1/sessions/{id}/transcript (LiveAvatar `next_timestamp`). */
+  const transcriptCursorRef = useRef<number | null>(null);
+  const lastSyncedLaSessionIdRef = useRef<string | null>(null);
 
   // Vision mode state: 'streaming' for Go Live, 'snapshot' for Camera button, null for inactive
   const [visionMode, setVisionMode] = useState<"streaming" | "snapshot" | null>(
@@ -144,6 +149,70 @@ const LiveAvatarSessionComponent: React.FC<{
       });
     }
   }, [startSession, sessionState]);
+
+  // Track LiveAvatar session id for lead capture + official transcript sync
+  useEffect(() => {
+    if (sessionState === SessionState.DISCONNECTED) {
+      const sid = dbSessionIdRef.current;
+      const cursor = transcriptCursorRef.current;
+      dbSessionIdRef.current = null;
+      transcriptCursorRef.current = null;
+      lastSyncedLaSessionIdRef.current = null;
+      if (sid) {
+        void fetch("/api/liveavatar/session-transcript/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            liveAvatarSessionId: sid,
+            ...(cursor != null ? { startTimestamp: cursor } : {}),
+          }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+      return;
+    }
+    if (sessionState === SessionState.CONNECTED && sessionRef.current?.sessionId) {
+      const sid = sessionRef.current.sessionId;
+      if (lastSyncedLaSessionIdRef.current !== sid) {
+        transcriptCursorRef.current = null;
+        lastSyncedLaSessionIdRef.current = sid;
+      }
+      dbSessionIdRef.current = sid;
+    }
+  }, [sessionState, sessionRef]);
+
+  // Poll LiveAvatar official transcript API while connected ([Get Session Transcript](https://docs.liveavatar.com/api-reference/sessions/get-session-transcript))
+  useEffect(() => {
+    if (sessionState !== SessionState.CONNECTED) return;
+    const sid = sessionRef.current?.sessionId;
+    if (!sid) return;
+
+    const runSync = async () => {
+      const body: Record<string, unknown> = { liveAvatarSessionId: sid };
+      if (transcriptCursorRef.current != null) {
+        body.startTimestamp = transcriptCursorRef.current;
+      }
+      try {
+        const res = await fetch("/api/liveavatar/session-transcript/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (typeof data.nextTimestamp === "number") {
+          transcriptCursorRef.current = data.nextTimestamp;
+        }
+      } catch (e) {
+        console.error("LiveAvatar transcript sync failed:", e);
+      }
+    };
+
+    void runSync();
+    const intervalMs = 20_000;
+    const id = setInterval(runSync, intervalMs);
+    return () => clearInterval(id);
+  }, [sessionState, sessionRef]);
 
   // Function to reset to home screen (close camera, clear uploads, but keep session)
   const resetToHomeScreen = useCallback(() => {
@@ -1101,6 +1170,45 @@ const LiveAvatarSessionComponent: React.FC<{
         return;
       }
 
+      // Persist transcript and drive contact info collection prompts (email/phone/name)
+      const captureSessionId = dbSessionIdRef.current;
+      try {
+        const captureResponse =
+          captureSessionId != null
+            ? await fetch("/api/transcription/capture", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  sessionId: captureSessionId,
+                  text: userText,
+                }),
+              })
+            : null;
+
+        if (captureResponse?.ok) {
+          const captureData = await captureResponse.json();
+          if (
+            captureData?.assistantPrompt &&
+            typeof captureData.assistantPrompt === "string"
+          ) {
+            await repeat(captureData.assistantPrompt);
+            lastAvatarResponseRef.current = captureData.assistantPrompt;
+            lastVisionResponseTimeRef.current = Date.now();
+          }
+
+          if (captureData?.shouldSkipVision) {
+            return;
+          }
+        } else if (captureResponse) {
+          const captureError = await captureResponse.text();
+          console.error("Failed to capture transcription:", captureError);
+        }
+      } catch (captureError) {
+        console.error("Error calling transcription capture route:", captureError);
+      }
+
       // If user asks about video and videoAnalysis exists, re-send video context
       const userTextLower = userText.toLowerCase();
       const videoKeywords = ["video", "recording", "clip", "footage", "film"];
@@ -1161,6 +1269,9 @@ const LiveAvatarSessionComponent: React.FC<{
     isVideoActive,
     isRecording,
     interrupt,
+    mode,
+    repeat,
+    isProcessingCameraQuestion,
   ]);
 
   // Track if initial analysis has been triggered to prevent repeated automatic analysis

@@ -657,6 +657,11 @@ class LiveAvatarSession extends EventEmitter {
         var _a, _b;
         return (_b = (_a = this._sessionInfo) === null || _a === void 0 ? void 0 : _a.max_session_duration) !== null && _b !== void 0 ? _b : null;
     }
+    /** LiveAvatar server session id (available after {@link start} resolves). */
+    get sessionId() {
+        var _a, _b;
+        return (_b = (_a = this._sessionInfo) === null || _a === void 0 ? void 0 : _a.session_id) !== null && _b !== void 0 ? _b : null;
+    }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.state !== SessionState.INACTIVE) {

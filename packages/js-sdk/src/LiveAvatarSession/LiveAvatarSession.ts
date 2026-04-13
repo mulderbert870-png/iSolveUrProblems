@@ -102,6 +102,11 @@ export class LiveAvatarSession extends (EventEmitter as new () => TypedEmitter<
     return this._sessionInfo?.max_session_duration ?? null;
   }
 
+  /** LiveAvatar server session id (available after {@link start} resolves). */
+  public get sessionId(): string | null {
+    return this._sessionInfo?.session_id ?? null;
+  }
+
   public async start(): Promise<void> {
     if (this.state !== SessionState.INACTIVE) {
       console.warn("Session is already started");

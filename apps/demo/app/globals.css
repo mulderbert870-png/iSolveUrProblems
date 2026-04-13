@@ -11,7 +11,7 @@
   }
 }
 
-/* "Ask. Anything" hero line — soft staggered float + slow highlight on second word */
+/* "Ask. Anything." hero line — soft staggered float on both words */
 @keyframes ask-word-float {
   0%,
   100% {
@@ -19,20 +19,6 @@
   }
   50% {
     transform: translateY(-3px);
-  }
-}
-
-@keyframes ask-shimmer-pass {
-  0%,
-  24% {
-    background-position: 100% 50%;
-  }
-  32% {
-    background-position: 0% 50%;
-  }
-  40%,
-  100% {
-    background-position: 100% 50%;
   }
 }
 
@@ -75,23 +61,8 @@
   }
 
   .ask-anything-word {
-    background-image: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.82) 0%,
-      rgba(255, 255, 255, 0.82) 40%,
-      rgba(255, 255, 255, 1) 50%,
-      rgba(255, 255, 255, 0.82) 60%,
-      rgba(255, 255, 255, 0.82) 100%
-    );
-    background-size: 220% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
-    animation:
-      ask-word-float 3.5s ease-in-out infinite,
-      ask-shimmer-pass 12s ease-in-out infinite;
-    animation-delay: -1.75s, 0s;
+    animation: ask-word-float 3.5s ease-in-out infinite;
+    animation-delay: -1.75s;
   }
 }
 
@@ -99,13 +70,5 @@
   .animate-ask-first,
   .ask-anything-word {
     animation: none !important;
-  }
-
-  .ask-anything-word {
-    background: none;
-    -webkit-background-clip: unset;
-    background-clip: unset;
-    color: inherit;
-    filter: none;
   }
 }

@@ -241,9 +241,22 @@ export const LiveAvatarDemo = () => {
               type="button"
               onClick={startSession}
               disabled={isLoading}
-              className="btn-inset p-4 rounded-lg flex items-center justify-center text-xl font-medium whitespace-nowrap"
+              aria-label="To talk to this guy, tap this button"
+              aria-busy={isLoading}
+              className="btn-inset py-3 px-6 sm:px-8 rounded-lg flex flex-col items-center justify-center gap-1 max-w-[min(100%,20rem)] text-center"
             >
-              {isLoading ? "Starting…" : "Talk to this guy"}
+              {isLoading ? (
+                <span className="text-xl font-medium">Starting…</span>
+              ) : (
+                <>
+                  <span className="text-[11px] sm:text-xs font-normal text-white/75 leading-tight">
+                    (Tap this button)
+                  </span>
+                  <span className="text-xl sm:text-2xl font-semibold leading-snug">
+                    To talk to this guy
+                  </span>
+                </>
+              )}
             </button>
           </div>
         </div>

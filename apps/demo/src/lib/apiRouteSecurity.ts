@@ -3,6 +3,8 @@
 export const MAX_OPENAI_USER_MESSAGE_CHARS = 16_000;
 export const MAX_OPENAI_IMAGE_ANALYSIS_CHARS = 48_000;
 export const MAX_ELEVENLABS_TEXT_CHARS = 5_000;
+export const MAX_TRANSCRIPTION_TEXT_CHARS = 4_000;
+export const MAX_TRANSCRIPTION_SESSION_ID_CHARS = 128;
 export const MAX_ANALYZE_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_ANALYZE_IMAGE_QUESTION_CHARS = 2_000;
 export const MAX_VIDEO_FRAMES = 24;
@@ -77,10 +79,20 @@ export function isSafeElevenLabsVoiceId(voiceId: unknown): voiceId is string {
 }
 
 const BASE64_CHUNK = /^[A-Za-z0-9+/]*={0,2}$/;
+const SAFE_TRANSCRIPTION_SESSION_ID = /^[a-zA-Z0-9_-]{8,128}$/;
 
 export function isReasonableBase64Frame(s: unknown): s is string {
   if (typeof s !== "string" || s.length === 0) return false;
   if (s.length > MAX_VIDEO_FRAME_BASE64_CHARS) return false;
   if (s.length % 4 !== 0) return false;
   return BASE64_CHUNK.test(s);
+}
+
+export function isSafeTranscriptionSessionId(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const v = value.trim();
+  if (v.length < 8 || v.length > MAX_TRANSCRIPTION_SESSION_ID_CHARS) {
+    return false;
+  }
+  return SAFE_TRANSCRIPTION_SESSION_ID.test(v);
 }

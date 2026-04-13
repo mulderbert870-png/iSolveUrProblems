@@ -20,6 +20,8 @@ export declare class LiveAvatarSession extends LiveAvatarSession_base {
     get connectionQuality(): ConnectionQuality;
     get voiceChat(): VoiceChat;
     get maxSessionDuration(): number | null;
+    /** LiveAvatar server session id (available after {@link start} resolves). */
+    get sessionId(): string | null;
     start(): Promise<void>;
     stop(): Promise<void>;
     keepAlive(): Promise<void>;
