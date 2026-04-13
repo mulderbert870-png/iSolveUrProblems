@@ -95,10 +95,56 @@ const NAME_STOP_WORDS = new Set([
   "only",
   "very",
   "really",
+  "actually",
+  "also",
+  "uh",
+  "um",
+  "well",
+  "so",
+  "its",
+  "it's",
+  "basically",
+  "literally",
+]);
+
+/** Never treat as a person's name (whole value or word). */
+const INVALID_NAME_TOKENS = new Set([
+  "email",
+  "e-mail",
+  "phone",
+  "telephone",
+  "mobile",
+  "cell",
+  "mail",
+  "gmail",
+  "yahoo",
+  "hotmail",
+  "outlook",
+  "icloud",
+  "contact",
+  "address",
+  "website",
+  "www",
 ]);
 
 function trimNameValue(s: string): string {
   return s.replace(/\s+/g, " ").trim().replace(/[.,!?;:]+$/g, "").trim();
+}
+
+export function isGarbageNameCandidate(s: string | null | undefined): boolean {
+  if (!s?.trim()) return true;
+  const t = s.trim();
+  const lower = t.toLowerCase();
+  if (INVALID_NAME_TOKENS.has(lower)) return true;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) {
+    return true;
+  }
+  // Filler + real name in same string: "actually Scott also"
+  if (words.length > 1 && words.some((w) => NAME_STOP_WORDS.has(w.toLowerCase()))) {
+    return true;
+  }
+  return false;
 }
 
 /** Up to five name tokens (avoids swallowing "I'm looking for ..."). */
@@ -113,7 +159,12 @@ function extractFullNameFromPatterns(text: string): string | null {
     ),
     new RegExp(String.raw`(?:i am|i'?m|im)\s+${NAME_CHUNK}(?:[.,!?…]|$)`, "iu"),
     new RegExp(
-      String.raw`(?:this is|it'?s|it is|here'?s|here is)\s+${NAME_CHUNK}(?:[.,!?…]|$)`,
+      String.raw`(?:this is|here'?s|here is)\s+${NAME_CHUNK}(?:[.,!?…]|$)`,
+      "iu",
+    ),
+    // "It's Bert" — rejected when chunk is "email", "phone", etc. (INVALID_NAME_TOKENS)
+    new RegExp(
+      String.raw`(?:it'?s|it is)\s+${NAME_CHUNK}(?:[.,!?…]|$)`,
       "iu",
     ),
     new RegExp(
@@ -143,6 +194,8 @@ function extractFullNameFromPatterns(text: string): string | null {
     if (words.some((w) => NAME_STOP_WORDS.has(w.toLowerCase()))) {
       continue;
     }
+    if (INVALID_NAME_TOKENS.has(value.toLowerCase())) continue;
+    if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) continue;
     return value;
   }
   return null;
@@ -171,6 +224,9 @@ function extractFullNamePlainUtterance(text: string): string | null {
   if (words.some((w) => NAME_STOP_WORDS.has(w.toLowerCase()))) {
     return null;
   }
+  if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) {
+    return null;
+  }
 
   return t;
 }
@@ -182,18 +238,24 @@ function extractFullNameSingleWord(text: string): string | null {
   if (/[?]/.test(t) || /\d/.test(t) || /\s/.test(t)) return null;
   if (!NAME_TOKEN.test(t)) return null;
   const lower = t.toLowerCase();
-  if (FULL_UTTERANCE_NOT_A_NAME.has(lower) || NAME_STOP_WORDS.has(lower)) {
+  if (
+    FULL_UTTERANCE_NOT_A_NAME.has(lower) ||
+    NAME_STOP_WORDS.has(lower) ||
+    INVALID_NAME_TOKENS.has(lower)
+  ) {
     return null;
   }
   return t;
 }
 
 function extractFullName(text: string): string | null {
-  return (
+  const raw =
     extractFullNameFromPatterns(text) ??
     extractFullNamePlainUtterance(text) ??
-    extractFullNameSingleWord(text)
-  );
+    extractFullNameSingleWord(text);
+  if (!raw) return null;
+  if (isGarbageNameCandidate(raw)) return null;
+  return raw;
 }
 
 export function extractContactDetails(text: string): ContactExtraction {

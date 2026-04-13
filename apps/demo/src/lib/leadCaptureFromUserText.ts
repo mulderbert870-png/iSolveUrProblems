@@ -2,7 +2,11 @@ import {
   MAX_TRANSCRIPTION_TEXT_CHARS,
   truncateUtf8String,
 } from "./apiRouteSecurity";
-import { detectFollowUpIntent, extractContactDetails } from "./contactExtraction";
+import {
+  detectFollowUpIntent,
+  extractContactDetails,
+  isGarbageNameCandidate,
+} from "./contactExtraction";
 import { getSupabaseAdminConfig } from "./supabaseAdmin";
 
 export type LeadSessionRow = {
@@ -69,18 +73,137 @@ async function insertTranscriptEvent(
   }
 }
 
-async function insertContactEntity(
+type ContactEntityRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  source_text: string | null;
+  created_at?: string;
+};
+
+function appendSourceText(prev: string | null, next: string): string {
+  const n = next.trim();
+  if (!n) return prev?.trim() ?? "";
+  if (!prev?.trim()) return n;
+  if (prev.includes(n)) return prev.trim();
+  return `${prev.trim()}\n---\n${n}`;
+}
+
+function pickScalar(prev: string | null, next: string | null): string | null {
+  const t = next?.trim();
+  if (t) return t;
+  return prev?.trim() ?? null;
+}
+
+function pickBetterFullName(prev: string | null, next: string | null): string | null {
+  const n = next?.trim() ?? "";
+  if (!n || isGarbageNameCandidate(n)) return prev?.trim() ?? null;
+  const p = prev?.trim() ?? "";
+  if (!p || isGarbageNameCandidate(p)) return n;
+  if (n.length > p.length && n.split(/\s+/).length >= p.split(/\s+/).length) {
+    return n;
+  }
+  return p;
+}
+
+/**
+ * One consolidated row per session: merge new extraction with any existing row(s).
+ */
+async function upsertMergedContactEntity(
   url: string,
   serviceRoleKey: string,
-  payload: Record<string, unknown>,
+  sessionId: string,
+  partial: {
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    source_text: string;
+  },
 ) {
-  const res = await fetch(`${url}/rest/v1/contact_entities`, {
-    method: "POST",
-    headers: supabaseHeaders(serviceRoleKey),
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    throw new Error(`contact_entities insert failed (${res.status})`);
+  const listRes = await fetch(
+    `${url}/rest/v1/contact_entities?session_id=eq.${encodeURIComponent(sessionId)}&select=id,full_name,email,phone,source_text,created_at&order=created_at.asc`,
+    {
+      method: "GET",
+      headers: supabaseHeaders(serviceRoleKey),
+    },
+  );
+  if (!listRes.ok) {
+    throw new Error(`contact_entities list failed (${listRes.status})`);
+  }
+  const rows = (await listRes.json()) as ContactEntityRow[];
+
+  let fullName: string | null = null;
+  let email: string | null = null;
+  let phone: string | null = null;
+  let sourceText: string | null = null;
+
+  for (const r of rows) {
+    fullName = pickBetterFullName(fullName, r.full_name);
+    email = pickScalar(email, r.email);
+    phone = pickScalar(phone, r.phone);
+    sourceText = appendSourceText(sourceText, r.source_text ?? "");
+  }
+
+  fullName = pickBetterFullName(fullName, partial.full_name);
+  if (partial.email?.trim()) email = partial.email.trim();
+  if (partial.phone?.trim()) phone = partial.phone.trim();
+  sourceText = appendSourceText(sourceText, partial.source_text);
+
+  const headersPatch = {
+    apikey: serviceRoleKey,
+    Authorization: `Bearer ${serviceRoleKey}`,
+    "Content-Type": "application/json",
+    Prefer: "return=minimal",
+  };
+
+  if (rows.length === 0) {
+    const res = await fetch(`${url}/rest/v1/contact_entities`, {
+      method: "POST",
+      headers: supabaseHeaders(serviceRoleKey),
+      body: JSON.stringify({
+        session_id: sessionId,
+        full_name: fullName,
+        email,
+        phone,
+        source_text: sourceText || null,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`contact_entities insert failed (${res.status})`);
+    }
+    return;
+  }
+
+  const keepId = rows[0].id;
+  const patchRes = await fetch(
+    `${url}/rest/v1/contact_entities?id=eq.${encodeURIComponent(keepId)}`,
+    {
+      method: "PATCH",
+      headers: headersPatch,
+      body: JSON.stringify({
+        full_name: fullName,
+        email,
+        phone,
+        source_text: sourceText || null,
+      }),
+    },
+  );
+  if (!patchRes.ok) {
+    throw new Error(`contact_entities patch failed (${patchRes.status})`);
+  }
+
+  for (let i = 1; i < rows.length; i++) {
+    const delRes = await fetch(
+      `${url}/rest/v1/contact_entities?id=eq.${encodeURIComponent(rows[i].id)}`,
+      {
+        method: "DELETE",
+        headers: headersPatch,
+      },
+    );
+    if (!delRes.ok) {
+      throw new Error(`contact_entities delete failed (${delRes.status})`);
+    }
   }
 }
 
@@ -178,9 +301,9 @@ export async function persistUserUtteranceLeadCapture(
   const mergedLead: LeadSessionRow = {
     ...currentLead,
     consent_status: consentStatus,
-    full_name: fullName ?? currentLead.full_name,
-    email: email ?? currentLead.email,
-    phone: phone ?? currentLead.phone,
+    full_name: pickBetterFullName(currentLead.full_name, fullName),
+    email: pickScalar(currentLead.email, email),
+    phone: pickScalar(currentLead.phone, phone),
     last_prompted_field: currentLead.last_prompted_field,
     last_prompted_at: currentLead.last_prompted_at,
   };
@@ -206,8 +329,7 @@ export async function persistUserUtteranceLeadCapture(
   });
 
   if (email || phone || fullName) {
-    await insertContactEntity(url, serviceRoleKey, {
-      session_id: sessionId,
+    await upsertMergedContactEntity(url, serviceRoleKey, sessionId, {
       email,
       phone,
       full_name: fullName,
