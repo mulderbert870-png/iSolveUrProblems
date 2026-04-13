@@ -352,7 +352,12 @@ const LiveAvatarSessionComponent: React.FC<{
 
   const handleVoiceStartStop = useCallback(async () => {
     if (isActive) {
+      void interrupt();
       stop();
+      setHasUserPressedVoiceStart(false);
+      if (mode === "FULL") {
+        stopListening();
+      }
       return;
     }
     if (sessionState !== SessionState.CONNECTED || !isStreamReady) {
@@ -374,10 +379,12 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   }, [
     isActive,
+    interrupt,
     stop,
     start,
     mode,
     startListening,
+    stopListening,
     sessionState,
     isStreamReady,
     ensureAudioOutputReady,
@@ -1930,10 +1937,10 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="text-white text-xl font-bold tracking-tight">
+          <h1 className="text-white text-[1.35rem] sm:text-2xl font-bold tracking-tight leading-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="text-white text-sm font-medium mt-1 text-white/90">
+          <p className="text-white text-xs sm:text-[0.8125rem] font-medium mt-1.5 text-white/85 leading-snug">
             Your Home &amp; Garden Solution Center
           </p>
         </div>
@@ -2143,22 +2150,6 @@ const LiveAvatarSessionComponent: React.FC<{
             </button>
           )} */}
 
-          {/* Status text above buttons - positioned just above Stop button */}
-          {/* Do NOT show "Talk to Interrupt" when camera is ready to take pic (snapshot mode) */}
-          {sessionState !== SessionState.DISCONNECTED &&
-            visionMode !== "streaming" &&
-            !isCameraActive && (
-              <div className="absolute bottom-[18rem] left-1/2 -translate-x-1/2 z-30 max-w-[min(100%,24rem)] px-4">
-                {isAvatarTalking ? null : (
-                  <p className="text-inset text-base font-semibold text-center drop-shadow-lg">
-                    {hasUserPressedVoiceStart
-                      ? "Tell 6 What's Wrong — or Show Him"
-                      : "Tap Start to Begin"}
-                  </p>
-                )}
-              </div>
-            )}
-
           {/* Analyzing text for vision recognition in streaming mode - ONLY show when actually processing */}
           {/* Positioned just above Stop button when four boxes are not visible */}
           {visionMode === "streaming" && isProcessingCameraQuestion && (
@@ -2173,7 +2164,14 @@ const LiveAvatarSessionComponent: React.FC<{
           )}
 
           {visionMode !== "streaming" && !isCameraActive && (
-            <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+            <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4 flex flex-col items-center">
+              {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
+                <p className="text-inset text-base font-semibold text-center drop-shadow-lg mb-2 max-w-[min(100%,24rem)] px-1 w-full">
+                  {hasUserPressedVoiceStart
+                    ? "Tell 6 What's Wrong — or Show Him"
+                    : "Tap Start to Begin"}
+                </p>
+              )}
               <div className="mx-auto w-full max-w-sm">
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <button

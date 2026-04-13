@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useState, useCallback, useEffect, useRef } from "react";
+// import Image from "next/image";
 import { LiveAvatarSession } from "./LiveAvatarSession";
 import Link from "next/link";
 export const LiveAvatarDemo = () => {
@@ -9,8 +9,9 @@ export const LiveAvatarDemo = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExited, setIsExited] = useState(false);
+  const sessionBootstrapRef = useRef(false);
 
-  const startSession = async () => {
+  const startSession = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -30,15 +31,26 @@ export const LiveAvatarDemo = () => {
       setError((err as Error).message);
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isExited || sessionToken) {
+      return;
+    }
+    if (sessionBootstrapRef.current) {
+      return;
+    }
+    sessionBootstrapRef.current = true;
+    void startSession();
+  }, [isExited, sessionToken, startSession]);
 
   const onSessionStopped = (opts?: { reason?: "inactivity" }) => {
+    sessionBootstrapRef.current = false;
     if (opts?.reason === "inactivity") {
       setIsExited(true);
       setSessionToken("");
       return;
     }
-    // Return to start screen when user finishes talking (no auto-restart)
     setSessionToken("");
   };
 
@@ -188,14 +200,6 @@ export const LiveAvatarDemo = () => {
     setSessionToken("");
   };
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-        <div className="text-inset text-xl">Loading...</div>
-      </div>
-    );
-  }
-
   if (isExited) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-4">
@@ -207,7 +211,8 @@ export const LiveAvatarDemo = () => {
     );
   }
 
-  // Start screen: show startscreen image with "Talk to iScott" button overlay
+  /*
+  // Start screen (disabled — app bootstraps session automatically; restore this block to show landing UI)
   if (!sessionToken) {
     return (
       <div className="relative w-full h-full min-h-screen flex flex-col items-center justify-end overflow-hidden bg-black">
@@ -220,14 +225,13 @@ export const LiveAvatarDemo = () => {
           sizes="100vw"
         />
         <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
-          <h1 className="text-white text-xl font-bold tracking-tight">
+          <h1 className="text-white text-[1.35rem] sm:text-2xl font-bold tracking-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="text-white text-sm font-medium mt-1 text-white/90">
+          <p className="text-white text-xs sm:text-[0.8125rem] font-medium mt-1 text-white/90">
             Your Home &amp; Garden Solution Center
           </p>
         </div>
-        {/* Same position as "Finish Talking" in LiveAvatarSession */}
         <div className="fixed bottom-40 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
           {error && (
             <div className="mb-3 max-w-xl mx-auto rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-white/10">
@@ -268,6 +272,39 @@ export const LiveAvatarDemo = () => {
             © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
           </Link>
         </div>
+      </div>
+    );
+  }
+  */
+
+  if (!sessionToken) {
+    return (
+      <div className="w-full min-h-screen flex flex-col items-center justify-center gap-4 bg-black px-4">
+        {error && (
+          <div className="max-w-xl rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-white/10">
+            <p className="text-center text-white text-lg font-semibold leading-snug">
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void startSession();
+              }}
+              className="mt-4 w-full btn-inset py-2 rounded-md text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!error && (
+          <div className="text-inset text-xl text-white/90">Loading...</div>
+        )}
+        <Link
+          href="/terms"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-2"
+        >
+          © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
+        </Link>
       </div>
     );
   }
