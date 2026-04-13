@@ -2166,7 +2166,13 @@ const LiveAvatarSessionComponent: React.FC<{
           {visionMode !== "streaming" && !isCameraActive && (
             <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
-                <p className="text-inset text-base font-semibold text-center drop-shadow-lg mb-2 max-w-[min(100%,24rem)] px-1 w-full">
+                <p
+                  className={`text-inset text-center drop-shadow-lg mb-2 max-w-[min(100%,24rem)] px-1 w-full ${
+                    hasUserPressedVoiceStart
+                      ? "text-xs font-medium leading-snug sm:text-[0.8125rem]"
+                      : "text-sm font-semibold"
+                  }`}
+                >
                   {hasUserPressedVoiceStart
                     ? "Tell 6 What's Wrong — or Show Him"
                     : "Tap Start to Begin"}
