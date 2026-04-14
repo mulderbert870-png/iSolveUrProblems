@@ -15,6 +15,9 @@ import { Radio, Camera, Images, Video } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
+const VOICE_START_GREETING =
+  "Hi, I'm 6, your ai buddy. You know why they call me 6? 'Cuz I got your back. So, what problems can I help you solve today?";
+
 const LiveAvatarSessionComponent: React.FC<{
   mode: "FULL" | "CUSTOM";
   onSessionStopped: (opts?: SessionStoppedReason) => void;
@@ -370,6 +373,7 @@ const LiveAvatarSessionComponent: React.FC<{
         return;
       }
       await start();
+      await repeat(VOICE_START_GREETING);
       if (mode === "FULL") {
         startListening();
       }
@@ -380,6 +384,7 @@ const LiveAvatarSessionComponent: React.FC<{
   }, [
     isActive,
     interrupt,
+    repeat,
     stop,
     start,
     mode,
