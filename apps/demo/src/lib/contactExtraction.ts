@@ -105,6 +105,54 @@ const NAME_STOP_WORDS = new Set([
   "it's",
   "basically",
   "literally",
+  "some",
+  "these",
+  "those",
+  "there",
+  "here",
+  "missing",
+  "have",
+  "has",
+  "had",
+  "were",
+  "was",
+  "been",
+  "being",
+  "give",
+  "him",
+  "her",
+  "them",
+  "they",
+  "thank",
+  "thanks",
+  "please",
+]);
+
+/** Single word after "I'm" / "I am" that is status, not a name */
+const IM_STATUS_WORDS = new Set([
+  "fine",
+  "good",
+  "ok",
+  "okay",
+  "sure",
+  "well",
+  "here",
+  "done",
+  "back",
+  "glad",
+  "happy",
+  "sorry",
+  "sick",
+  "tired",
+  "busy",
+  "free",
+  "ready",
+  "late",
+  "early",
+  "great",
+  "bad",
+  "okay.",
+  "fine.",
 ]);
 
 /** Never treat as a person's name (whole value or word). */
@@ -125,6 +173,8 @@ const INVALID_NAME_TOKENS = new Set([
   "address",
   "website",
   "www",
+  "fine",
+  "good",
 ]);
 
 function trimNameValue(s: string): string {
@@ -144,12 +194,58 @@ export function isGarbageNameCandidate(s: string | null | undefined): boolean {
   if (words.length > 1 && words.some((w) => NAME_STOP_WORDS.has(w.toLowerCase()))) {
     return true;
   }
+  // Common sentence openers, not names
+  if (/^(some|these|those)\s+of\s+/i.test(t)) return true;
+  if (/\b(to have|want to|going to|trying to)\b/i.test(lower)) return true;
+  // Spanish / other — "que se vea" etc. (not a person's name line)
+  if (/\b(que|qué)\s+se\s+/i.test(t)) return true;
+  if (/\b(muy|bonita|bonito|gracias|por favor)\b/i.test(lower) && words.length >= 2) {
+    return true;
+  }
   return false;
 }
 
 /** Up to five name tokens (avoids swallowing "I'm looking for ..."). */
 const NAME_CHUNK =
   "([\\p{L}]+(?:['\\-.][\\p{L}]+)*(?:\\s+[\\p{L}]+(?:['\\-.][\\p{L}]+)*){0,4})";
+
+function stripTrailingClauseAfterName(s: string): string {
+  return s.split(/,/)[0].trim();
+}
+
+/**
+ * Strong signal: "my name is Gregory" anywhere in the utterance (even after "---").
+ * Picks the longest plausible chunk when multiple matches exist.
+ */
+function extractMyNameIsExplicit(text: string): string | null {
+  const re = new RegExp(
+    String.raw`\bmy name is\s+${NAME_CHUNK}`,
+    "giu",
+  );
+  let best: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    let value = trimNameValue(m[1]);
+    value = stripTrailingClauseAfterName(value);
+    const words = value.split(/\s+/).filter(Boolean);
+    if (words.length === 0 || words.length > 5) continue;
+    if (!words.every((w) => NAME_TOKEN.test(w) || NAME_INITIAL.test(w))) {
+      continue;
+    }
+    if (words.some((w) => NAME_STOP_WORDS.has(w.toLowerCase()))) continue;
+    if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) continue;
+    if (isGarbageNameCandidate(value)) continue;
+    if (!best || value.length > best.length) best = value;
+  }
+  return best;
+}
+
+function isImOrItsStatusOnly(value: string): boolean {
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length !== 1) return false;
+  const w = words[0].replace(/[.,!?]+$/, "").toLowerCase();
+  return IM_STATUS_WORDS.has(w);
+}
 
 function extractFullNameFromPatterns(text: string): string | null {
   const patterns: RegExp[] = [
@@ -181,10 +277,12 @@ function extractFullNameFromPatterns(text: string): string | null {
       "iu",
     ),
   ];
-  for (const pattern of patterns) {
+  for (let pi = 0; pi < patterns.length; pi++) {
+    const pattern = patterns[pi];
     const match = text.match(pattern);
     if (!match?.[1]) continue;
-    const value = trimNameValue(match[1]);
+    let value = trimNameValue(match[1]);
+    value = stripTrailingClauseAfterName(value);
     if (value.length < 2) continue;
     const words = value.split(/\s+/).filter(Boolean);
     if (words.length === 0 || words.length > 5) continue;
@@ -196,6 +294,10 @@ function extractFullNameFromPatterns(text: string): string | null {
     }
     if (INVALID_NAME_TOKENS.has(value.toLowerCase())) continue;
     if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) continue;
+    // Index 1 = "i am|i'm|im" — reject "I'm fine"
+    if (pi === 1 && isImOrItsStatusOnly(value)) continue;
+    // Index 3 = "it's|it is" — reject "it's fine"
+    if (pi === 3 && isImOrItsStatusOnly(value)) continue;
     return value;
   }
   return null;
@@ -211,9 +313,11 @@ function extractFullNamePlainUtterance(text: string): string | null {
   if (/[?]/.test(t)) return null;
   if (/\d/.test(t)) return null;
   if (!/^[\p{L}\s'\-.]+$/u.test(t)) return null;
+  // Long all-lowercase lines are usually sentences, not "First Last"
+  if (t.length > 40 && t === t.toLowerCase()) return null;
 
   const words = t.split(/\s+/).filter(Boolean);
-  if (words.length < 2 || words.length > 5) return null;
+  if (words.length < 2 || words.length > 4) return null;
 
   if (!words.every((w) => NAME_TOKEN.test(w) || NAME_INITIAL.test(w))) {
     return null;
@@ -241,7 +345,8 @@ function extractFullNameSingleWord(text: string): string | null {
   if (
     FULL_UTTERANCE_NOT_A_NAME.has(lower) ||
     NAME_STOP_WORDS.has(lower) ||
-    INVALID_NAME_TOKENS.has(lower)
+    INVALID_NAME_TOKENS.has(lower) ||
+    IM_STATUS_WORDS.has(lower.replace(/[.,!?]+$/, ""))
   ) {
     return null;
   }
@@ -250,6 +355,7 @@ function extractFullNameSingleWord(text: string): string | null {
 
 function extractFullName(text: string): string | null {
   const raw =
+    extractMyNameIsExplicit(text) ??
     extractFullNameFromPatterns(text) ??
     extractFullNamePlainUtterance(text) ??
     extractFullNameSingleWord(text);
