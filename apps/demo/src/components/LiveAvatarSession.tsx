@@ -2172,7 +2172,7 @@ const LiveAvatarSessionComponent: React.FC<{
             <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
                 <div className="mb-3 w-full flex flex-col items-center text-center">
-                  <p className="text-inset drop-shadow-lg px-2 w-full max-w-[13.5rem] text-base sm:text-lg font-semibold leading-tight">
+                  <p className="text-inset drop-shadow-lg px-2 w-full max-w-[13.5rem] text-[0.95rem] sm:text-[1.05rem] font-semibold leading-tight">
                     Tell 6 what&apos;s wrong
                   </p>
                   <p className="text-inset drop-shadow-lg mt-1 px-2 w-full max-w-[12.5rem] text-[0.95rem] sm:text-[1.05rem] font-medium leading-tight text-white/95">
@@ -2194,7 +2194,12 @@ const LiveAvatarSessionComponent: React.FC<{
                     onClick={() => void handleVoiceStartStop()}
                   >
                     <span className="inline-flex items-center gap-1.5">
-                      <span aria-hidden>{isActive ? "⏹" : "▶"}</span>
+                      <span
+                        aria-hidden
+                        className={isActive ? "" : "text-[0.8em] leading-none"}
+                      >
+                        {isActive ? "⏹" : "▶"}
+                      </span>
                       <span>{isActive ? "Stop" : "Start"}</span>
                     </span>
                   </button>
