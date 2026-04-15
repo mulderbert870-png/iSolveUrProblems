@@ -2175,7 +2175,7 @@ const LiveAvatarSessionComponent: React.FC<{
                   <p className="text-inset drop-shadow-lg px-2 w-full max-w-[13.5rem] text-base sm:text-lg font-semibold leading-tight">
                     Tell 6 what&apos;s wrong
                   </p>
-                  <p className="text-inset drop-shadow-lg mt-1 px-2 w-full max-w-[18rem] text-sm sm:text-base font-medium leading-tight text-white/95">
+                  <p className="text-inset drop-shadow-lg mt-1 px-2 w-full max-w-[12.5rem] text-[0.95rem] sm:text-[1.05rem] font-medium leading-tight text-white/95">
                     - or show him
                   </p>
                 </div>
