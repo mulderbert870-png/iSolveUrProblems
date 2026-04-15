@@ -228,7 +228,10 @@ async function upsertLeadSession(
   }
 }
 
-function chooseNextPrompt(lead: LeadSessionRow): {
+function chooseNextPrompt(
+  lead: LeadSessionRow,
+  latest: { email: string | null; phone: string | null; fullName: string | null },
+): {
   prompt: string | null;
   promptField: string | null;
   shouldSkipVision: boolean;
@@ -245,6 +248,37 @@ function chooseNextPrompt(lead: LeadSessionRow): {
 
   if (lead.consent_status === "declined") {
     return { prompt: null, promptField: null, shouldSkipVision: false };
+  }
+
+  // Deterministic acknowledgement when user just shared contact details.
+  // This avoids model replies like "I can't store personal information."
+  if (latest.phone || latest.email) {
+    const hasName = Boolean(lead.full_name && lead.full_name.trim().length >= 2);
+    if (latest.phone && latest.email) {
+      return {
+        prompt: hasName
+          ? "Perfect, I saved your phone number and email."
+          : "Perfect, I saved your phone number and email. Could you also share your full name?",
+        promptField: hasName ? null : "full_name",
+        shouldSkipVision: true,
+      };
+    }
+    if (latest.phone) {
+      return {
+        prompt: hasName
+          ? "Perfect, I saved your phone number."
+          : "Perfect, I saved your phone number. Could you also share your full name?",
+        promptField: hasName ? null : "full_name",
+        shouldSkipVision: true,
+      };
+    }
+    return {
+      prompt: hasName
+        ? "Perfect, I saved your email."
+        : "Perfect, I saved your email. Could you also share your full name?",
+      promptField: hasName ? null : "full_name",
+      shouldSkipVision: true,
+    };
   }
 
   if (lead.consent_status === "accepted" && !lead.email && !lead.phone) {
@@ -308,7 +342,11 @@ export async function persistUserUtteranceLeadCapture(
     last_prompted_at: currentLead.last_prompted_at,
   };
 
-  const next = chooseNextPrompt(mergedLead);
+  const next = chooseNextPrompt(mergedLead, {
+    email,
+    phone,
+    fullName,
+  });
   const nowIso = new Date().toISOString();
   if (next.promptField) {
     mergedLead.last_prompted_field = next.promptField;

@@ -16,7 +16,8 @@ function normalizePhone(input: string): string | null {
   const cleaned = input.replace(/[^\d+]/g, "");
   const plusPrefixed = cleaned.startsWith("+");
   const digits = cleaned.replace(/[^\d]/g, "");
-  if (digits.length < 10 || digits.length > 15) return null;
+  // Relaxed on purpose: keep any phone-like spoken value, even short/local numbers.
+  if (digits.length === 0) return null;
   return plusPrefixed ? `+${digits}` : digits;
 }
 
@@ -126,6 +127,12 @@ const NAME_STOP_WORDS = new Set([
   "thank",
   "thanks",
   "please",
+  "around",
+  "near",
+  "window",
+  "door",
+  "inside",
+  "outside",
 ]);
 
 /** Single word after "I'm" / "I am" that is status, not a name */
@@ -181,6 +188,54 @@ function trimNameValue(s: string): string {
   return s.replace(/\s+/g, " ").trim().replace(/[.,!?;:]+$/g, "").trim();
 }
 
+/**
+ * Avatar / product intro lines (often mis-tagged or echoed in transcript) — never treat as user contact name.
+ */
+function looksLikeAssistantOrDemoPersona(text: string): boolean {
+  const t = text.toLowerCase();
+  if (
+    /\b(your ai buddy|your home and garden|home and garden buddy|garden buddy|guards buddy)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/\bwhy they call me\b/.test(t)) return true;
+  if (/\bhey there,?\s+i'?m\s+\w+,\s+your\b/.test(t)) return true;
+  if (/\bi'?m\s+six\b.*\b(buddy|garden|ai)\b/.test(t)) return true;
+  // Generic HeyGen-style intro: "I'm …, your … buddy"
+  if (
+    /\bi'?m\s+[^,\n]{1,40},\s*your\s+(ai buddy|home and garden buddy|garden buddy|buddy)\b/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** "it's around a window" — location / scene, not a person */
+function isLocationOrSpatialPhrase(value: string): boolean {
+  return /\b(around|near|behind|beside|next to|through|over|under|inside|outside|toward|towards)\b/i.test(
+    value,
+  ) || /\b(window|door|wall|ceiling|floor|room|kitchen|garden|outside)\b/i.test(value);
+}
+
+/**
+ * "My name is the letter G" / spelled letter (STT often says "the letter G")
+ */
+function extractLetterSpelledName(text: string): string | null {
+  const m1 = text.match(/\bmy name is\s+the\s+letter\s+([\p{L}])\b/iu);
+  if (m1?.[1]) {
+    return m1[1].toUpperCase();
+  }
+  const m2 = text.match(/\bmy name is\s+letter\s+([\p{L}])\b/iu);
+  if (m2?.[1]) {
+    return m2[1].toUpperCase();
+  }
+  return null;
+}
+
 export function isGarbageNameCandidate(s: string | null | undefined): boolean {
   if (!s?.trim()) return true;
   const t = s.trim();
@@ -202,6 +257,7 @@ export function isGarbageNameCandidate(s: string | null | undefined): boolean {
   if (/\b(muy|bonita|bonito|gracias|por favor)\b/i.test(lower) && words.length >= 2) {
     return true;
   }
+  if (/\b(around|near)\s+(a|the)\s+\w+/i.test(lower)) return true;
   return false;
 }
 
@@ -296,8 +352,9 @@ function extractFullNameFromPatterns(text: string): string | null {
     if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) continue;
     // Index 1 = "i am|i'm|im" — reject "I'm fine"
     if (pi === 1 && isImOrItsStatusOnly(value)) continue;
-    // Index 3 = "it's|it is" — reject "it's fine"
+    // Index 3 = "it's|it is" — reject "it's fine" and "it's around a window"
     if (pi === 3 && isImOrItsStatusOnly(value)) continue;
+    if (pi === 3 && isLocationOrSpatialPhrase(value)) continue;
     return value;
   }
   return null;
@@ -354,7 +411,9 @@ function extractFullNameSingleWord(text: string): string | null {
 }
 
 function extractFullName(text: string): string | null {
+  if (looksLikeAssistantOrDemoPersona(text)) return null;
   const raw =
+    extractLetterSpelledName(text) ??
     extractMyNameIsExplicit(text) ??
     extractFullNameFromPatterns(text) ??
     extractFullNamePlainUtterance(text) ??
@@ -380,7 +439,10 @@ export function extractContactDetails(text: string): ContactExtraction {
     }
   }
 
-  const fullName = extractFullName(text);
+  // Still extract phone/email from persona lines; skip names only
+  const fullName = looksLikeAssistantOrDemoPersona(text)
+    ? null
+    : extractFullName(text);
 
   return { email, phone, fullName };
 }

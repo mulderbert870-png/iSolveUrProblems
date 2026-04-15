@@ -207,6 +207,20 @@ export const LiveAvatarDemo = () => {
         <div className="text-inset text-center text-lg opacity-90">
           Thank you for using iSolveUrProblems.ai
         </div>
+        <div className="text-inset text-center text-base opacity-90">
+          Wanna use again? Press the button below 👇
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIsExited(false);
+            sessionBootstrapRef.current = true;
+            void startSession();
+          }}
+          className="btn-inset py-2.5 px-6 rounded-lg text-base font-medium"
+        >
+          Restart
+        </button>
       </div>
     );
   }
