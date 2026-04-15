@@ -127,6 +127,7 @@ const NAME_STOP_WORDS = new Set([
   "thank",
   "thanks",
   "please",
+  "is",
   "around",
   "near",
   "window",
@@ -186,6 +187,31 @@ const INVALID_NAME_TOKENS = new Set([
 
 function trimNameValue(s: string): string {
   return s.replace(/\s+/g, " ").trim().replace(/[.,!?;:]+$/g, "").trim();
+}
+
+function stripLeadingNameNoise(s: string): string {
+  let value = s.trim();
+  // Handles stutters/fillers like: "um, is Greg", "uh Greg", "is Greg"
+  value = value.replace(/^(?:(?:uh|um|ah|er)\b[\s,.-]*)+/i, "");
+  value = value.replace(/^(?:is|it's|its)\b[\s,.-]*/i, "");
+  return value.trim();
+}
+
+function stripTrailingNonNameTail(s: string): string {
+  let value = s.trim();
+  // Cut off known follow-up clauses often appended by STT in same utterance.
+  const cutters = [
+    /\b(?:and|but)\b/i,
+    /\b(?:from|i'm from|i am from)\b/i,
+    /\b(?:my phone|phone number|email|e-mail)\b/i,
+  ];
+  for (const cutter of cutters) {
+    const m = value.match(cutter);
+    if (m && m.index != null && m.index > 0) {
+      value = value.slice(0, m.index).trim();
+    }
+  }
+  return value.trim();
 }
 
 /**
@@ -283,6 +309,8 @@ function extractMyNameIsExplicit(text: string): string | null {
   while ((m = re.exec(text)) !== null) {
     let value = trimNameValue(m[1]);
     value = stripTrailingClauseAfterName(value);
+    value = stripLeadingNameNoise(value);
+    value = stripTrailingNonNameTail(value);
     const words = value.split(/\s+/).filter(Boolean);
     if (words.length === 0 || words.length > 5) continue;
     if (!words.every((w) => NAME_TOKEN.test(w) || NAME_INITIAL.test(w))) {
@@ -311,15 +339,6 @@ function extractFullNameFromPatterns(text: string): string | null {
     ),
     new RegExp(String.raw`(?:i am|i'?m|im)\s+${NAME_CHUNK}(?:[.,!?…]|$)`, "iu"),
     new RegExp(
-      String.raw`(?:this is|here'?s|here is)\s+${NAME_CHUNK}(?:[.,!?…]|$)`,
-      "iu",
-    ),
-    // "It's Bert" — rejected when chunk is "email", "phone", etc. (INVALID_NAME_TOKENS)
-    new RegExp(
-      String.raw`(?:it'?s|it is)\s+${NAME_CHUNK}(?:[.,!?…]|$)`,
-      "iu",
-    ),
-    new RegExp(
       String.raw`(?:you can )?call me\s+${NAME_CHUNK}(?:[.,!?…]|$)`,
       "iu",
     ),
@@ -339,6 +358,8 @@ function extractFullNameFromPatterns(text: string): string | null {
     if (!match?.[1]) continue;
     let value = trimNameValue(match[1]);
     value = stripTrailingClauseAfterName(value);
+    value = stripLeadingNameNoise(value);
+    value = stripTrailingNonNameTail(value);
     if (value.length < 2) continue;
     const words = value.split(/\s+/).filter(Boolean);
     if (words.length === 0 || words.length > 5) continue;
@@ -352,9 +373,6 @@ function extractFullNameFromPatterns(text: string): string | null {
     if (words.some((w) => INVALID_NAME_TOKENS.has(w.toLowerCase()))) continue;
     // Index 1 = "i am|i'm|im" — reject "I'm fine"
     if (pi === 1 && isImOrItsStatusOnly(value)) continue;
-    // Index 3 = "it's|it is" — reject "it's fine" and "it's around a window"
-    if (pi === 3 && isImOrItsStatusOnly(value)) continue;
-    if (pi === 3 && isLocationOrSpatialPhrase(value)) continue;
     return value;
   }
   return null;
@@ -415,9 +433,7 @@ function extractFullName(text: string): string | null {
   const raw =
     extractLetterSpelledName(text) ??
     extractMyNameIsExplicit(text) ??
-    extractFullNameFromPatterns(text) ??
-    extractFullNamePlainUtterance(text) ??
-    extractFullNameSingleWord(text);
+    extractFullNameFromPatterns(text);
   if (!raw) return null;
   if (isGarbageNameCandidate(raw)) return null;
   return raw;
