@@ -2171,17 +2171,14 @@ const LiveAvatarSessionComponent: React.FC<{
           {visionMode !== "streaming" && !isCameraActive && (
             <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
-                <p
-                  className={`text-inset text-center drop-shadow-lg mb-2 max-w-[min(100%,24rem)] px-1 w-full ${
-                    hasUserPressedVoiceStart
-                      ? "text-xs font-medium leading-snug sm:text-[0.8125rem]"
-                      : "text-sm font-semibold"
-                  }`}
-                >
-                  {hasUserPressedVoiceStart
-                    ? "Tell 6 What's Wrong — or Show Him"
-                    : "Tap Start to Begin"}
-                </p>
+                <div className="mb-3 w-full flex flex-col items-center text-center">
+                  <p className="text-inset drop-shadow-lg px-2 w-full max-w-[13.5rem] text-base sm:text-lg font-semibold leading-tight">
+                    Tell 6 what&apos;s wrong
+                  </p>
+                  <p className="text-inset drop-shadow-lg mt-1 px-2 w-full max-w-[18rem] text-sm sm:text-base font-medium leading-tight text-white/95">
+                    - or show him
+                  </p>
+                </div>
               )}
               <div className="mx-auto w-full max-w-sm">
                 <div className="grid grid-cols-2 gap-4 mb-4">
@@ -2196,7 +2193,10 @@ const LiveAvatarSessionComponent: React.FC<{
                     }
                     onClick={() => void handleVoiceStartStop()}
                   >
-                    {isActive ? "Stop" : "Start"}
+                    <span className="inline-flex items-center gap-1.5">
+                      <span aria-hidden>{isActive ? "⏹" : "▶"}</span>
+                      <span>{isActive ? "Stop" : "Start"}</span>
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -2255,7 +2255,10 @@ const LiveAvatarSessionComponent: React.FC<{
                 handleStopSession();
               }}
             >
-              Stop
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden>⏹</span>
+                <span>Stop</span>
+              </span>
             </button>
           </div>
         </div>
