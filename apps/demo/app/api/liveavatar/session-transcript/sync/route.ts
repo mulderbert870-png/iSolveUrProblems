@@ -1,8 +1,10 @@
 import {
   MAX_TRANSCRIPTION_TEXT_CHARS,
+  assertAllowedOrigin,
   isSafeTranscriptionSessionId,
   truncateUtf8String,
 } from "../../../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../../../src/lib/rateLimit";
 import { persistUserUtteranceLeadCapture } from "../../../../../src/lib/leadCaptureFromUserText";
 import { getSupabaseAdminConfig } from "../../../../../src/lib/supabaseAdmin";
 import { API_KEY, API_URL } from "../../../secrets";
@@ -76,6 +78,11 @@ function isLiveAvatarResponseSuccess(json: unknown, httpOk: boolean): boolean {
 }
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const body = await request.json();
     const { liveAvatarSessionId: rawSessionId, startTimestamp } = body;

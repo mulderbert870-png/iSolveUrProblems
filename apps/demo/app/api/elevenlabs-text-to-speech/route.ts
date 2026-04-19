@@ -1,13 +1,20 @@
 import {
   MAX_ELEVENLABS_TEXT_CHARS,
+  assertAllowedOrigin,
   isSafeElevenLabsVoiceId,
   truncateUtf8String,
 } from "../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { ELEVENLABS_API_KEY } from "../secrets";
 
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const body = await request.json();
     const { text: rawText, voice_id: rawVoiceId } = body;

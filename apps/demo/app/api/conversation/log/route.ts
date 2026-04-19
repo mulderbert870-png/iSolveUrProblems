@@ -1,8 +1,10 @@
 import {
   MAX_TRANSCRIPTION_TEXT_CHARS,
+  assertAllowedOrigin,
   isSafeTranscriptionSessionId,
   truncateUtf8String,
 } from "../../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../../src/lib/rateLimit";
 import { getSupabaseAdminConfig } from "../../../../src/lib/supabaseAdmin";
 
 type SpeakerRole = "user" | "assistant";
@@ -20,6 +22,11 @@ function isSpeakerRole(value: unknown): value is SpeakerRole {
 }
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const body = await request.json();
     const { sessionId: rawSessionId, text: rawText, role } = body;

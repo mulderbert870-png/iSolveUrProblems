@@ -1,7 +1,9 @@
 import {
   MAX_VIDEO_FRAMES,
+  assertAllowedOrigin,
   isReasonableBase64Frame,
 } from "../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { GROKAI_API_KEY } from "../secrets";
 
 type VisionContentPart =
@@ -9,6 +11,11 @@ type VisionContentPart =
   | { type: "image_url"; image_url: { url: string } };
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const body = await request.json();
     const { frames } = body;

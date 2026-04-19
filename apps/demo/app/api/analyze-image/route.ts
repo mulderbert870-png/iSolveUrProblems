@@ -1,12 +1,19 @@
 import {
   MAX_ANALYZE_IMAGE_BYTES,
   MAX_ANALYZE_IMAGE_QUESTION_CHARS,
+  assertAllowedOrigin,
   isAllowedImageMime,
   truncateUtf8String,
 } from "../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { GROKAI_API_KEY } from "../secrets";
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const formData = await request.formData();
     const fileOrBlob = formData.get("image");
