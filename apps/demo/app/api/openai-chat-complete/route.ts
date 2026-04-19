@@ -1,8 +1,10 @@
 import {
   MAX_OPENAI_IMAGE_ANALYSIS_CHARS,
   MAX_OPENAI_USER_MESSAGE_CHARS,
+  assertAllowedOrigin,
   truncateUtf8String,
 } from "../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { OPENAI_API_KEY } from "../secrets";
 
 const SYSTEM_PROMPT =
@@ -11,6 +13,11 @@ const SYSTEM_PROMPT =
 const OPENAI_MODEL = "gpt-4o-mini";
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const body = await request.json();
     const { message: rawMessage, image_analysis: rawImageAnalysis } = body;

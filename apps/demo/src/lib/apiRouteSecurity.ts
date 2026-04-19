@@ -1,5 +1,44 @@
 /** Shared limits and validation for public API routes (abuse / injection hardening). */
 
+const ALLOWED_ORIGINS = new Set([
+  "https://isolveurproblems.ai",
+  "https://www.isolveurproblems.ai",
+]);
+
+/**
+ * Returns a 403 Response if the request origin is not allowed, otherwise null.
+ * Skipped in non-production to allow local dev without CORS config.
+ */
+export function assertAllowedOrigin(request: Request): Response | null {
+  if (process.env.NODE_ENV !== "production") return null;
+
+  const origin = request.headers.get("origin");
+  if (origin !== null) {
+    if (ALLOWED_ORIGINS.has(origin)) return null;
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const referer = request.headers.get("referer");
+  if (referer !== null) {
+    const ok = [...ALLOWED_ORIGINS].some((o) => referer.startsWith(o));
+    if (ok) return null;
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // No origin or referer in production — block direct API calls
+  return new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+
 export const MAX_OPENAI_USER_MESSAGE_CHARS = 16_000;
 export const MAX_OPENAI_IMAGE_ANALYSIS_CHARS = 48_000;
 export const MAX_ELEVENLABS_TEXT_CHARS = 5_000;

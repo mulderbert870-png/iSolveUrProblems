@@ -1,9 +1,16 @@
 import {
+  assertAllowedOrigin,
   isSafeTranscriptionSessionId,
 } from "../../../../src/lib/apiRouteSecurity";
+import { checkRateLimit } from "../../../../src/lib/rateLimit";
 import { persistUserUtteranceLeadCapture } from "../../../../src/lib/leadCaptureFromUserText";
 
 export async function POST(request: Request) {
+  const originErr = assertAllowedOrigin(request);
+  if (originErr) return originErr;
+  const rateLimitErr = await checkRateLimit(request);
+  if (rateLimitErr) return rateLimitErr;
+
   try {
     const body = await request.json();
     const { sessionId: rawSessionId, text: rawText } = body;
