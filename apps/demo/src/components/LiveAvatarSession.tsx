@@ -1940,12 +1940,12 @@ const LiveAvatarSessionComponent: React.FC<{
       )}
 
       {/* Text overlays at the top */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-4 pb-2">
+      <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-2 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="text-white text-[1.35rem] sm:text-2xl font-bold tracking-tight leading-tight">
+          <h1 className="inline-block text-white text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="text-white text-xs sm:text-[0.8125rem] font-medium mt-1.5 text-white/85 leading-snug">
+          <p className="mx-auto max-w-[16.5rem] text-white text-[0.72rem] sm:text-[0.78rem] font-medium mt-1 text-white/85 leading-snug">
             Your Home &amp; Garden Solution Center
           </p>
         </div>
@@ -2171,11 +2171,14 @@ const LiveAvatarSessionComponent: React.FC<{
           )}
 
           {visionMode !== "streaming" && !isCameraActive && (
-            <div className="fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-1 w-[95%] max-w-7xl z-20 px-4 pb-0 flex flex-col items-center">
+            <div className="fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-3 w-[95%] max-w-7xl z-20 px-4 pb-0 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
                 <div className="mb-2 w-full flex items-center justify-center text-center">
-                  <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight whitespace-nowrap">
-                    Tell 6 what&apos;s wrong - or show him
+                  <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight">
+                    <span className="block">Tell 6 what&apos;s wrong</span>
+                    <span className="block">
+                      Or <em>show him</em>
+                    </span>
                   </p>
                 </div>
               )} 
@@ -2199,7 +2202,9 @@ const LiveAvatarSessionComponent: React.FC<{
                       >
                         {isActive ? "⏹" : "▶"}
                       </span>
-                      <span>{isActive ? "Stop" : "Start"}</span>
+                      <span className={isActive ? "" : "-ml-0.5"}>
+                        {isActive ? "Stop" : "Start"}
+                      </span>
                     </span>
                   </button>
                   <button
@@ -2238,7 +2243,7 @@ const LiveAvatarSessionComponent: React.FC<{
               </div>
               <Link
                 href="/terms"
-                className="mt-1 block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-2"
+                className="mt-1 block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors py-2 whitespace-nowrap"
               >
                 © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
               </Link>
@@ -2249,23 +2254,33 @@ const LiveAvatarSessionComponent: React.FC<{
 
       {/* Stop: exit Go Live / camera overlay (or end session when already on home) */}
       {(visionMode === "streaming" || isCameraActive) && (
-        <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
-          <div className="flex justify-center">
-            <button
-              className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
-              onClick={async () => {
-                // Unlock audio on button click (user interaction)
-                await unlockAudio();
-                handleStopSession();
-              }}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden>⏹</span>
-                <span>Stop</span>
-              </span>
-            </button>
+        <>
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+            <div className="flex justify-center">
+              <button
+                className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
+                onClick={async () => {
+                  // Unlock audio on button click (user interaction)
+                  await unlockAudio();
+                  handleStopSession();
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden>⏹</span>
+                  <span>Stop</span>
+                </span>
+              </button>
+            </div>
           </div>
-        </div>
+          <div className="fixed bottom-1 left-1/2 -translate-x-1/2 z-20">
+            <Link
+              href="/terms"
+              className="block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-1"
+            >
+              Terms
+            </Link>
+          </div>
+        </>
       )}
     </div>
   );
