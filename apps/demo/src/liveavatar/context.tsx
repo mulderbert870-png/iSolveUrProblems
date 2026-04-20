@@ -223,6 +223,13 @@ export const LiveAvatarContextProvider = ({
 
   const lastActivityAtRef = useRef(0);
   const stoppedDueToInactivityRef = useRef(false);
+  const reengagementTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const reengagementAttemptsRef = useRef(0);
+  const hasUserSpokenSinceAvatarTurnRef = useRef(true);
+  const isUserSpeakingRef = useRef(false);
+  const isAvatarSpeakingRef = useRef(false);
   const reportActivity = useCallback(() => {
     lastActivityAtRef.current = Date.now();
   }, []);
@@ -250,6 +257,85 @@ export const LiveAvatarContextProvider = ({
       session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onActivity);
     };
   }, [sessionRef]);
+
+  // Conversational silence re-engagement:
+  // - after avatar turn ends, wait briefly for user reply
+  // - if still silent, emit synthetic user message to trigger fail-safe
+  // - do this at most twice (4s, then 6s), reset when user speaks
+  useEffect(() => {
+    const session = sessionRef.current;
+    if (!session || sessionState !== SessionState.CONNECTED) {
+      return;
+    }
+
+    const clearReengagementTimeout = () => {
+      if (reengagementTimeoutRef.current) {
+        clearTimeout(reengagementTimeoutRef.current);
+        reengagementTimeoutRef.current = null;
+      }
+    };
+
+    const scheduleReengagement = () => {
+      clearReengagementTimeout();
+      if (reengagementAttemptsRef.current >= 2) {
+        return;
+      }
+      const delaySeconds = reengagementAttemptsRef.current === 0 ? 4 : 6;
+      const delayMs = delaySeconds * 1000;
+
+      reengagementTimeoutRef.current = setTimeout(() => {
+        // If user/agent is currently speaking or user already replied, skip this attempt.
+        if (
+          hasUserSpokenSinceAvatarTurnRef.current ||
+          isUserSpeakingRef.current ||
+          isAvatarSpeakingRef.current
+        ) {
+          return;
+        }
+        if (sessionRef.current?.state !== SessionState.CONNECTED) {
+          return;
+        }
+        const signal = `[USER HAS BEEN SILENT FOR ${delaySeconds} SECONDS]`;
+        sessionRef.current.message(signal);
+        reengagementAttemptsRef.current += 1;
+      }, delayMs);
+    };
+
+    const onUserSpeakStarted = () => {
+      isUserSpeakingRef.current = true;
+      hasUserSpokenSinceAvatarTurnRef.current = true;
+      reengagementAttemptsRef.current = 0;
+      clearReengagementTimeout();
+    };
+
+    const onUserSpeakEnded = () => {
+      isUserSpeakingRef.current = false;
+    };
+
+    const onAvatarSpeakStarted = () => {
+      isAvatarSpeakingRef.current = true;
+      clearReengagementTimeout();
+    };
+
+    const onAvatarSpeakEnded = () => {
+      isAvatarSpeakingRef.current = false;
+      hasUserSpokenSinceAvatarTurnRef.current = false;
+      scheduleReengagement();
+    };
+
+    session.on(AgentEventsEnum.USER_SPEAK_STARTED, onUserSpeakStarted);
+    session.on(AgentEventsEnum.USER_SPEAK_ENDED, onUserSpeakEnded);
+    session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
+    session.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, onAvatarSpeakEnded);
+
+    return () => {
+      clearReengagementTimeout();
+      session.off(AgentEventsEnum.USER_SPEAK_STARTED, onUserSpeakStarted);
+      session.off(AgentEventsEnum.USER_SPEAK_ENDED, onUserSpeakEnded);
+      session.off(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
+      session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onAvatarSpeakEnded);
+    };
+  }, [sessionState, sessionRef]);
 
   // Terminate session after 1 minute of no activity
   const INACTIVITY_TIMEOUT_MS = 60 * 1000;

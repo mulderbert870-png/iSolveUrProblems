@@ -2082,26 +2082,28 @@ const LiveAvatarSessionComponent: React.FC<{
                 isProcessingCameraQuestion ||
                 (!cameraStream && !fallbackImage)
               }
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-2xl border-4 border-white"
+              className="btn-inset rounded-lg px-5 py-3 min-w-[8.5rem] min-h-[3.25rem] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-70"
               aria-label="Capture photo"
             >
-              <Camera className="w-10 h-10" />
+              <Camera className="w-4.5 h-4.5" />
+              Camera
             </button>
             {!isRecording ? (
               <button
                 type="button"
                 onClick={() => handleStartRecording()}
                 disabled={!cameraStream || isAnalyzingImage}
-                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-2xl border-4 border-white"
+                className="btn-inset rounded-lg px-5 py-3 min-w-[8.5rem] min-h-[3.25rem] flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-70"
                 aria-label="Record video"
               >
-                <Video className="w-10 h-10" />
+                <Video className="w-4.5 h-4.5" />
+                Video
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => handleStopRecording()}
-                className="bg-red-600 hover:bg-red-700 text-white rounded-lg px-6 py-3 flex items-center justify-center shadow-2xl border-4 border-white text-sm font-semibold"
+                className="btn-inset rounded-lg px-6 py-3 flex items-center justify-center text-sm font-semibold"
               >
                 Stop Recording
               </button>
@@ -2169,19 +2171,16 @@ const LiveAvatarSessionComponent: React.FC<{
           )}
 
           {visionMode !== "streaming" && !isCameraActive && (
-            <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4 flex flex-col items-center">
+            <div className="fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-1 w-[95%] max-w-7xl z-20 px-4 pb-0 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
-                <div className="mb-3 w-full flex flex-col items-center text-center">
-                  <p className="text-inset drop-shadow-lg px-2 w-full max-w-[13.5rem] text-[0.95rem] sm:text-[1.05rem] font-semibold leading-tight">
-                    Tell 6 what&apos;s wrong
-                  </p>
-                  <p className="text-inset drop-shadow-lg mt-1 px-2 w-full max-w-[12.5rem] text-[0.95rem] sm:text-[1.05rem] font-medium leading-tight text-white/95">
-                    - or show him
+                <div className="mb-2 w-full flex items-center justify-center text-center">
+                  <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight whitespace-nowrap">
+                    Tell 6 what&apos;s wrong - or show him
                   </p>
                 </div>
-              )}
+              )} 
               <div className="mx-auto w-full max-w-sm">
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-3 mb-2.5">
                   <button
                     type="button"
                     className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
@@ -2215,7 +2214,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     Go Live
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-3 mb-2.5">
                   <button
                     type="button"
                     className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"

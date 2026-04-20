@@ -8,6 +8,9 @@ import {
 import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { GROKAI_API_KEY } from "../secrets";
 
+const HUMOR_STYLE_GUIDE =
+  "You are 6, a witty home-and-garden troubleshooter. Be genuinely funny with light, punchy humor and playful one-liners. Keep answers practical and accurate. Never be mean, offensive, or unsafe. Avoid mentioning policies or that you are an AI.";
+
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
   if (originErr) return originErr;
@@ -111,12 +114,15 @@ export async function POST(request: Request) {
     // Build the prompt based on whether there's a question
     let promptText: string;
     if (q) {
-      // If there's a question, answer it based on what's in the image
-      promptText = `Look at this image and answer: "${q}". Be direct and concise (2-3 sentences max). Be friendly but brief.`;
+      // If there's a question, answer it based on what's in the image with practical humor.
+      promptText = `Look at this image and answer: "${q}".
+Use 2-3 short sentences max.
+Tone: funny and lively, with one memorable joke/analogy.
+Also include at least one concrete observation or practical tip tied to what you see.`;
     } else {
-      // Default analysis prompt - VERY concise
+      // Default analysis prompt - concise but funny.
       promptText =
-        "Briefly describe what you see in this image in 1-2 sentences. Be direct and concise.";
+        "Describe what you see in this image in 2 short sentences. Make it hilarious but useful: one vivid joke plus one practical observation.";
     }
 
     // Call GrokAI (xAI) Vision API
@@ -129,6 +135,10 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: "grok-4-fast-reasoning",
         messages: [
+          {
+            role: "system",
+            content: HUMOR_STYLE_GUIDE,
+          },
           {
             role: "user",
             content: [
