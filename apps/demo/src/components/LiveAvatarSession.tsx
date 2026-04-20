@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
-import { Radio, Camera, Images, Video } from "lucide-react";
+import { Radio, Camera, Images, Video, Play, Square } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -1945,7 +1945,7 @@ const LiveAvatarSessionComponent: React.FC<{
           <h1 className="inline-block text-white text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="mx-auto max-w-[16.5rem] text-white text-[0.72rem] sm:text-[0.78rem] font-medium mt-1 text-white/85 leading-snug">
+          <p className="mx-auto max-w-[16.5rem] text-white text-[0.72rem] sm:text-[0.78rem] font-medium text-white/85 leading-snug">
             Your Home &amp; Garden Solution Center
           </p>
         </div>
@@ -2160,11 +2160,10 @@ const LiveAvatarSessionComponent: React.FC<{
           {/* Analyzing text for vision recognition in streaming mode - ONLY show when actually processing */}
           {/* Positioned just above Stop button when four boxes are not visible */}
           {visionMode === "streaming" && isProcessingCameraQuestion && (
-            <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30">
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30">
               <p className="text-inset text-2xl font-semibold text-center drop-shadow-lg">
                 <span className="inline-flex items-center">
                   Analyzing
-                  <span className="inline-block animate-pulse">...</span>
                 </span>
               </p>
             </div>
@@ -2173,11 +2172,11 @@ const LiveAvatarSessionComponent: React.FC<{
           {visionMode !== "streaming" && !isCameraActive && (
             <div className="fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-3 w-[95%] max-w-7xl z-20 px-4 pb-0 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
-                <div className="mb-2 w-full flex items-center justify-center text-center">
+                <div className="mb-4 w-full flex items-center justify-center text-center">
                   <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight">
-                    <span className="block">Tell 6 what&apos;s wrong</span>
+                    <span className="block">Tell 6 What&apos;s Wrong</span>
                     <span className="block">
-                      Or <em>show him</em>
+                      or <em>Show Him</em>
                     </span>
                   </p>
                 </div>
@@ -2195,7 +2194,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     }
                     onClick={() => void handleVoiceStartStop()}
                   >
-                    <span className="inline-flex items-center gap-1.5">
+                    {/* <span className="inline-flex items-center gap-1.5">
                       <span
                         aria-hidden
                         className={isActive ? "" : "text-[0.8em] leading-none"}
@@ -2205,7 +2204,9 @@ const LiveAvatarSessionComponent: React.FC<{
                       <span className={isActive ? "" : "-ml-0.5"}>
                         {isActive ? "Stop" : "Start"}
                       </span>
-                    </span>
+                    </span> */}
+                    {isActive ? <Square className="mr-1.5 w-4 h-4 shrink-0" aria-hidden /> : <Play className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />}
+                    {isActive ? "Stop" : "Start"}
                   </button>
                   <button
                     type="button"

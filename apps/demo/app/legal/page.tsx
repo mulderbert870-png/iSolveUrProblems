@@ -198,7 +198,7 @@ const sections: Array<{
   {
     title: "17. CONTACT",
     paragraphs: ["For legal inquiries:"],
-    bullets: ["legal@iSolveUrProblems.ai"],
+    bullets: ["sgdietz@pm.me"],
   },
 ];
 
