@@ -2243,7 +2243,8 @@ const LiveAvatarSessionComponent: React.FC<{
               </div>
               <Link
                 href="/terms"
-                className="mt-1 block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors py-2 whitespace-nowrap"
+                target="_blank"
+                className="mt-1 block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors pb-4 whitespace-nowrap"
               >
                 © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
               </Link>
@@ -2275,6 +2276,7 @@ const LiveAvatarSessionComponent: React.FC<{
           <div className="fixed bottom-1 left-1/2 -translate-x-1/2 z-20">
             <Link
               href="/terms"
+              target="_blank"
               className="block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-1"
             >
               Terms

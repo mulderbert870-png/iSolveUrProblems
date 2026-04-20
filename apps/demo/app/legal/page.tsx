@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackToPreviousButton } from "../../src/components/BackToPreviousButton";
 
 const sections: Array<{
   title: string;
@@ -205,12 +205,7 @@ const sections: Array<{
 export default function LegalPage() {
   return (
     <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
-      <Link
-          href="/"
-          className="inline-flex items-center rounded-md border border-white/20 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/10 hover:text-white sm:text-sm"
-        >
-          ← Back
-        </Link>
+      <BackToPreviousButton />
       <article className="mx-auto w-full max-w-4xl rounded-xl border border-white/10 bg-zinc-900/70 p-5 shadow-lg backdrop-blur sm:p-8">
         
         <h1 className="text-3xl font-bold tracking-wide text-white sm:text-4xl">Terms</h1>
