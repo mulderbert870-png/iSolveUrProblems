@@ -2105,17 +2105,17 @@ const LiveAvatarSessionComponent: React.FC<{
           {/* Analyzing text for vision recognition in streaming mode - ONLY show when actually processing */}
           {/* Positioned just above Stop button when four boxes are not visible */}
           {visionMode === "streaming" && isProcessingCameraQuestion && (
-            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30">
+            <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30">
               <p className="text-inset text-2xl font-semibold text-center drop-shadow-lg">
                 <span className="inline-flex items-center">
-                  Analyzing
+                  Analyzing...
                 </span>
               </p>
             </div>
           )}
 
           {visionMode !== "streaming" && !isCameraActive && (
-            <div className="fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-3 w-[95%] max-w-7xl z-20 px-4 pb-0 flex flex-col items-center">
+            <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4 pb-2 flex flex-col items-center">
               {sessionState !== SessionState.DISCONNECTED &&
                 !isAvatarTalking &&
                 isStreamReady && (
@@ -2162,7 +2162,17 @@ const LiveAvatarSessionComponent: React.FC<{
                         {isActive ? "Stop" : "Start"}
                       </span>
                     </span> */}
-                    {isActive ? <Square className="mr-1.5 w-4 h-4 shrink-0" aria-hidden /> : <Play className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />}
+                    {isActive ? (
+                      <Square
+                        className="mr-1.5 w-4 h-4 shrink-0 text-red-500 fill-current"
+                        aria-hidden
+                      />
+                    ) : (
+                      <Play
+                        className="mr-1.5 w-4 h-4 shrink-0 text-red-500 fill-current"
+                        aria-hidden
+                      />
+                    )}
                     {isActive ? "Stop" : "Start"}
                   </button>
                   <button
@@ -2199,13 +2209,15 @@ const LiveAvatarSessionComponent: React.FC<{
                   </button>
                 </div>
               </div>
-              <Link
-                href="/terms"
-                target="_blank"
-                className="mt-1 block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors pb-4 whitespace-nowrap"
-              >
-                © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
-              </Link>
+              <div className="h-14 flex items-center justify-center">
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors whitespace-nowrap"
+                >
+                  © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
+                </Link>
+              </div>
             </div>
           )}
         </>
@@ -2224,8 +2236,8 @@ const LiveAvatarSessionComponent: React.FC<{
                   handleStopSession();
                 }}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden>⏹</span>
+                  <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="text-red-500">⏹</span>
                   <span>Stop</span>
                 </span>
               </button>
