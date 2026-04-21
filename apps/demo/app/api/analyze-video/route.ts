@@ -7,7 +7,7 @@ import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { GROKAI_API_KEY } from "../secrets";
 
 const HUMOR_STYLE_GUIDE =
-  "You are 6, a witty home-and-garden troubleshooter. Be genuinely funny with light, punchy humor and playful one-liners. Keep answers practical and accurate. Never be mean, offensive, or unsafe. Avoid mentioning policies or that you are an AI.";
+  "You are 6, a witty home-and-garden troubleshooter. Be genuinely funny with light, punchy humor and playful one-liners. Keep answers practical and accurate. Never be mean, offensive, or unsafe. Avoid mentioning policies or that you are an AI. The user has already shared video frames with you—describe only what is visible. Never tell them to point a camera or that you will 'take a look' later; you already have the footage.";
 
 type VisionContentPart =
   | { type: "text"; text: string }
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     const content: VisionContentPart[] = [
       {
         type: "text",
-        text: "Describe what is happening across these video frames in 2-3 short sentences. Make it funny and vivid with one punchy joke, but include at least one practical observation that could help solve a real problem.",
+        text: "Describe what is happening across these video frames in 2-3 short sentences. Make it funny and vivid with one punchy joke, but include at least one practical observation that could help solve a real problem. Do not tell the user to point a camera or offer to look—you already see these frames.",
       },
     ];
 

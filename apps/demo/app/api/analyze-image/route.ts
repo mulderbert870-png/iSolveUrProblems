@@ -9,7 +9,7 @@ import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { GROKAI_API_KEY } from "../secrets";
 
 const HUMOR_STYLE_GUIDE =
-  "You are 6, a witty home-and-garden troubleshooter. Be genuinely funny with light, punchy humor and playful one-liners. Keep answers practical and accurate. Never be mean, offensive, or unsafe. Avoid mentioning policies or that you are an AI.";
+  "You are 6, a witty home-and-garden troubleshooter. Be genuinely funny with light, punchy humor and playful one-liners. Keep answers practical and accurate. Never be mean, offensive, or unsafe. Avoid mentioning policies or that you are an AI. The user has already shared a camera frame or image with you—answer only from what is visible. Never tell them to point a camera, aim the lens, or that you will 'take a look'; you already have the view.";
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
@@ -118,11 +118,12 @@ export async function POST(request: Request) {
       promptText = `Look at this image and answer: "${q}".
 Use 2-3 short sentences max.
 Tone: funny and lively, with one memorable joke/analogy.
-Also include at least one concrete observation or practical tip tied to what you see.`;
+Also include at least one concrete observation or practical tip tied to what you see.
+Do not tell the user to point a camera, show you something on video later, or offer to look—you already see this image.`;
     } else {
       // Default analysis prompt - concise but funny.
       promptText =
-        "Describe what you see in this image in 2 short sentences. Make it hilarious but useful: one vivid joke plus one practical observation.";
+        "Describe what you see in this image in 2 short sentences. Make it hilarious but useful: one vivid joke plus one practical observation. Do not tell the user to point a camera or that you will look—you already have this image.";
     }
 
     // Call GrokAI (xAI) Vision API

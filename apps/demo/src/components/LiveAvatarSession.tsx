@@ -785,24 +785,10 @@ const LiveAvatarSessionComponent: React.FC<{
       const analysis = data.analysis;
       setImageAnalysis(analysis);
 
-      // Store analysis as context for future questions, but ask short question
+      // Store analysis as context for future questions (no scripted repeat prompt)
       if (mode === "FULL" && sessionRef.current) {
-        // Send analysis as context to AI so it knows what's in the image
-        // But do this AFTER speaking the prompt to prevent monologuing
-        const contextMessage = `You are directly viewing an image. Here's what you see: ${analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences).`;
-
-        // Ask ONLY the short question FIRST using repeat() - direct speech, no AI processing
-        await repeat(
-          "What problems can I help you solve that are in this picture?",
-        );
-
-        // Then send context in background (non-blocking) for future questions
-        // Use setTimeout to ensure prompt is spoken first
-        setTimeout(() => {
-          if (sessionRef.current) {
-            sessionRef.current.message(contextMessage);
-          }
-        }, 100);
+        const contextMessage = `You are directly viewing an image. Here's what you see: ${analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this image.`;
+        sessionRef.current.message(contextMessage);
       }
 
       setIsAnalyzingImage(false);
@@ -942,17 +928,8 @@ const LiveAvatarSessionComponent: React.FC<{
         console.log("Analysis received:", analysis.substring(0, 100) + "...");
         setImageAnalysis(analysis);
 
-        // For initial recognition (empty question with skipDuplicateCheck), use ONLY the specific message
-        let responseMessage: string;
-        if (userText.length === 0 && skipDuplicateCheck) {
-          // This is initial recognition when Go Live starts - use ONLY the specific question, no analysis
-          responseMessage =
-            "What problems can I help you solve that we're looking at right now?";
-        } else {
-          // For user questions, use the analysis but ensure it's concise
-          // The API should return concise analysis, but we'll use it directly
-          responseMessage = analysis;
-        }
+        // Speak the vision model output only (no canned "what problems..." prompts).
+        const responseMessage = analysis;
 
         // Store the response to filter out avatar transcriptions later
         lastAvatarResponseRef.current = responseMessage.substring(0, 100); // Store first 100 chars for comparison
@@ -1219,7 +1196,7 @@ const LiveAvatarSessionComponent: React.FC<{
         mode === "FULL"
       ) {
         console.log("User asked about video, re-sending video context");
-        const contextMessage = `You are directly viewing a video. Here's what you see: ${videoAnalysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences).`;
+        const contextMessage = `You are directly viewing a video. Here's what you see: ${videoAnalysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
         sessionRef.current.message(contextMessage);
       }
 
@@ -1615,16 +1592,8 @@ const LiveAvatarSessionComponent: React.FC<{
         setVideoAnalysis(data.analysis);
 
         if (mode === "FULL" && sessionRef.current) {
-          await repeat(
-            "What problems can I help you solve that are in this video?",
-          );
-
-          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences).`;
-          setTimeout(() => {
-            if (sessionRef.current) {
-              sessionRef.current.message(contextMessage);
-            }
-          }, 100);
+          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
+          sessionRef.current.message(contextMessage);
         }
 
         setIsAnalyzingVideo(false);
@@ -1651,7 +1620,6 @@ const LiveAvatarSessionComponent: React.FC<{
     cameraStream,
     mode,
     sessionRef,
-    repeat,
     stopListening,
     isActive,
     isMuted,
@@ -1828,22 +1796,10 @@ const LiveAvatarSessionComponent: React.FC<{
         setImageAnalysis(data.analysis);
         console.log("Image analyzed successfully");
 
-        // For FULL mode, send the analysis as context to the AI
+        // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
         if (mode === "FULL" && sessionRef.current) {
-          // Ask ONLY the short question FIRST using repeat() - direct speech, no AI processing = no monologue
-          await repeat(
-            "What problems can I help you solve that are in this picture?",
-          );
-
-          // Then send context in background (non-blocking) for future questions
-          // Use setTimeout to ensure prompt is spoken first
-          const contextMessage = `You are directly viewing an image. Here's what you see: ${data.analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences).`;
-          setTimeout(() => {
-            if (sessionRef.current) {
-              sessionRef.current.message(contextMessage);
-            }
-          }, 100);
-          // Do NOT send any additional messages - just the one line
+          const contextMessage = `You are directly viewing an image. Here's what you see: ${data.analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this image.`;
+          sessionRef.current.message(contextMessage);
         }
       } catch (error) {
         console.error("Error analyzing image:", error);
@@ -1877,21 +1833,10 @@ const LiveAvatarSessionComponent: React.FC<{
         // Store video analysis in state so it persists even after closing video button
         setVideoAnalysis(data.analysis);
 
-        // For FULL mode, send the analysis as context to the AI
+        // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
         if (mode === "FULL" && sessionRef.current) {
-          // Ask ONLY the short question FIRST using repeat() - direct speech, no AI processing
-          await repeat(
-            "What problems can I help you solve that are in this video?",
-          );
-
-          // Then send context in background (non-blocking) for future questions
-          // Use setTimeout to ensure prompt is spoken first
-          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences).`;
-          setTimeout(() => {
-            if (sessionRef.current) {
-              sessionRef.current.message(contextMessage);
-            }
-          }, 100);
+          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
+          sessionRef.current.message(contextMessage);
         }
       } catch (error) {
         console.error("Error analyzing video:", error);
@@ -2171,16 +2116,28 @@ const LiveAvatarSessionComponent: React.FC<{
 
           {visionMode !== "streaming" && !isCameraActive && (
             <div className="fixed bottom-0 left-1/2 -translate-x-1/2 translate-y-3 w-[95%] max-w-7xl z-20 px-4 pb-0 flex flex-col items-center">
-              {sessionState !== SessionState.DISCONNECTED && !isAvatarTalking && (
-                <div className="mb-4 w-full flex items-center justify-center text-center">
-                  <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight">
-                    <span className="block">Tell 6 What&apos;s Wrong</span>
-                    <span className="block">
-                      or <em>Show Him</em>
-                    </span>
-                  </p>
-                </div>
-              )} 
+              {sessionState !== SessionState.DISCONNECTED &&
+                !isAvatarTalking &&
+                isStreamReady && (
+                  <div className="mb-4 w-full flex items-center justify-center text-center">
+                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight">
+                      {!isActive ? (
+                        voiceStartAwaitingReady ? (
+                          <span className="block">Starting…</span>
+                        ) : (
+                          <span className="block">Tap Start To Begin</span>
+                        )
+                      ) : (
+                        <>
+                          <span className="block">Tell 6 What&apos;s Wrong</span>
+                          <span className="block">
+                            or <em>Show Him</em>
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )} 
               <div className="mx-auto w-full max-w-sm">
                 <div className="grid grid-cols-2 gap-3 mb-2.5">
                   <button
