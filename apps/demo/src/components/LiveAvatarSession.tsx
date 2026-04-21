@@ -2125,7 +2125,7 @@ const LiveAvatarSessionComponent: React.FC<{
                         voiceStartAwaitingReady ? (
                           <span className="block">Starting…</span>
                         ) : (
-                          <span className="block">Tap Start To Begin</span>
+                          <span className="block text-[1rem] sm:text-[1.1rem]">Tap Start to Begin</span>
                         )
                       ) : (
                         <>
