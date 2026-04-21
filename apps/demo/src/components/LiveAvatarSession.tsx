@@ -77,6 +77,12 @@ const LiveAvatarSessionComponent: React.FC<{
   const lastAvatarResponseRef = useRef<string>("");
   const lastVisionResponseTimeRef = useRef<number>(0);
   const hasAutoAnalyzedRef = useRef<boolean>(false);
+  // Tracks the specific problem the user is trying to fix (persists across vision calls so
+  // Grok can stay laser-focused on the object/problem the user named at the start).
+  const currentProblemRef = useRef<string>("");
+  // Tracks the last non-silent vision analysis so Grok can compare frames and only break
+  // silence when something meaningful has actually changed.
+  const lastAnalysisRef = useRef<string>("");
 
   const isAttachedRef = useRef<boolean>(false);
   const greetingTriggeredRef = useRef<boolean>(false);
@@ -899,11 +905,26 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
+        // Persist the current problem so Grok stays locked on it across every
+        // subsequent frame in this Go Live session. We only overwrite when the
+        // user says something meaningful — empty / auto-fire calls reuse the last problem.
+        if (userText.length > 0) {
+          currentProblemRef.current = userText;
+        }
+
         console.log("Frame captured, sending to API with question:", userText);
-        // Send to analyze-image API with the user's question
+        // Send to analyze-image API in streaming mode with problem context + last analysis
+        // so Grok stays laser-focused on the user's actual problem and silent when nothing changed.
         const formData = new FormData();
         formData.append("image", frameFile, frameFile.name || "camera-frame.jpg");
         formData.append("question", userText);
+        formData.append("mode", "streaming");
+        if (currentProblemRef.current) {
+          formData.append("problem", currentProblemRef.current);
+        }
+        if (lastAnalysisRef.current) {
+          formData.append("lastAnalysis", lastAnalysisRef.current);
+        }
 
         const response = await fetch("/api/analyze-image", {
           method: "POST",
@@ -924,12 +945,35 @@ const LiveAvatarSessionComponent: React.FC<{
         }
 
         const data = await response.json();
-        const analysis = data.analysis;
+        const analysis: string = (data.analysis ?? "").toString();
         console.log("Analysis received:", analysis.substring(0, 100) + "...");
-        setImageAnalysis(analysis);
 
-        // Speak the vision model output only (no canned "what problems..." prompts).
-        const responseMessage = analysis;
+        // Silent-first: Grok outputs [SILENT] when nothing meaningful has changed.
+        // Keep the avatar quiet entirely — no repeat(), no state churn.
+        const trimmed = analysis.trim();
+        if (trimmed === "[SILENT]" || trimmed.startsWith("[SILENT]")) {
+          console.log("Vision: [SILENT] — avatar staying quiet.");
+          // Reset the last processed question so the user can ask again if they want.
+          processingTimeoutRef.current = setTimeout(() => {
+            lastProcessedQuestionRef.current = "";
+          }, 2000);
+          return;
+        }
+
+        // OBJECT_NOT_VISIBLE: "Can you hold the [object] up center of frame for me?"
+        // Strip the prefix and speak only the quoted prompt.
+        let responseMessage = trimmed;
+        const objectNotVisibleMatch = trimmed.match(
+          /^OBJECT_NOT_VISIBLE\s*:\s*["“]?(.+?)["”]?$/s,
+        );
+        if (objectNotVisibleMatch) {
+          responseMessage = objectNotVisibleMatch[1].trim();
+          console.log("Vision: object not visible — asking user to reframe.");
+        }
+
+        setImageAnalysis(responseMessage);
+        // Remember this analysis so the next frame can be compared against it for change detection.
+        lastAnalysisRef.current = responseMessage;
 
         // Store the response to filter out avatar transcriptions later
         lastAvatarResponseRef.current = responseMessage.substring(0, 100); // Store first 100 chars for comparison
@@ -1280,6 +1324,9 @@ const LiveAvatarSessionComponent: React.FC<{
       // Reset processing state and initial analysis flag when vision mode is deactivated
       setIsProcessingCameraQuestion(false);
       hasInitialAnalysisRef.current = false;
+      // Clear per-session problem and analysis history so the next Go Live starts fresh.
+      currentProblemRef.current = "";
+      lastAnalysisRef.current = "";
     }
   }, [
     visionMode,
