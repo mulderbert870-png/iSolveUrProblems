@@ -6,7 +6,7 @@ import {
   truncateUtf8String,
 } from "../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../src/lib/rateLimit";
-import { GROKAI_API_KEY } from "../secrets";
+import { GEMINI_API_KEY } from "../secrets";
 
 const MAX_PROBLEM_CHARS = 300;
 const MAX_LAST_ANALYSIS_CHARS = 400;
@@ -112,9 +112,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!GROKAI_API_KEY) {
+    if (!GEMINI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "GrokAI API key not configured" }),
+        JSON.stringify({ error: "Gemini API key not configured" }),
         {
           status: 500,
           headers: {
@@ -204,45 +204,45 @@ Do not tell the user to point a camera, show you something on video later, or of
         "Describe what you see in this image in 2 short sentences. Be useful and direct, with at most one light dry observation if it fits naturally. No extended jokes, no stand-up comedy. Do not tell the user to point a camera or that you will look—you already have this image.";
     }
 
-    // Call GrokAI (xAI) Vision API
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROKAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "grok-4-fast-reasoning",
-        messages: [
-          {
-            role: "system",
-            content: isStreaming
-              ? STREAMING_VISION_SYSTEM_PROMPT
-              : HUMOR_STYLE_GUIDE,
+    // Call Gemini 2.5 Flash Vision API — swapped from Grok for lower latency (~1-2s faster).
+    // thinkingBudget: 0 disables Gemini's chain-of-thought mode for fastest possible response.
+    const systemInstruction = isStreaming
+      ? STREAMING_VISION_SYSTEM_PROMPT
+      : HUMOR_STYLE_GUIDE;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemInstruction }],
           },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: promptText,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`,
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: promptText },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: base64Image,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 150,
+            thinkingConfig: { thinkingBudget: 0 },
           },
-        ],
-        max_tokens: 150,
-      }),
-    });
+        }),
+      },
+    );
 
     if (!res.ok) {
       const errorData = await res.text();
-      console.error("GrokAI Vision API error:", errorData);
+      console.error("Gemini Vision API error:", errorData);
       return new Response(
         JSON.stringify({
           error: "Failed to analyze image",
@@ -257,7 +257,8 @@ Do not tell the user to point a camera, show you something on video later, or of
     }
 
     const data = await res.json();
-    const analysis = data.choices[0].message.content;
+    const analysis =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     return new Response(JSON.stringify({ analysis }), {
       status: 200,
