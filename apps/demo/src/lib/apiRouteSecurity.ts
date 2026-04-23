@@ -7,10 +7,16 @@ const ALLOWED_ORIGINS = new Set([
 
 /**
  * Returns a 403 Response if the request origin is not allowed, otherwise null.
- * Skipped in non-production to allow local dev without CORS config.
+ * Skipped in non-production (local dev) and on Vercel Preview deployments
+ * (branch previews have auto-generated domains that can't be pre-listed).
+ * Production Vercel deployments still enforce the allowlist.
  */
 export function assertAllowedOrigin(request: Request): Response | null {
   if (process.env.NODE_ENV !== "production") return null;
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+    // Vercel Preview / Development — skip origin check so branch previews work.
+    return null;
+  }
 
   const origin = request.headers.get("origin");
   if (origin !== null) {
