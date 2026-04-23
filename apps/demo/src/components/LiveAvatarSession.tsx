@@ -79,10 +79,19 @@ const LiveAvatarSessionComponent: React.FC<{
   // Debounces the "Oops!" error message so a string of failed vision calls
   // doesn't make the avatar say "Oops" 4+ times in 15 seconds (observed bug).
   const lastOopsTimeRef = useRef<number>(0);
+  // Debounces OBJECT_NOT_VISIBLE reframe asks. Gemini often returns the same
+  // reframe on 10+ consecutive frames — without this, 6 repeats "Can you make
+  // sure the camera is pointing..." every 1.5s for the whole session.
+  const lastReframeTimeRef = useRef<number>(0);
   const hasAutoAnalyzedRef = useRef<boolean>(false);
   // Tracks the specific problem the user is trying to fix (persists across vision calls so
-  // Grok can stay laser-focused on the object/problem the user named at the start).
+  // Gemini can stay laser-focused on the object/problem the user named at the start).
   const currentProblemRef = useRef<string>("");
+  // Timestamp when currentProblemRef was first set. We accumulate user text for
+  // the first 20 seconds (so "I got some issues with scratches" + "on my sunglasses"
+  // both end up in the problem) then lock — prevents later questions from
+  // polluting the problem statement.
+  const problemFirstSetAtRef = useRef<number>(0);
   // Tracks the last non-silent vision analysis so Grok can compare frames and only break
   // silence when something meaningful has actually changed.
   const lastAnalysisRef = useRef<string>("");
@@ -933,14 +942,31 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
-        // Persist the FIRST meaningful user utterance as "the problem" and keep
-        // it locked for the rest of the session. Overwriting on every subsequent
-        // user turn was causing questions like "What are you looking at?" to
-        // become the "problem" — which poisoned the reframe ask and confused
-        // Gemini. The user's follow-up text still goes through as `question` on
-        // each call; only `problem` is sticky.
-        if (userText.length > 0 && !currentProblemRef.current) {
-          currentProblemRef.current = userText;
+        // Build up `currentProblemRef` during the first 20 seconds of vision:
+        // accumulate non-question user utterances so multi-part problem descriptions
+        // like "I got scratches" + "on my sunglasses" both land in the problem.
+        // Skip questions (contain "?") and very short responses so follow-up
+        // questions like "What are you looking at?" don't overwrite the problem.
+        if (userText.length > 0) {
+          const isQuestion = userText.includes("?");
+          const isSubstantive = userText.length >= 15;
+          const nowMs = Date.now();
+          const problemWindowMs = 20000;
+
+          if (!currentProblemRef.current) {
+            // First capture — take whatever we got, mark the timestamp.
+            currentProblemRef.current = userText;
+            problemFirstSetAtRef.current = nowMs;
+          } else if (
+            !isQuestion &&
+            isSubstantive &&
+            problemFirstSetAtRef.current > 0 &&
+            nowMs - problemFirstSetAtRef.current < problemWindowMs
+          ) {
+            // Within the 20s accumulation window: append if not a question.
+            currentProblemRef.current = `${currentProblemRef.current} ${userText}`.trim();
+          }
+          // After 20s or for questions: problem stays locked.
         }
 
         console.log("Frame captured, sending to API with question:", userText);
@@ -991,15 +1017,33 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
-        // OBJECT_NOT_VISIBLE: "Can you hold the [object] up center of frame for me?"
-        // Strip the prefix and speak only the quoted prompt.
+        // OBJECT_NOT_VISIBLE: strip the prefix and speak only the quoted prompt.
+        // Debounce — if we already spoke a reframe in the last 12 seconds, treat
+        // this one as [SILENT]. Gemini can fire OBJECT_NOT_VISIBLE on 10+ frames
+        // in a row; without this the avatar spams the same ask every 1.5s.
         let responseMessage = trimmed;
+        let isReframe = false;
         const objectNotVisibleMatch = trimmed.match(
           /^OBJECT_NOT_VISIBLE\s*:\s*["“]?(.+?)["”]?$/s,
         );
         if (objectNotVisibleMatch) {
           responseMessage = objectNotVisibleMatch[1].trim();
-          console.log("Vision: object not visible — asking user to reframe.");
+          isReframe = true;
+          console.log("Vision: object not visible — reframe response.");
+        }
+
+        if (isReframe) {
+          const nowMs = Date.now();
+          if (nowMs - lastReframeTimeRef.current < 12000) {
+            console.log(
+              "Vision: reframe already spoken in last 12s — suppressing duplicate.",
+            );
+            processingTimeoutRef.current = setTimeout(() => {
+              lastProcessedQuestionRef.current = "";
+            }, 2000);
+            return;
+          }
+          lastReframeTimeRef.current = nowMs;
         }
 
         setImageAnalysis(responseMessage);
