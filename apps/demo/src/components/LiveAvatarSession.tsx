@@ -1226,23 +1226,10 @@ const LiveAvatarSessionComponent: React.FC<{
         console.error("Error calling transcription capture route:", captureError);
       }
 
-      // If user asks about video and videoAnalysis exists, re-send video context
-      const userTextLower = userText.toLowerCase();
-      const videoKeywords = ["video", "recording", "clip", "footage", "film"];
-      const mentionsVideo = videoKeywords.some((keyword) =>
-        userTextLower.includes(keyword),
-      );
-
-      if (
-        mentionsVideo &&
-        videoAnalysis &&
-        sessionRef.current &&
-        mode === "FULL"
-      ) {
-        console.log("User asked about video, re-sending video context");
-        const contextMessage = `You are directly viewing a video. Here's what you see: ${videoAnalysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
-        sessionRef.current.message(contextMessage);
-      }
+      // Removed: prior code re-injected a long video-context prompt into the avatar
+      // via sessionRef.current.message(), which was being treated as USER input and
+      // overwhelming the TALK brain. Follow-up questions about the video are now
+      // handled by the normal streaming flow via processCameraQuestion below.
 
       // Process the question using the reusable function (only in streaming mode)
       await processCameraQuestion(userText, false);
@@ -1640,9 +1627,16 @@ const LiveAvatarSessionComponent: React.FC<{
 
         setVideoAnalysis(data.analysis);
 
-        if (mode === "FULL" && sessionRef.current) {
-          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
-          sessionRef.current.message(contextMessage);
+        if (mode === "FULL") {
+          // Speak the analysis directly via repeat() so the avatar says what it saw.
+          // Using repeat() keeps this as avatar speech (role=assistant); earlier this
+          // used sessionRef.current.message() which logged it as USER input and
+          // confused the TALK brain.
+          try {
+            await repeat(data.analysis);
+          } catch (speakError) {
+            console.error("Error speaking video analysis:", speakError);
+          }
         }
 
         setIsAnalyzingVideo(false);
@@ -1925,9 +1919,16 @@ const LiveAvatarSessionComponent: React.FC<{
         setVideoAnalysis(data.analysis);
 
         // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
-        if (mode === "FULL" && sessionRef.current) {
-          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
-          sessionRef.current.message(contextMessage);
+        if (mode === "FULL") {
+          // Speak the analysis directly via repeat() so the avatar says what it saw.
+          // Using repeat() keeps this as avatar speech (role=assistant); earlier this
+          // used sessionRef.current.message() which logged it as USER input and
+          // confused the TALK brain.
+          try {
+            await repeat(data.analysis);
+          } catch (speakError) {
+            console.error("Error speaking video analysis:", speakError);
+          }
         }
       } catch (error) {
         console.error("Error analyzing video:", error);
