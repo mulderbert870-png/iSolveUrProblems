@@ -791,10 +791,16 @@ const LiveAvatarSessionComponent: React.FC<{
       const analysis = data.analysis;
       setImageAnalysis(analysis);
 
-      // Store analysis as context for future questions (no scripted repeat prompt)
-      if (mode === "FULL" && sessionRef.current) {
-        const contextMessage = `You are directly viewing an image. Here's what you see: ${analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this image.`;
-        sessionRef.current.message(contextMessage);
+      // Speak the analysis directly via repeat() so the avatar says what it saw.
+      // Previously used sessionRef.current.message() which logged as role=user
+      // (treating Gemini's output as USER input to LiveAvatar's TALK brain) and
+      // caused muting + confusion in multi-turn conversations.
+      if (mode === "FULL") {
+        try {
+          await repeat(analysis);
+        } catch (speakError) {
+          console.error("Error speaking image analysis:", speakError);
+        }
       }
 
       setIsAnalyzingImage(false);
@@ -1881,10 +1887,15 @@ const LiveAvatarSessionComponent: React.FC<{
         setImageAnalysis(data.analysis);
         console.log("Image analyzed successfully");
 
-        // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
-        if (mode === "FULL" && sessionRef.current) {
-          const contextMessage = `You are directly viewing an image. Here's what you see: ${data.analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this image.`;
-          sessionRef.current.message(contextMessage);
+        // Speak the analysis directly via repeat() so the avatar says what it saw.
+        // Previously used sessionRef.current.message() which logged as role=user
+        // and confused the TALK brain.
+        if (mode === "FULL") {
+          try {
+            await repeat(data.analysis);
+          } catch (speakError) {
+            console.error("Error speaking image analysis:", speakError);
+          }
         }
       } catch (error) {
         console.error("Error analyzing image:", error);
