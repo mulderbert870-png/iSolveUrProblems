@@ -1337,48 +1337,6 @@ const LiveAvatarSessionComponent: React.FC<{
     processCameraQuestion,
   ]);
 
-  // Continuous vision polling during Go Live.
-  // Fires every 1.5s; Grok's [SILENT] token keeps the avatar quiet when nothing meaningful has changed.
-  // Hard 2-minute cap: at the 2-minute mark, speak the timeout line and auto-deactivate Go Live.
-  useEffect(() => {
-    if (visionMode !== "streaming" || !isCameraActive) return;
-
-    const POLLING_INTERVAL_MS = 1500;
-    const MAX_SESSION_MS = 120_000;
-    const sessionStartTime = Date.now();
-
-    const intervalId = setInterval(() => {
-      const elapsed = Date.now() - sessionStartTime;
-      if (elapsed >= MAX_SESSION_MS) {
-        clearInterval(intervalId);
-        if (mode === "FULL") {
-          repeat(
-            "Sorry — we ran out of time on this one. If you need more time, restart Go Live and we'll pick it right back up.",
-          ).catch((err) => {
-            console.error("Error speaking timeout line:", err);
-          });
-        }
-        closeCameraPreview();
-        return;
-      }
-
-      // Skip if a previous vision call is still in flight — avoids overlapping requests.
-      if (isProcessingCameraQuestion) return;
-
-      processCameraQuestion("", true);
-    }, POLLING_INTERVAL_MS);
-
-    return () => clearInterval(intervalId);
-  }, [
-    visionMode,
-    isCameraActive,
-    mode,
-    isProcessingCameraQuestion,
-    processCameraQuestion,
-    repeat,
-    closeCameraPreview,
-  ]);
-
   // Hide loading text when avatar starts talking
   useEffect(() => {
     if (isAvatarTalking && showVisionLoading) {
@@ -1779,6 +1737,48 @@ const LiveAvatarSessionComponent: React.FC<{
       processingTimeoutRef.current = null;
     }
   }, [cameraStream, fallbackImagePreview, fallbackImage]);
+
+  // Continuous vision polling during Go Live.
+  // Fires every 1.5s; Grok's [SILENT] token keeps the avatar quiet when nothing meaningful has changed.
+  // Hard 2-minute cap: at the 2-minute mark, speak the timeout line and auto-deactivate Go Live.
+  useEffect(() => {
+    if (visionMode !== "streaming" || !isCameraActive) return;
+
+    const POLLING_INTERVAL_MS = 1500;
+    const MAX_SESSION_MS = 120_000;
+    const sessionStartTime = Date.now();
+
+    const intervalId = setInterval(() => {
+      const elapsed = Date.now() - sessionStartTime;
+      if (elapsed >= MAX_SESSION_MS) {
+        clearInterval(intervalId);
+        if (mode === "FULL") {
+          repeat(
+            "Sorry — we ran out of time on this one. If you need more time, restart Go Live and we'll pick it right back up.",
+          ).catch((err) => {
+            console.error("Error speaking timeout line:", err);
+          });
+        }
+        closeCameraPreview();
+        return;
+      }
+
+      // Skip if a previous vision call is still in flight — avoids overlapping requests.
+      if (isProcessingCameraQuestion) return;
+
+      processCameraQuestion("", true);
+    }, POLLING_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [
+    visionMode,
+    isCameraActive,
+    mode,
+    isProcessingCameraQuestion,
+    processCameraQuestion,
+    repeat,
+    closeCameraPreview,
+  ]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
