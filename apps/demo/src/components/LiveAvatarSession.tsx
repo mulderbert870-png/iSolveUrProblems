@@ -76,6 +76,9 @@ const LiveAvatarSessionComponent: React.FC<{
   const isDebugProcessingRef = useRef<boolean>(false);
   const lastAvatarResponseRef = useRef<string>("");
   const lastVisionResponseTimeRef = useRef<number>(0);
+  // Debounces the "Oops!" error message so a string of failed vision calls
+  // doesn't make the avatar say "Oops" 4+ times in 15 seconds (observed bug).
+  const lastOopsTimeRef = useRef<number>(0);
   const hasAutoAnalyzedRef = useRef<boolean>(false);
   // Tracks the specific problem the user is trying to fix (persists across vision calls so
   // Grok can stay laser-focused on the object/problem the user named at the start).
@@ -580,12 +583,27 @@ const LiveAvatarSessionComponent: React.FC<{
           });
       }
     }
+
+    // Inject a state signal into the TALK conversation so the avatar's LLM
+    // knows vision is now on. Prevents the "6 doesn't know Go Live state" bug
+    // where users said "I hit Go Live" but 6 kept asking them to pick a button.
+    try {
+      if (mode === "FULL" && sessionRef.current) {
+        sessionRef.current.message(
+          "[GO LIVE IS NOW ACTIVE — the camera feed is live and vision reports are coming in]",
+        );
+      }
+    } catch (signalError) {
+      console.error("Error injecting Go Live ON signal:", signalError);
+    }
   }, [
     triggerGreetingIfNeeded,
     visionMode,
     cameraAvailable,
     fallbackImage,
     loadFallbackImage,
+    mode,
+    sessionRef,
   ]);
 
   // Allow the initial greeting (intro line) from the backend to play when session is fully loaded
@@ -807,9 +825,13 @@ const LiveAvatarSessionComponent: React.FC<{
     } catch (error) {
       console.error("Error capturing and analyzing photo:", error);
       if (mode === "FULL") {
-        await repeat(
-          "Oops! I had a little trouble analyzing the photo. Could you try again?",
-        );
+        const oopsNow = Date.now();
+        if (oopsNow - lastOopsTimeRef.current > 15000) {
+          lastOopsTimeRef.current = oopsNow;
+          await repeat(
+            "Oops! I had a little trouble analyzing the photo. Could you try again?",
+          );
+        }
       }
       setIsAnalyzingImage(false);
     }
@@ -911,10 +933,13 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
-        // Persist the current problem so Grok stays locked on it across every
-        // subsequent frame in this Go Live session. We only overwrite when the
-        // user says something meaningful — empty / auto-fire calls reuse the last problem.
-        if (userText.length > 0) {
+        // Persist the FIRST meaningful user utterance as "the problem" and keep
+        // it locked for the rest of the session. Overwriting on every subsequent
+        // user turn was causing questions like "What are you looking at?" to
+        // become the "problem" — which poisoned the reframe ask and confused
+        // Gemini. The user's follow-up text still goes through as `question` on
+        // each call; only `problem` is sticky.
+        if (userText.length > 0 && !currentProblemRef.current) {
           currentProblemRef.current = userText;
         }
 
@@ -1005,11 +1030,17 @@ const LiveAvatarSessionComponent: React.FC<{
         }, 5000);
       } catch (error) {
         console.error("Error processing camera question:", error);
-        // Send a friendly error message - use repeat() to speak directly
+        // Debounced: only fire one "Oops" every 15 seconds. Without this, 1.5s
+        // polling with repeated failures was making the avatar say "Oops" 4+
+        // times in under a minute (observed 2026-04-23).
         if (mode === "FULL") {
-          await repeat(
-            "Oops! I had a little trouble analyzing what I'm seeing right now. Could you try asking again?",
-          );
+          const oopsNow = Date.now();
+          if (oopsNow - lastOopsTimeRef.current > 15000) {
+            lastOopsTimeRef.current = oopsNow;
+            await repeat(
+              "Oops! I had a little trouble analyzing what I'm seeing right now. Could you try asking again?",
+            );
+          }
         }
         // Reset after error
         processingTimeoutRef.current = setTimeout(() => {
@@ -1712,6 +1743,17 @@ const LiveAvatarSessionComponent: React.FC<{
   };
 
   const closeCameraPreview = useCallback(() => {
+    // Inject a state signal so the TALK brain knows Go Live is no longer on.
+    // Without this, 6 keeps acting as if he can see.
+    try {
+      if (mode === "FULL" && sessionRef.current) {
+        sessionRef.current.message(
+          "[GO LIVE IS OFF — user must hit the Go Live button before you can see anything]",
+        );
+      }
+    } catch (signalError) {
+      console.error("Error injecting Go Live OFF signal:", signalError);
+    }
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
@@ -1736,7 +1778,7 @@ const LiveAvatarSessionComponent: React.FC<{
       clearTimeout(processingTimeoutRef.current);
       processingTimeoutRef.current = null;
     }
-  }, [cameraStream, fallbackImagePreview, fallbackImage]);
+  }, [cameraStream, fallbackImagePreview, fallbackImage, mode, sessionRef]);
 
   // Continuous vision polling during Go Live.
   // Fires every 1.5s; Grok's [SILENT] token keeps the avatar quiet when nothing meaningful has changed.

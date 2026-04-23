@@ -259,9 +259,10 @@ export const LiveAvatarContextProvider = ({
   }, [sessionRef]);
 
   // Conversational silence re-engagement:
-  // - after avatar turn ends, wait briefly for user reply
-  // - if still silent, emit synthetic user message to trigger fail-safe
-  // - do this at most twice (4s, then 6s), reset when user speaks
+  // - after avatar turn ends, wait 10s for user reply
+  // - if still silent, 15s for second attempt
+  // - then stop entirely (no third attempt ever — hard cap)
+  // - matches the CW's explicit 10s/15s/no-third rule
   useEffect(() => {
     const session = sessionRef.current;
     if (!session || sessionState !== SessionState.CONNECTED) {
@@ -280,7 +281,7 @@ export const LiveAvatarContextProvider = ({
       if (reengagementAttemptsRef.current >= 2) {
         return;
       }
-      const delaySeconds = reengagementAttemptsRef.current === 0 ? 4 : 6;
+      const delaySeconds = reengagementAttemptsRef.current === 0 ? 10 : 15;
       const delayMs = delaySeconds * 1000;
 
       reengagementTimeoutRef.current = setTimeout(() => {
@@ -304,7 +305,10 @@ export const LiveAvatarContextProvider = ({
     const onUserSpeakStarted = () => {
       isUserSpeakingRef.current = true;
       hasUserSpokenSinceAvatarTurnRef.current = true;
-      reengagementAttemptsRef.current = 0;
+      // Intentionally DO NOT reset reengagementAttemptsRef here. The CW
+      // specifies max 2 silence re-engages PER CONVERSATION, not per gap.
+      // Resetting on every user utterance was making the 4s/6s signal fire
+      // repeatedly through the session (observed 2026-04-23).
       clearReengagementTimeout();
     };
 
