@@ -1321,11 +1321,13 @@ const LiveAvatarSessionComponent: React.FC<{
         clearTimeout(timeoutId);
       };
     } else if (visionMode !== "streaming" && !isCameraActive) {
-      // Reset processing state and initial analysis flag when vision mode is deactivated
+      // Reset processing state and initial analysis flag when vision mode is deactivated,
+      // so the next Go Live session can fire its initial analysis.
       setIsProcessingCameraQuestion(false);
       hasInitialAnalysisRef.current = false;
-      // Clear per-session problem and analysis history so the next Go Live starts fresh.
-      currentProblemRef.current = "";
+      // PERSIST currentProblemRef across Go Live restarts so 6 picks up where he left off
+      // (e.g. user restarts Go Live after 2-minute timeout to continue on the same problem).
+      // Only clear last-analysis so Grok's frame-change comparison starts fresh each session.
       lastAnalysisRef.current = "";
     }
   }, [
@@ -1709,7 +1711,7 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   };
 
-  const closeCameraPreview = () => {
+  const closeCameraPreview = useCallback(() => {
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
@@ -1734,7 +1736,49 @@ const LiveAvatarSessionComponent: React.FC<{
       clearTimeout(processingTimeoutRef.current);
       processingTimeoutRef.current = null;
     }
-  };
+  }, [cameraStream, fallbackImagePreview, fallbackImage]);
+
+  // Continuous vision polling during Go Live.
+  // Fires every 1.5s; Grok's [SILENT] token keeps the avatar quiet when nothing meaningful has changed.
+  // Hard 2-minute cap: at the 2-minute mark, speak the timeout line and auto-deactivate Go Live.
+  useEffect(() => {
+    if (visionMode !== "streaming" || !isCameraActive) return;
+
+    const POLLING_INTERVAL_MS = 1500;
+    const MAX_SESSION_MS = 120_000;
+    const sessionStartTime = Date.now();
+
+    const intervalId = setInterval(() => {
+      const elapsed = Date.now() - sessionStartTime;
+      if (elapsed >= MAX_SESSION_MS) {
+        clearInterval(intervalId);
+        if (mode === "FULL") {
+          repeat(
+            "Sorry — we ran out of time on this one. If you need more time, restart Go Live and we'll pick it right back up.",
+          ).catch((err) => {
+            console.error("Error speaking timeout line:", err);
+          });
+        }
+        closeCameraPreview();
+        return;
+      }
+
+      // Skip if a previous vision call is still in flight — avoids overlapping requests.
+      if (isProcessingCameraQuestion) return;
+
+      processCameraQuestion("", true);
+    }, POLLING_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [
+    visionMode,
+    isCameraActive,
+    mode,
+    isProcessingCameraQuestion,
+    processCameraQuestion,
+    repeat,
+    closeCameraPreview,
+  ]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
