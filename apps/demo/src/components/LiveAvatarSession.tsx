@@ -1165,19 +1165,33 @@ const LiveAvatarSessionComponent: React.FC<{
         // Store the response to filter out avatar transcriptions later
         lastAvatarResponseRef.current = responseMessage.substring(0, 100); // Store first 100 chars for comparison
 
-        // Hide loading is handled by isProcessingCameraQuestion state
-
-        // Send the response to the avatar - use repeat() to speak directly without AI processing
-        // IMPORTANT: Use repeat() which speaks directly without AI processing to prevent monologuing
+        // Two paths (rewrote 2026-04-24 after vision-hallucination smoke test):
+        //
+        // IDLE POLL (userText empty) → inject the observation as CONTEXT via
+        // message(). The TALK brain now has real visual grounding but 6 does
+        // NOT automatically speak it. This is what stops 6 from monologuing
+        // a new observation every 1.5s, while still giving him facts to
+        // answer future questions against.
+        //
+        // USER-ASKED POLL (userText non-empty) → the user just asked
+        // something; speak the observation directly via repeat() so the
+        // answer lands within ~1s of the question. Skipping the TALK-brain
+        // round-trip keeps the response tight.
+        //
+        // OBJECT_NOT_VISIBLE is handled above before this branch — it always
+        // speaks via repeat() because it's a user-facing reframe ask.
         if (mode === "FULL") {
-          console.log(
-            "Sending response to avatar using repeat() - direct speech only",
-          );
-          // Use repeat() to make avatar speak ONLY this message, no AI processing = no monologue
-          await repeat(responseMessage);
+          const isUserAskedPoll = userText.length > 0;
+          if (isUserAskedPoll) {
+            console.log("Vision observation → speak (user asked).");
+            await repeat(responseMessage);
+          } else if (sessionRef.current) {
+            console.log("Vision observation → inject as context (idle poll).");
+            sessionRef.current.message(
+              `[VISION — current view] ${responseMessage}`,
+            );
+          }
           lastVisionResponseTimeRef.current = Date.now();
-          // CRITICAL: Do NOT send any additional messages to prevent continued talking
-          // Do NOT use sessionRef.current.message() here as it triggers AI processing and monologuing
         }
 
         // Reset the last processed question after a delay to allow the same question to be asked again later
