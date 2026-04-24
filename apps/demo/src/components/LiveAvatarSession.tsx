@@ -818,16 +818,14 @@ const LiveAvatarSessionComponent: React.FC<{
       const analysis = data.analysis;
       setImageAnalysis(analysis);
 
-      // Speak the analysis directly via repeat() so the avatar says what it saw.
-      // Previously used sessionRef.current.message() which logged as role=user
-      // (treating Gemini's output as USER input to LiveAvatar's TALK brain) and
-      // caused muting + confusion in multi-turn conversations.
-      if (mode === "FULL") {
-        try {
-          await repeat(analysis);
-        } catch (speakError) {
-          console.error("Error speaking image analysis:", speakError);
-        }
+      // Inject the analysis as context to the TALK brain so it can respond
+      // intelligently in the flow of the conversation (e.g. tying a snapshot of
+      // a lampshade back to the user's earlier "how do I get this off" question).
+      // REVERTED from plain repeat() on 2026-04-24 — repeat() made the avatar
+      // read Gemini's raw description without connecting it to the prior thread.
+      if (mode === "FULL" && sessionRef.current) {
+        const contextMessage = `[IMAGE CONTEXT — not spoken by user] Vision just processed an image the user captured. You are viewing it directly. Here is what's in it: ${analysis}. Respond naturally in first person as 6, tie what you see to the ongoing conversation (especially any problem the user was trying to solve), and ask intelligent follow-up questions about the object or problem. Respond briefly (1-2 sentences). Never say you can't see it or that you're relying on someone else's analysis — you can see it directly.`;
+        sessionRef.current.message(contextMessage);
       }
 
       setIsAnalyzingImage(false);
@@ -1973,15 +1971,14 @@ const LiveAvatarSessionComponent: React.FC<{
         setImageAnalysis(data.analysis);
         console.log("Image analyzed successfully");
 
-        // Speak the analysis directly via repeat() so the avatar says what it saw.
-        // Previously used sessionRef.current.message() which logged as role=user
-        // and confused the TALK brain.
-        if (mode === "FULL") {
-          try {
-            await repeat(data.analysis);
-          } catch (speakError) {
-            console.error("Error speaking image analysis:", speakError);
-          }
+        // Inject the analysis as context to the TALK brain so it can respond
+        // intelligently and tie the image to the ongoing conversation (e.g.
+        // a snapshot of a lampshade back to the user's "how do I get this off"
+        // question). REVERTED from plain repeat() on 2026-04-24 — repeat() made
+        // the avatar just read Gemini's description without conversational context.
+        if (mode === "FULL" && sessionRef.current) {
+          const contextMessage = `[IMAGE CONTEXT — not spoken by user] Vision just processed an image the user captured. You are viewing it directly. Here is what's in it: ${data.analysis}. Respond naturally in first person as 6, tie what you see to the ongoing conversation (especially any problem the user was trying to solve), and ask intelligent follow-up questions about the object or problem. Respond briefly (1-2 sentences). Never say you can't see it or that you're relying on someone else's analysis — you can see it directly.`;
+          sessionRef.current.message(contextMessage);
         }
       } catch (error) {
         console.error("Error analyzing image:", error);
