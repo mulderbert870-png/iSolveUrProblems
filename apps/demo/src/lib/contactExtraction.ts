@@ -59,6 +59,23 @@ const FULL_UTTERANCE_NOT_A_NAME = new Set(
     "not interested",
     "no thanks",
     "no thank you",
+    // Problem-solved / conversation-winddown phrases (added 2026-04-24)
+    "all set",
+    "all good",
+    "all done",
+    "all fine",
+    "all ready",
+    "good to go",
+    "gotta go",
+    "gotta run",
+    "heading out",
+    "on my way",
+    "got it",
+    "i got it",
+    "that's it",
+    "thats it",
+    "got you",
+    "gotcha",
   ].map((s) => s.toLowerCase()),
 );
 
@@ -204,6 +221,32 @@ const IM_STATUS_WORDS = new Set([
   "bad",
   "okay.",
   "fine.",
+]);
+
+/**
+ * Multi-word status phrases after "I'm" / "I am" that terminate or acknowledge
+ * but are not names. "I'm all set" must NOT be captured as the name "all set".
+ * (Added 2026-04-24 after Supabase captured "all set" as a name.)
+ */
+const IM_STATUS_PHRASES = new Set([
+  "all set",
+  "all good",
+  "all done",
+  "all fine",
+  "all ready",
+  "good to go",
+  "done here",
+  "pretty good",
+  "pretty tired",
+  "just fine",
+  "not sure",
+  "not okay",
+  "going to go",
+  "gonna go",
+  "gotta go",
+  "heading out",
+  "on my way",
+  "out of here",
 ]);
 
 /** Never treat as a person's name (whole value or word). */
@@ -368,10 +411,18 @@ function extractMyNameIsExplicit(text: string): string | null {
 }
 
 function isImOrItsStatusOnly(value: string): boolean {
-  const words = value.split(/\s+/).filter(Boolean);
-  if (words.length !== 1) return false;
-  const w = words[0].replace(/[.,!?]+$/, "").toLowerCase();
-  return IM_STATUS_WORDS.has(w);
+  const normalized = value.trim().toLowerCase().replace(/[.,!?]+$/g, "");
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    return IM_STATUS_WORDS.has(words[0]);
+  }
+  // Multi-word status phrases: "all set", "gonna go", etc.
+  if (IM_STATUS_PHRASES.has(normalized)) return true;
+  // "all X" where X is a status word
+  if (words.length === 2 && words[0] === "all" && IM_STATUS_WORDS.has(words[1])) {
+    return true;
+  }
+  return false;
 }
 
 function extractFullNameFromPatterns(text: string): string | null {
