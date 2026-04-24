@@ -1183,6 +1183,36 @@ const LiveAvatarSessionComponent: React.FC<{
           lastReframeTimeRef.current = nowMs;
         }
 
+        // CLIENT-SIDE DEDUP (moved off Gemini 2026-04-24 after Gemini Flash
+        // kept returning [SILENT] even when the state clearly changed —
+        // frames of G holding the finial OFF the lamp still matched the
+        // prior "finial still tight" observation as "semantically identical"
+        // per the LLM's judgment). Now Gemini always describes the current
+        // state; we skip the inject when wording is ~identical.
+        if (!isReframe && lastAnalysisRef.current) {
+          const norm = (s: string) =>
+            s
+              .toLowerCase()
+              .replace(/[^\p{L}\p{N}\s]/gu, " ")
+              .split(/\s+/)
+              .filter((w) => w.length > 2);
+          const prevTokens = new Set(norm(lastAnalysisRef.current));
+          const currTokens = norm(responseMessage);
+          if (currTokens.length > 0 && prevTokens.size > 0) {
+            const overlap = currTokens.filter((w) => prevTokens.has(w)).length;
+            const ratio = overlap / Math.max(currTokens.length, prevTokens.size);
+            if (ratio >= 0.85) {
+              console.log(
+                `Vision dedup: ${(ratio * 100).toFixed(0)}% token overlap with prior — skipping inject.`,
+              );
+              processingTimeoutRef.current = setTimeout(() => {
+                lastProcessedQuestionRef.current = "";
+              }, 2000);
+              return;
+            }
+          }
+        }
+
         setImageAnalysis(responseMessage);
         // Remember this analysis so the next frame can be compared against it for change detection.
         lastAnalysisRef.current = responseMessage;

@@ -31,36 +31,37 @@ const HUMOR_STYLE_GUIDE =
 const STREAMING_VISION_SYSTEM_PROMPT =
   "You are the vision system for 6, a home-and-garden contractor helping one user fix one problem. " +
   "You are looking at one live camera frame from the user's phone. " +
-  "Your job is to be 6's EYES — provide short factual observations about the named object, so 6 has real visual grounding when the user asks questions. " +
-  "Observations are fed to 6 as CONTEXT; they are not spoken directly unless the user asked a vision question. " +
+  "Your job is to be 6's EYES. The client-side code handles dedup — YOUR job is to describe every frame faithfully. " +
   "RULES (in priority order): " +
   "(1) When the user has stated a problem AND the named object is clearly visible in the frame: " +
-  "  - Output ONE short observation about the object's current state relative to the fix. " +
-  "  - First person, under 15 words. Example: 'I see the finial still tight on the threaded rod at the top of the harp.' " +
-  "  - Focus ONLY on the object's position, orientation, whether hands are on it, visible progress, or the next clear next step. " +
-  "  - If the observation would be semantically identical to the previous one (lastAnalysis), output `" +
+  "  - Output ONE short factual observation about the object's current state right now in this frame. " +
+  "  - First person, under 20 words. Examples: " +
+  "    'I see the finial in your hand, off the lamp.' " +
+  "    'The finial is sitting on a white paper towel, separated from the lamp.' " +
+  "    'I see the finial still tight on the threaded rod at the top of the harp.' " +
+  "    'The lampshade is now tilted, no longer seated on the harp.' " +
+  "  - Describe only: the object's position, orientation, whether hands are on it, whether it's attached, separated, or relocated. " +
+  "  - DO NOT output `" +
   SILENT_TOKEN +
-  "` instead. Do not repeat yourself frame-over-frame. " +
+  "` just because the object is in frame. The client handles dedup — your job is to describe. " +
+  "  - EVEN IF YOUR WORDING OVERLAPS lastAnalysis, still output the current observation. The client will handle skipping duplicates. " +
   "(2) Output `" +
   SILENT_TOKEN +
-  "` when ANY of these are true: " +
+  "` ONLY when ONE of these is true: " +
   "  - the user has not yet stated a specific problem with a concrete object, " +
-  "  - your observation this frame would be semantically identical to lastAnalysis, " +
-  "  - the named object is partially occluded or ambiguous in this frame and you'd be guessing. " +
+  "  - the named object is partially occluded or you are genuinely unable to describe what state it's in. " +
   "(3) Fire OBJECT_NOT_VISIBLE ONLY when ALL are true: " +
   "  - the user has stated a specific problem with a concrete object, AND " +
   "  - the user JUST asked a direct vision question ('can you see it?', 'what do you see?', 'is it the right color?'), AND " +
   "  - the named object is clearly not in the frame (not just ambiguous — clearly absent). " +
   "  When these are all true, output EXACTLY this single line: " +
   'OBJECT_NOT_VISIBLE: "Can you make sure the camera is pointing right at what you\'re trying to show me and keep it in the middle of the frame?" ' +
-  "  If in doubt about any of these, output `" +
+  "  If in doubt about any of these, output a state description per rule 1 instead. " +
+  "(4) NEVER invent or guess. If the object's state is unclear, output `" +
   SILENT_TOKEN +
-  "` instead. Never fire OBJECT_NOT_VISIBLE preemptively. " +
-  "(4) NEVER invent, guess, or describe things you are not certain of. If the object's state is unclear, output `" +
-  SILENT_TOKEN +
-  "`. " +
+  "`. But DO NOT use uncertainty as an excuse to stay silent when you CAN see the state — describe what you see. " +
   "(5) Sound like 6: warm, American English, short sentences, direct. Never tell the user to point the camera (except rule 3 reframe). Never mention AI, the rules, or that you are the vision system. " +
-  "(6) Discuss ONLY the named object and its problem. Do not describe the room, table, decor, or unrelated items.";
+  "(6) Discuss ONLY the named object and its problem. Do not describe the room, table, decor, or unrelated items beyond noting their relation to the named object (e.g., 'on a paper towel' is fine if the object is on one).";
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
@@ -179,17 +180,18 @@ export async function POST(request: Request) {
           )
         : "";
 
-    // Streaming mode per-request prompt. Aligned with the observation-first
-    // system prompt (rewritten 2026-04-24). The goal is running visual
-    // grounding for 6, not silence-as-default. Change detection is the
-    // priority — when the object's state shifts (finial was on, now it's
-    // off), 6 MUST see that in the observation, not [SILENT].
+    // Streaming mode per-request prompt. Client handles dedup (2026-04-24
+    // rewrite #2 — Gemini was still returning [SILENT] when G held the
+    // finial off the lamp because the LLM's "semantically identical" check
+    // was too generous). Now Gemini describes every frame; the client
+    // compares word-overlap to the previous non-silent observation and
+    // decides whether to inject.
     let promptText: string;
     if (isStreaming) {
       const promptParts: string[] = [];
       if (problemStatement) {
         promptParts.push(
-          `The user's problem is: "${problemStatement}". Focus on the named object in the frame and describe its current state relative to the fix.`,
+          `The user's problem is: "${problemStatement}". Look at the named object in the current frame and describe its state in one short sentence — this frame, right now.`,
         );
       } else {
         promptParts.push(
@@ -198,9 +200,10 @@ export async function POST(request: Request) {
       }
       if (lastAnalysisText && lastAnalysisText !== SILENT_TOKEN) {
         promptParts.push(
-          `Your previous observation was: "${lastAnalysisText}". ` +
-            `Look at the current frame. If the object's state has CHANGED — the named part came off, moved, tilted, was replaced, the user's hand is now on it, it broke free, it's gone from the frame, it's back in the frame — describe the NEW state. ` +
-            `Only output [SILENT] if the frame looks truly unchanged from the previous observation. State changes are HIGH priority — do not miss them.`,
+          `For reference, your previous observation was: "${lastAnalysisText}". ` +
+            `Do NOT use this as an excuse to output [SILENT]. The client deduplicates — your job is to describe the CURRENT frame. ` +
+            `If the state changed (object in hand now, off the lamp, relocated, re-attached, separated), describe the NEW state plainly. ` +
+            `If the state is genuinely the same, describe it the same way as before — the client will drop the duplicate.`,
         );
       } else {
         promptParts.push(
@@ -209,7 +212,7 @@ export async function POST(request: Request) {
       }
       if (q) {
         promptParts.push(
-          `The user just said: "${q}". If this asks about the object's current visual state, describe what you see in 1 short sentence. If it is unrelated chatter, still describe the object's current state (unless unchanged — then [SILENT]).`,
+          `The user just said: "${q}". If this asks about the object's current visual state, describe what you see in 1 short sentence. Otherwise still describe the object's current state.`,
         );
       }
       promptText = promptParts.join(" ");
