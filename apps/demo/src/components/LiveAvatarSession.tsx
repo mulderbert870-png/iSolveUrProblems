@@ -1116,13 +1116,17 @@ const LiveAvatarSessionComponent: React.FC<{
             longSinceLastFiller &&
             !isVideoBusy()
           ) {
+            // Claim the cooldown BEFORE the await so a second in-flight poll
+            // that landed at nearly the same time won't ALSO fire a filler
+            // (observed 2026-04-24: two fillers fired 2s apart because both
+            // polls saw stale timestamps before either repeat() completed).
+            lastFillerTimeRef.current = nowMs;
+            lastVisionResponseTimeRef.current = nowMs;
             const line =
               GO_LIVE_FILLERS[fillerIndexRef.current % GO_LIVE_FILLERS.length];
             fillerIndexRef.current += 1;
             try {
               await repeat(line);
-              lastFillerTimeRef.current = nowMs;
-              lastVisionResponseTimeRef.current = nowMs;
             } catch (err) {
               console.error("Error speaking Go Live filler:", err);
             }
