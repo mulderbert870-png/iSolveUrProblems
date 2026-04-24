@@ -1706,16 +1706,14 @@ const LiveAvatarSessionComponent: React.FC<{
 
         setVideoAnalysis(data.analysis);
 
-        if (mode === "FULL") {
-          // Speak the analysis directly via repeat() so the avatar says what it saw.
-          // Using repeat() keeps this as avatar speech (role=assistant); earlier this
-          // used sessionRef.current.message() which logged it as USER input and
-          // confused the TALK brain.
-          try {
-            await repeat(data.analysis);
-          } catch (speakError) {
-            console.error("Error speaking video analysis:", speakError);
-          }
+        if (mode === "FULL" && sessionRef.current) {
+          // Inject the video analysis as context so the TALK brain can respond
+          // in the flow of the conversation (tying the video back to the problem
+          // the user was trying to solve). Previously used repeat() which made
+          // the avatar read Gemini's flowery description aloud without tying
+          // it to what the user had been asking about. (Fixed 2026-04-24.)
+          const contextMessage = `[VIDEO CONTEXT — not spoken by user] Vision just processed a video the user recorded. You are viewing it directly. Here is what happens in it: ${data.analysis}. Respond naturally in first person as 6, tie what you saw to the ongoing conversation (especially any problem the user was trying to solve), and ask intelligent follow-up questions about the object or problem. Respond briefly (1-2 sentences). Never say you can't see it or that you're relying on someone else's analysis — you can see it directly.`;
+          sessionRef.current.message(contextMessage);
         }
 
         setIsAnalyzingVideo(false);
@@ -1729,6 +1727,28 @@ const LiveAvatarSessionComponent: React.FC<{
     mediaRecorderRef.current = mediaRecorder;
     mediaRecorder.start();
     setIsRecording(true);
+
+    // Auto-stop recording at 15 seconds so users don't have to remember to hit Stop
+    // and so analyze-video has a bounded input (Gemini timeout risk on very long clips).
+    setTimeout(() => {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        console.log("Video: auto-stopping at 15s cap.");
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+        // handleStopRecording handles mic restart — mirror the relevant cleanup here.
+        if (mode === "FULL") {
+          setTimeout(() => {
+            startListening();
+            if (isActive && isMuted && !wasMutedBeforeRecordingRef.current) {
+              unmute();
+            }
+          }, 500);
+        }
+      }
+    }, 15000);
 
     if (mode === "FULL") {
       stopListening();

@@ -341,8 +341,10 @@ export const LiveAvatarContextProvider = ({
     };
   }, [sessionState, sessionRef]);
 
-  // Terminate session after 1 minute of no activity
-  const INACTIVITY_TIMEOUT_MS = 60 * 1000;
+  // Terminate session after 3 minutes of no activity (was 1 minute — too
+  // aggressive, was timing out active sessions where user paused to look at
+  // something. Extended 2026-04-24 after G reported session timeouts mid-convo).
+  const INACTIVITY_TIMEOUT_MS = 180 * 1000;
   const INACTIVITY_CHECK_MS = 15 * 1000;
   useEffect(() => {
     if (sessionState !== SessionState.CONNECTED) return;
