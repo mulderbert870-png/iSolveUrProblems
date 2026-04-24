@@ -1101,9 +1101,9 @@ const LiveAvatarSessionComponent: React.FC<{
           const nowMs = Date.now();
           const idlePoll = userText.length === 0;
           const longSinceLastSpeech =
-            nowMs - lastVisionResponseTimeRef.current > 4000;
+            nowMs - lastVisionResponseTimeRef.current > 6000;
           const longSinceLastFiller =
-            nowMs - lastFillerTimeRef.current > 4000;
+            nowMs - lastFillerTimeRef.current > 6000;
           if (
             mode === "FULL" &&
             idlePoll &&
