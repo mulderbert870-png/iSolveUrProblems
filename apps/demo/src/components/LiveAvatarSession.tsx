@@ -820,6 +820,12 @@ const LiveAvatarSessionComponent: React.FC<{
     if (!isCameraActive || visionMode !== "snapshot") {
       return;
     }
+    // Silence 6 the moment the shutter fires.
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
+    }
 
     // Hoisted so the catch block can also store the frame for failure audit.
     let frameFile: File | null = null;
@@ -1738,6 +1744,13 @@ const LiveAvatarSessionComponent: React.FC<{
   }, [loadFallbackImage]);
 
   const handleCameraClick = async () => {
+    // If 6 is mid-sentence, cut him off. User wants to show us something —
+    // talking over that is a UX fail. (Added 2026-04-24 per G.)
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
+    }
     if (visionMode === "snapshot") {
       // Stop camera if already in snapshot mode
       if (cameraStream) {
@@ -1853,17 +1866,29 @@ const LiveAvatarSessionComponent: React.FC<{
   };
 
   const handleGalleryClick = useCallback(async () => {
+    // Interrupt 6 if he's mid-speech — user is showing us something.
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
+    }
     await unlockAudio();
     if (fileInputRef.current) {
       fileInputRef.current.setAttribute("accept", "image/*,video/*");
       fileInputRef.current.click();
     }
-  }, [unlockAudio]);
+  }, [unlockAudio, sessionRef]);
 
   // Record video from the live camera preview (snapshot mode only)
   const handleStartRecording = useCallback(() => {
     if (visionMode !== "snapshot" || !cameraStream) {
       return;
+    }
+    // Interrupt 6 mid-sentence — user is about to record, don't talk over it.
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
     }
     const stream = cameraStream;
 
@@ -2435,6 +2460,17 @@ const LiveAvatarSessionComponent: React.FC<{
               : "h-full w-full object-contain"
           }`}
         />
+
+        {/* Loading overlay — persists until the avatar's video stream is
+            actually ready (isStreamReady). Before 2026-04-24 the parent
+            hid the Loading... spinner the moment a session token came
+            back, but the HeyGen stream still needed a few seconds to
+            paint, so users briefly saw a black screen. */}
+        {!isStreamReady && !isCameraActive && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black">
+            <div className="text-inset text-xl text-white/90">Loading...</div>
+          </div>
+        )}
 
         {mode === "FULL" && (
           <>
