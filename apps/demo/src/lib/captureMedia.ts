@@ -32,9 +32,15 @@ export async function captureMedia(args: CaptureMediaArgs): Promise<void> {
     if (args.problem) form.append("problem", args.problem);
     if (args.error) form.append("error", args.error);
 
+    // keepalive: true so the upload completes even if the user closes the tab
+    // right after the action that triggered it. Browsers guarantee keepalive
+    // requests up to 64KB. Most images/frames are under this; larger videos
+    // may get truncated on fast close — direct-to-storage upload is the
+    // longer-term fix (tracked as a separate follow-up).
     const res = await fetch("/api/media/capture", {
       method: "POST",
       body: form,
+      keepalive: true,
     });
     if (!res.ok) {
       // Don't throw — media capture is diagnostic, it must never block the

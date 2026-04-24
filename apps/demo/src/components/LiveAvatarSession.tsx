@@ -78,6 +78,19 @@ const LiveAvatarSessionComponent: React.FC<{
   const isDebugProcessingRef = useRef<boolean>(false);
   const lastAvatarResponseRef = useRef<string>("");
   const lastVisionResponseTimeRef = useRef<number>(0);
+  // Rotating conversational filler during Go Live silent polling. Without this
+  // the avatar appears frozen whenever Gemini returns [SILENT] — the user
+  // shows the object for 10+ seconds and hears nothing back. (Added 2026-04-24
+  // per G's "he's silent and people will click off" feedback.)
+  const lastFillerTimeRef = useRef<number>(0);
+  const fillerIndexRef = useRef<number>(0);
+  const GO_LIVE_FILLERS: string[] = [
+    "Hang tight, I'm getting eyes on this.",
+    "Give me a sec to see what we're working with.",
+    "Still taking this in — keep it steady.",
+    "Almost got it — show me a little more.",
+    "Alright, I'm watching. Walk me through what you're trying.",
+  ];
   // Debounces the "Oops!" error message so a string of failed vision calls
   // doesn't make the avatar say "Oops" 4+ times in 15 seconds (observed bug).
   const lastOopsTimeRef = useRef<number>(0);
@@ -598,11 +611,30 @@ const LiveAvatarSessionComponent: React.FC<{
     // Inject a state signal into the TALK conversation so the avatar's LLM
     // knows vision is now on. Prevents the "6 doesn't know Go Live state" bug
     // where users said "I hit Go Live" but 6 kept asking them to pick a button.
+    //
+    // Then FORCE-SPEAK a short opener via repeat() so 6 engages immediately.
+    // message() alone was unreliable — users saw 30+ seconds of silence after
+    // Go Live activated (observed 2026-04-24). repeat() guarantees audible
+    // engagement. The opener is templated on whether a problem was already
+    // stated so it lands appropriately.
     try {
       if (mode === "FULL" && sessionRef.current) {
         sessionRef.current.message(
           "[GO LIVE IS NOW ACTIVE — the camera feed is live and vision reports are coming in]",
         );
+        const hasProblem = !!currentProblemRef.current;
+        const opener = hasProblem
+          ? "OK — I can see you now. Show me where you're stuck."
+          : "Camera's live — show me what we're looking at.";
+        // Small delay so the state signal is registered before we force speech.
+        setTimeout(() => {
+          try {
+            sessionRef.current?.repeat(opener);
+            lastVisionResponseTimeRef.current = Date.now();
+          } catch (err) {
+            console.error("Error speaking Go Live opener:", err);
+          }
+        }, 300);
       }
     } catch (signalError) {
       console.error("Error injecting Go Live ON signal:", signalError);
@@ -1059,11 +1091,37 @@ const LiveAvatarSessionComponent: React.FC<{
           problem: currentProblemRef.current || null,
         });
 
-        // Silent-first: Grok outputs [SILENT] when nothing meaningful has changed.
-        // Keep the avatar quiet entirely — no repeat(), no state churn.
+        // Silent-first: Gemini outputs [SILENT] when nothing meaningful has changed.
+        // Normally we keep 6 quiet — but if [SILENT] comes back on an IDLE poll
+        // (empty user question) AND 6 hasn't said anything in ~4 seconds, fire
+        // a short conversational filler so the avatar doesn't look frozen.
         const trimmed = analysis.trim();
         if (trimmed === "[SILENT]" || trimmed.startsWith("[SILENT]")) {
           console.log("Vision: [SILENT] — avatar staying quiet.");
+          const nowMs = Date.now();
+          const idlePoll = userText.length === 0;
+          const longSinceLastSpeech =
+            nowMs - lastVisionResponseTimeRef.current > 4000;
+          const longSinceLastFiller =
+            nowMs - lastFillerTimeRef.current > 4000;
+          if (
+            mode === "FULL" &&
+            idlePoll &&
+            longSinceLastSpeech &&
+            longSinceLastFiller &&
+            !isVideoBusy()
+          ) {
+            const line =
+              GO_LIVE_FILLERS[fillerIndexRef.current % GO_LIVE_FILLERS.length];
+            fillerIndexRef.current += 1;
+            try {
+              await repeat(line);
+              lastFillerTimeRef.current = nowMs;
+              lastVisionResponseTimeRef.current = nowMs;
+            } catch (err) {
+              console.error("Error speaking Go Live filler:", err);
+            }
+          }
           // Reset the last processed question so the user can ask again if they want.
           processingTimeoutRef.current = setTimeout(() => {
             lastProcessedQuestionRef.current = "";
@@ -1138,18 +1196,10 @@ const LiveAvatarSessionComponent: React.FC<{
             error: error instanceof Error ? error.message : String(error),
           });
         }
-        // Debounced: only fire one "Oops" every 15 seconds. Without this, 1.5s
-        // polling with repeated failures was making the avatar say "Oops" 4+
-        // times in under a minute (observed 2026-04-23).
-        if (mode === "FULL") {
-          const oopsNow = Date.now();
-          if (oopsNow - lastOopsTimeRef.current > 15000) {
-            lastOopsTimeRef.current = oopsNow;
-            await repeat(
-              "Oops! I had a little trouble analyzing what I'm seeing right now. Could you try asking again?",
-            );
-          }
-        }
+        // Polling runs every 1.5s; a transient error resolves within 1-2 polls.
+        // Speaking "Oops" at the user for a transient cold-start is just noise —
+        // swallow silently and let the next poll try again. (2026-04-24: removed
+        // the user-visible Oops during Go Live per G's "no oops on retry" ask.)
         // Reset after error
         processingTimeoutRef.current = setTimeout(() => {
           lastProcessedQuestionRef.current = "";
