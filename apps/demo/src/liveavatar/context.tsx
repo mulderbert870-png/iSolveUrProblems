@@ -16,6 +16,7 @@ import {
   AgentEventsEnum,
 } from "@heygen/liveavatar-web-sdk";
 import { LiveAvatarSessionMessage } from "./types";
+import { isVideoBusy } from "./videoRecordingState";
 
 type LiveAvatarContextProps = {
   sessionRef: React.RefObject<LiveAvatarSession>;
@@ -298,6 +299,11 @@ export const LiveAvatarContextProvider = ({
           return;
         }
         if (sessionRef.current?.state !== SessionState.CONNECTED) {
+          return;
+        }
+        // Don't inject silence signals while a video is being recorded or
+        // analyzed — user is busy with the capture and 6 should stay quiet.
+        if (isVideoBusy()) {
           return;
         }
         const signal = `[USER HAS BEEN SILENT FOR ${delaySeconds} SECONDS]`;

@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
+import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
 import { Radio, Camera, Images, Video, Play, Square } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
@@ -1704,7 +1705,9 @@ const LiveAvatarSessionComponent: React.FC<{
         const videoFile = new File([blob], "recorded-video.webm", {
           type: "video/webm",
         });
-        const frames = await extractVideoFrames(videoFile, 5);
+        // 10 frames over a 15s video = 1.5s granularity, enough to catch quick
+        // actions like a finial coming off. Was 5 frames which missed fast moments.
+        const frames = await extractVideoFrames(videoFile, 10);
 
         // Retry once on 5xx — Vercel cold starts and Gemini transient errors.
         let response = await fetch("/api/analyze-video", {
@@ -1745,16 +1748,21 @@ const LiveAvatarSessionComponent: React.FC<{
         }
 
         setIsAnalyzingVideo(false);
+        setVideoBusy(false);
       } catch (error) {
         console.error("Error analyzing video:", error);
         alert("Failed to analyze video. Please try again.");
         setIsAnalyzingVideo(false);
+        setVideoBusy(false);
       }
     };
 
     mediaRecorderRef.current = mediaRecorder;
     mediaRecorder.start();
     setIsRecording(true);
+    // Block silence re-engage signals + any avatar speech while recording.
+    // Flag stays on through analysis and is cleared in the onstop handler below.
+    setVideoBusy(true);
 
     // Auto-stop recording at 15 seconds so users don't have to remember to hit Stop
     // and so analyze-video has a bounded input (Gemini timeout risk on very long clips).
@@ -1897,6 +1905,9 @@ const LiveAvatarSessionComponent: React.FC<{
 
       // Skip if a previous vision call is still in flight — avoids overlapping requests.
       if (isProcessingCameraQuestion) return;
+
+      // Skip if video recording/analysis is busy — don't compete with it.
+      if (isVideoBusy()) return;
 
       processCameraQuestion("", true);
     }, POLLING_INTERVAL_MS);

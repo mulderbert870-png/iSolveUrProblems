@@ -76,7 +76,14 @@ export async function POST(request: Request) {
     // Build Gemini content parts — one text prompt + N frames as inline_data.
     const parts: GeminiPart[] = [
       {
-        text: "Describe what is happening across these video frames in 2-3 short sentences. Make it funny and vivid with one punchy joke, but include at least one practical observation that could help solve a real problem. Do not tell the user to point a camera or offer to look—you already see these frames.",
+        text:
+          "These frames are in time order — first frame to last. Compare the FIRST frame to the LAST frame and describe what CHANGED between them (that's the action the user is showing you). " +
+          "Focus on the outcome: did an object come off, come apart, move, break, get attached, get cleaned, get fixed? " +
+          "If the user was trying to remove or detach something, confirm whether the last frame shows it REMOVED. " +
+          "If the user was trying to attach or fix something, confirm whether the last frame shows it DONE. " +
+          "Do NOT describe the starting state in detail. Focus on what changed and what the user accomplished (or didn't) by the end. " +
+          "Respond in 1-2 short sentences, first person, warm and direct. No stand-up comedy or extended jokes. " +
+          "Do not tell the user to point a camera or offer to look — you already see these frames.",
       },
     ];
 
