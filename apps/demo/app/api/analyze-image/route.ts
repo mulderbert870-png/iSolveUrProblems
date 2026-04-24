@@ -179,37 +179,39 @@ export async function POST(request: Request) {
           )
         : "";
 
-    // Build the prompt: streaming mode = problem-locked + silent-first.
-    // Non-streaming (snapshot/gallery/video) = engage-with-image with light humor (original behavior).
+    // Streaming mode per-request prompt. Aligned with the observation-first
+    // system prompt (rewritten 2026-04-24). The goal is running visual
+    // grounding for 6, not silence-as-default. Change detection is the
+    // priority — when the object's state shifts (finial was on, now it's
+    // off), 6 MUST see that in the observation, not [SILENT].
     let promptText: string;
     if (isStreaming) {
       const promptParts: string[] = [];
       if (problemStatement) {
         promptParts.push(
-          `The user's problem is: "${problemStatement}". This is the ONLY thing you care about. Ignore everything else in the frame.`,
+          `The user's problem is: "${problemStatement}". Focus on the named object in the frame and describe its current state relative to the fix.`,
         );
       } else {
         promptParts.push(
-          "The user has not yet stated a specific problem. If you see them holding or pointing at a specific object, focus on that object only. Otherwise output the silent token.",
+          "The user has not yet stated a specific problem. Output [SILENT] and wait.",
         );
       }
       if (lastAnalysisText && lastAnalysisText !== SILENT_TOKEN) {
         promptParts.push(
-          `Your previous observation was: "${lastAnalysisText}". Compare the current frame to that. If nothing meaningful to the fix has changed, output ${SILENT_TOKEN}.`,
+          `Your previous observation was: "${lastAnalysisText}". ` +
+            `Look at the current frame. If the object's state has CHANGED — the named part came off, moved, tilted, was replaced, the user's hand is now on it, it broke free, it's gone from the frame, it's back in the frame — describe the NEW state. ` +
+            `Only output [SILENT] if the frame looks truly unchanged from the previous observation. State changes are HIGH priority — do not miss them.`,
+        );
+      } else {
+        promptParts.push(
+          `This is the first frame with a problem stated. Describe the object's current state in one short sentence.`,
         );
       }
       if (q) {
         promptParts.push(
-          `The user just said: "${q}". If this is a question about the problem, answer it in 1-2 short sentences as 6. If it is unrelated chatter, output ${SILENT_TOKEN}.`,
-        );
-      } else {
-        promptParts.push(
-          `No new question from the user. Only speak if the object's state has visibly changed in a way that matters to the fix (they tried something, something broke free, something is now clearly visible). Otherwise output ${SILENT_TOKEN}.`,
+          `The user just said: "${q}". If this asks about the object's current visual state, describe what you see in 1 short sentence. If it is unrelated chatter, still describe the object's current state (unless unchanged — then [SILENT]).`,
         );
       }
-      promptParts.push(
-        `Remember: output ${SILENT_TOKEN} by default. Only break silence when there is a real reason tied to the fix.`,
-      );
       promptText = promptParts.join(" ");
     } else if (q) {
       // Snapshot/Gallery/Video: answer the user's question with light dry humor and practicality.

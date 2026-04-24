@@ -83,6 +83,11 @@ const LiveAvatarSessionComponent: React.FC<{
   // shows the object for 10+ seconds and hears nothing back. (Added 2026-04-24
   // per G's "he's silent and people will click off" feedback.)
   const lastFillerTimeRef = useRef<number>(0);
+  // Synchronous mirror of (isCameraActive && visionMode === "streaming"). State
+  // props are stale inside in-flight callbacks due to closure capture; this
+  // ref lets Stop immediately halt pending speech. (Added 2026-04-24 after
+  // fillers fired after the user hit the main Stop button.)
+  const goLiveActiveRef = useRef<boolean>(false);
   const fillerIndexRef = useRef<number>(0);
   const GO_LIVE_FILLERS: string[] = [
     "Hang tight, I'm getting eyes on this.",
@@ -233,7 +238,17 @@ const LiveAvatarSessionComponent: React.FC<{
   }, [sessionState, sessionRef]);
 
   // Function to reset to home screen (close camera, clear uploads, but keep session)
+  // Keep goLiveActiveRef in sync with Go Live state so in-flight async work
+  // sees the current value synchronously (closures over state are stale).
+  useEffect(() => {
+    goLiveActiveRef.current =
+      isCameraActive && visionMode === "streaming";
+  }, [isCameraActive, visionMode]);
+
   const resetToHomeScreen = useCallback(() => {
+    // Immediately halt in-flight Go Live speech/filler work.
+    goLiveActiveRef.current = false;
+
     // Close camera if active
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
@@ -1114,7 +1129,8 @@ const LiveAvatarSessionComponent: React.FC<{
             idlePoll &&
             longSinceLastSpeech &&
             longSinceLastFiller &&
-            !isVideoBusy()
+            !isVideoBusy() &&
+            goLiveActiveRef.current
           ) {
             // Claim the cooldown BEFORE the await so a second in-flight poll
             // that landed at nearly the same time won't ALSO fire a filler
@@ -1188,7 +1204,10 @@ const LiveAvatarSessionComponent: React.FC<{
         //
         // OBJECT_NOT_VISIBLE is handled above before this branch — it always
         // speaks via repeat() because it's a user-facing reframe ask.
-        if (mode === "FULL") {
+        // Skip speech entirely if Go Live has already been stopped by the
+        // user (Stop button, camera close, etc.) — otherwise in-flight
+        // observations speak after the screen has changed.
+        if (mode === "FULL" && goLiveActiveRef.current) {
           const lower = userText.toLowerCase();
           const hasVisionIntent =
             lower.length > 0 &&
