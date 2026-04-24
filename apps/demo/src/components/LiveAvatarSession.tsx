@@ -83,6 +83,14 @@ const LiveAvatarSessionComponent: React.FC<{
   // shows the object for 10+ seconds and hears nothing back. (Added 2026-04-24
   // per G's "he's silent and people will click off" feedback.)
   const lastFillerTimeRef = useRef<number>(0);
+  // Tracks the last time we actually injected a VISION observation into the
+  // TALK brain context. If the scene is genuinely unchanged but the last
+  // inject was >25s ago, we re-inject so the TALK brain stays grounded on
+  // the current state instead of losing the thread. (Added 2026-04-24 after
+  // 6 said "I don't see anything" while Gemini had been reporting the
+  // lampshade for 70+ seconds but every frame was deduped.)
+  const lastVisionInjectTimeRef = useRef<number>(0);
+  const VISION_REINJECT_STALE_MS = 25_000;
   // Synchronous mirror of (isCameraActive && visionMode === "streaming"). State
   // props are stale inside in-flight callbacks due to closure capture; this
   // ref lets Stop immediately halt pending speech. (Added 2026-04-24 after
@@ -1183,12 +1191,29 @@ const LiveAvatarSessionComponent: React.FC<{
           lastReframeTimeRef.current = nowMs;
         }
 
-        // CLIENT-SIDE DEDUP (moved off Gemini 2026-04-24 after Gemini Flash
-        // kept returning [SILENT] even when the state clearly changed —
-        // frames of G holding the finial OFF the lamp still matched the
-        // prior "finial still tight" observation as "semantically identical"
-        // per the LLM's judgment). Now Gemini always describes the current
-        // state; we skip the inject when wording is ~identical.
+        // CLIENT-SIDE DEDUP — but with escape valves so 6 stays grounded.
+        //
+        // 1. Vision-intent utterance (user just asked "what do you see?"):
+        //    ALWAYS speak the observation, even if duplicate. Skipping it
+        //    makes 6 appear to not know, which is exactly the bug the
+        //    vision system is meant to prevent. (Fixed 2026-04-24 after
+        //    6 said "I don't see anything" with 30 consecutive duplicate
+        //    observations deduped away.)
+        //
+        // 2. Duplicate observation but last inject was stale (>25s ago):
+        //    re-inject as context so the TALK brain doesn't lose the
+        //    thread. The observation hasn't changed, but we need to keep
+        //    it fresh in 6's memory.
+        //
+        // 3. Duplicate observation AND last inject was recent: skip.
+        const userLower = userText.toLowerCase();
+        const userHasVisionIntent =
+          userLower.length > 0 &&
+          /\b(see|look|looking|view|visible|notice|spot|describe|show|find|what('?s| is| are| do you)|is it (off|on|loose|tight|stuck|done|working)|did (i|it|we|that)|can you (see|see it|tell))/.test(
+            userLower,
+          );
+
+        let isDuplicate = false;
         if (!isReframe && lastAnalysisRef.current) {
           const norm = (s: string) =>
             s
@@ -1202,20 +1227,32 @@ const LiveAvatarSessionComponent: React.FC<{
             const overlap = currTokens.filter((w) => prevTokens.has(w)).length;
             const ratio = overlap / Math.max(currTokens.length, prevTokens.size);
             if (ratio >= 0.85) {
+              isDuplicate = true;
+              const injectAgeMs =
+                Date.now() - lastVisionInjectTimeRef.current;
+              const stale = injectAgeMs > VISION_REINJECT_STALE_MS;
+              if (!userHasVisionIntent && !stale) {
+                console.log(
+                  `Vision dedup: ${(ratio * 100).toFixed(0)}% overlap, inject age ${Math.round(injectAgeMs / 1000)}s — skipping.`,
+                );
+                processingTimeoutRef.current = setTimeout(() => {
+                  lastProcessedQuestionRef.current = "";
+                }, 2000);
+                return;
+              }
               console.log(
-                `Vision dedup: ${(ratio * 100).toFixed(0)}% token overlap with prior — skipping inject.`,
+                `Vision dedup bypassed: overlap ${(ratio * 100).toFixed(0)}%, age ${Math.round(injectAgeMs / 1000)}s, visionIntent=${userHasVisionIntent}, stale=${stale}`,
               );
-              processingTimeoutRef.current = setTimeout(() => {
-                lastProcessedQuestionRef.current = "";
-              }, 2000);
-              return;
             }
           }
         }
 
         setImageAnalysis(responseMessage);
         // Remember this analysis so the next frame can be compared against it for change detection.
-        lastAnalysisRef.current = responseMessage;
+        // Only update on non-duplicates so dedup still works across stale re-injects.
+        if (!isDuplicate) {
+          lastAnalysisRef.current = responseMessage;
+        }
 
         // Store the response to filter out avatar transcriptions later
         lastAvatarResponseRef.current = responseMessage.substring(0, 100); // Store first 100 chars for comparison
@@ -1238,13 +1275,7 @@ const LiveAvatarSessionComponent: React.FC<{
         // user (Stop button, camera close, etc.) — otherwise in-flight
         // observations speak after the screen has changed.
         if (mode === "FULL" && goLiveActiveRef.current) {
-          const lower = userText.toLowerCase();
-          const hasVisionIntent =
-            lower.length > 0 &&
-            /\b(see|look|looking|view|visible|notice|spot|describe|show|find|what('?s| is| are| do you)|is it (off|on|loose|tight|stuck|done|working)|did (i|it|we|that)|can you (see|see it|tell))/.test(
-              lower,
-            );
-          if (hasVisionIntent) {
+          if (userHasVisionIntent) {
             console.log("Vision observation → speak (vision intent detected).");
             await repeat(responseMessage);
           } else if (sessionRef.current) {
@@ -1256,6 +1287,7 @@ const LiveAvatarSessionComponent: React.FC<{
             );
           }
           lastVisionResponseTimeRef.current = Date.now();
+          lastVisionInjectTimeRef.current = Date.now();
         }
 
         // Reset the last processed question after a delay to allow the same question to be asked again later
@@ -2081,7 +2113,7 @@ const LiveAvatarSessionComponent: React.FC<{
     if (visionMode !== "streaming" || !isCameraActive) return;
 
     const POLLING_INTERVAL_MS = 1500;
-    const MAX_SESSION_MS = 120_000;
+    const MAX_SESSION_MS = 300_000; // 5 min — bumped from 2 min per G 2026-04-24
     const sessionStartTime = Date.now();
 
     const intervalId = setInterval(() => {
