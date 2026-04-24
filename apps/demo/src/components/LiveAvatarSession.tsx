@@ -1034,9 +1034,9 @@ const LiveAvatarSessionComponent: React.FC<{
 
         if (isReframe) {
           const nowMs = Date.now();
-          if (nowMs - lastReframeTimeRef.current < 12000) {
+          if (nowMs - lastReframeTimeRef.current < 25000) {
             console.log(
-              "Vision: reframe already spoken in last 12s — suppressing duplicate.",
+              "Vision: reframe already spoken in last 25s — suppressing duplicate.",
             );
             processingTimeoutRef.current = setTimeout(() => {
               lastProcessedQuestionRef.current = "";
