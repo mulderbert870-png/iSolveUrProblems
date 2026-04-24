@@ -329,6 +329,11 @@ const LiveAvatarSessionComponent: React.FC<{
       if (!audioUnlockedRef.current) {
         void interrupt();
       }
+      // Mark that the avatar just started speaking so Go Live filler knows
+      // not to fire on top. Without this, filler tracked only OUR repeat()
+      // calls and ignored the TALK brain's own responses — leading to
+      // "talky talky" overlap where filler fired 3s after a TALK response.
+      lastVisionResponseTimeRef.current = Date.now();
     };
     session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
     return () => {
@@ -1165,28 +1170,34 @@ const LiveAvatarSessionComponent: React.FC<{
         // Store the response to filter out avatar transcriptions later
         lastAvatarResponseRef.current = responseMessage.substring(0, 100); // Store first 100 chars for comparison
 
-        // Two paths (rewrote 2026-04-24 after vision-hallucination smoke test):
+        // Two paths (rewrote 2026-04-24 after vision-hallucination smoke test;
+        // tightened further after "talky talky" smoke test same day):
         //
-        // IDLE POLL (userText empty) → inject the observation as CONTEXT via
-        // message(). The TALK brain now has real visual grounding but 6 does
-        // NOT automatically speak it. This is what stops 6 from monologuing
-        // a new observation every 1.5s, while still giving him facts to
-        // answer future questions against.
+        // VISION-INTENT POLL → the user's latest utterance clearly asks about
+        //   what 6 sees. Speak the observation directly via repeat() so the
+        //   answer lands fast.
         //
-        // USER-ASKED POLL (userText non-empty) → the user just asked
-        // something; speak the observation directly via repeat() so the
-        // answer lands within ~1s of the question. Skipping the TALK-brain
-        // round-trip keeps the response tight.
+        // EVERYTHING ELSE (idle polls, affirmations like "sure"/"yeah",
+        // off-topic utterances) → inject the observation as CONTEXT via
+        // message(). The TALK brain has visual grounding for its NEXT
+        // response but 6 does NOT parrot the observation aloud unprompted.
         //
         // OBJECT_NOT_VISIBLE is handled above before this branch — it always
         // speaks via repeat() because it's a user-facing reframe ask.
         if (mode === "FULL") {
-          const isUserAskedPoll = userText.length > 0;
-          if (isUserAskedPoll) {
-            console.log("Vision observation → speak (user asked).");
+          const lower = userText.toLowerCase();
+          const hasVisionIntent =
+            lower.length > 0 &&
+            /\b(see|look|looking|view|visible|notice|spot|describe|show|find|what('?s| is| are| do you)|is it (off|on|loose|tight|stuck|done|working)|did (i|it|we|that)|can you (see|see it|tell))/.test(
+              lower,
+            );
+          if (hasVisionIntent) {
+            console.log("Vision observation → speak (vision intent detected).");
             await repeat(responseMessage);
           } else if (sessionRef.current) {
-            console.log("Vision observation → inject as context (idle poll).");
+            console.log(
+              "Vision observation → inject as context (no vision intent).",
+            );
             sessionRef.current.message(
               `[VISION — current view] ${responseMessage}`,
             );
