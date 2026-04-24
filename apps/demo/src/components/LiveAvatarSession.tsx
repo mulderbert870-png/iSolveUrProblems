@@ -12,6 +12,7 @@ import Link from "next/link";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
+import { captureMedia } from "../lib/captureMedia";
 import { Radio, Camera, Images, Video, Play, Square } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
@@ -760,13 +761,15 @@ const LiveAvatarSessionComponent: React.FC<{
       return;
     }
 
+    // Hoisted so the catch block can also store the frame for failure audit.
+    let frameFile: File | null = null;
     try {
       setIsAnalyzingImage(true);
       // Show "Analyzing" immediately (not "Loading")
       setIsProcessingCameraQuestion(true);
 
       // Capture frame from camera or use fallback image
-      const frameFile = await captureCameraFrame();
+      frameFile = await captureCameraFrame();
 
       if (!frameFile) {
         console.error("Failed to capture camera frame");
@@ -795,12 +798,14 @@ const LiveAvatarSessionComponent: React.FC<{
 
       // Analyze the photo (with one retry on transient failures — Vercel cold
       // starts can make the first invocation fail, and the second succeeds).
+      // Bind to a local const so the closure sees a non-null type.
+      const frame = frameFile;
       const buildForm = () => {
         const fd = new FormData();
         fd.append(
           "image",
-          frameFile,
-          frameFile.name || "camera-frame.jpg",
+          frame,
+          frame.name || "camera-frame.jpg",
         );
         fd.append("question", "Describe what you see briefly");
         return fd;
@@ -837,6 +842,15 @@ const LiveAvatarSessionComponent: React.FC<{
       const analysis = data.analysis;
       setImageAnalysis(analysis);
 
+      // Store a copy of this snapshot + analysis to Supabase for later audit.
+      void captureMedia({
+        file: frameFile,
+        source: "camera_snapshot",
+        sessionId: sessionRef.current?.sessionId ?? null,
+        geminiAnalysis: analysis,
+        problem: currentProblemRef.current || null,
+      });
+
       // Inject the analysis as context to the TALK brain so it can respond
       // intelligently in the flow of the conversation (e.g. tying a snapshot of
       // a lampshade back to the user's earlier "how do I get this off" question).
@@ -850,6 +864,16 @@ const LiveAvatarSessionComponent: React.FC<{
       setIsAnalyzingImage(false);
     } catch (error) {
       console.error("Error capturing and analyzing photo:", error);
+      // Capture the frame + error so we can audit failures later.
+      if (frameFile) {
+        void captureMedia({
+          file: frameFile,
+          source: "camera_snapshot",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          problem: currentProblemRef.current || null,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       if (mode === "FULL") {
         const oopsNow = Date.now();
         if (oopsNow - lastOopsTimeRef.current > 15000) {
@@ -932,10 +956,13 @@ const LiveAvatarSessionComponent: React.FC<{
       // Removed setShowVisionLoading(true) to prevent flashing text
       lastProcessedQuestionRef.current = userText;
 
+      // Hoisted so catch can still store the frame + error for audit.
+      let pollFrameFile: File | null = null;
       try {
         // Capture frame from camera or use fallback image
         console.log("Capturing camera frame or using fallback image...");
         const frameFile = await captureCameraFrame();
+        pollFrameFile = frameFile;
 
         if (!frameFile) {
           console.error("Failed to capture camera frame or no fallback image");
@@ -1022,6 +1049,16 @@ const LiveAvatarSessionComponent: React.FC<{
         const analysis: string = (data.analysis ?? "").toString();
         console.log("Analysis received:", analysis.substring(0, 100) + "...");
 
+        // Store the frame + Gemini's verdict (including [SILENT]) so we can
+        // audit what 6 was actually looking at during Go Live.
+        void captureMedia({
+          file: frameFile,
+          source: "go_live_frame",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: analysis,
+          problem: currentProblemRef.current || null,
+        });
+
         // Silent-first: Grok outputs [SILENT] when nothing meaningful has changed.
         // Keep the avatar quiet entirely — no repeat(), no state churn.
         const trimmed = analysis.trim();
@@ -1091,6 +1128,16 @@ const LiveAvatarSessionComponent: React.FC<{
         }, 5000);
       } catch (error) {
         console.error("Error processing camera question:", error);
+        // Audit: store the frame + error so we can see what Gemini choked on.
+        if (pollFrameFile) {
+          void captureMedia({
+            file: pollFrameFile,
+            source: "go_live_frame",
+            sessionId: sessionRef.current?.sessionId ?? null,
+            problem: currentProblemRef.current || null,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         // Debounced: only fire one "Oops" every 15 seconds. Without this, 1.5s
         // polling with repeated failures was making the avatar say "Oops" 4+
         // times in under a minute (observed 2026-04-23).
@@ -1701,13 +1748,15 @@ const LiveAvatarSessionComponent: React.FC<{
       setFallbackImagePreview(null);
 
       setIsAnalyzingVideo(true);
+      // Hoisted so catch can still store the file for failure audit.
+      let recordedVideoFile: File | null = null;
       try {
-        const videoFile = new File([blob], "recorded-video.webm", {
+        recordedVideoFile = new File([blob], "recorded-video.webm", {
           type: "video/webm",
         });
         // 10 frames over a 15s video = 1.5s granularity, enough to catch quick
         // actions like a finial coming off. Was 5 frames which missed fast moments.
-        const frames = await extractVideoFrames(videoFile, 10);
+        const frames = await extractVideoFrames(recordedVideoFile, 10);
 
         // Retry once on 5xx — Vercel cold starts and Gemini transient errors.
         let response = await fetch("/api/analyze-video", {
@@ -1737,6 +1786,15 @@ const LiveAvatarSessionComponent: React.FC<{
 
         setVideoAnalysis(data.analysis);
 
+        // Audit capture: recorded video + Gemini analysis.
+        void captureMedia({
+          file: recordedVideoFile,
+          source: "video_recording",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: data.analysis,
+          problem: currentProblemRef.current || null,
+        });
+
         if (mode === "FULL" && sessionRef.current) {
           // Inject the video analysis as context so the TALK brain can respond
           // in the flow of the conversation (tying the video back to the problem
@@ -1751,6 +1809,16 @@ const LiveAvatarSessionComponent: React.FC<{
         setVideoBusy(false);
       } catch (error) {
         console.error("Error analyzing video:", error);
+        // Audit capture for failure — keep the file for debugging.
+        if (recordedVideoFile) {
+          void captureMedia({
+            file: recordedVideoFile,
+            source: "video_recording",
+            sessionId: sessionRef.current?.sessionId ?? null,
+            problem: currentProblemRef.current || null,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         alert("Failed to analyze video. Please try again.");
         setIsAnalyzingVideo(false);
         setVideoBusy(false);
@@ -2030,6 +2098,15 @@ const LiveAvatarSessionComponent: React.FC<{
         setImageAnalysis(data.analysis);
         console.log("Image analyzed successfully");
 
+        // Audit capture: gallery image + Gemini's analysis.
+        void captureMedia({
+          file,
+          source: "gallery_image",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: data.analysis,
+          problem: currentProblemRef.current || null,
+        });
+
         // Inject the analysis as context to the TALK brain so it can respond
         // intelligently and tie the image to the ongoing conversation (e.g.
         // a snapshot of a lampshade back to the user's "how do I get this off"
@@ -2041,6 +2118,14 @@ const LiveAvatarSessionComponent: React.FC<{
         }
       } catch (error) {
         console.error("Error analyzing image:", error);
+        // Audit capture for failures — file still worth saving.
+        void captureMedia({
+          file,
+          source: "gallery_image",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          problem: currentProblemRef.current || null,
+          error: error instanceof Error ? error.message : String(error),
+        });
         alert("Failed to analyze image. Please try again.");
       } finally {
         setIsAnalyzingImage(false);
@@ -2071,6 +2156,15 @@ const LiveAvatarSessionComponent: React.FC<{
         // Store video analysis in state so it persists even after closing video button
         setVideoAnalysis(data.analysis);
 
+        // Audit capture: gallery video + analysis.
+        void captureMedia({
+          file,
+          source: "gallery_video",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: data.analysis,
+          problem: currentProblemRef.current || null,
+        });
+
         // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
         if (mode === "FULL") {
           // Speak the analysis directly via repeat() so the avatar says what it saw.
@@ -2085,6 +2179,14 @@ const LiveAvatarSessionComponent: React.FC<{
         }
       } catch (error) {
         console.error("Error analyzing video:", error);
+        // Audit capture for failures.
+        void captureMedia({
+          file,
+          source: "gallery_video",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          problem: currentProblemRef.current || null,
+          error: error instanceof Error ? error.message : String(error),
+        });
         alert("Failed to analyze video. Please try again.");
       } finally {
         setIsAnalyzingVideo(false);
