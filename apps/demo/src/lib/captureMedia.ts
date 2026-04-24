@@ -32,15 +32,16 @@ export async function captureMedia(args: CaptureMediaArgs): Promise<void> {
     if (args.problem) form.append("problem", args.problem);
     if (args.error) form.append("error", args.error);
 
-    // keepalive: true so the upload completes even if the user closes the tab
-    // right after the action that triggered it. Browsers guarantee keepalive
-    // requests up to 64KB. Most images/frames are under this; larger videos
-    // may get truncated on fast close — direct-to-storage upload is the
-    // longer-term fix (tracked as a separate follow-up).
+    // NOTE: do NOT set keepalive: true here. Browsers cap keepalive request
+    // bodies at 64KB per-origin and REJECT requests that would exceed the
+    // quota — which silently killed every media upload in the first
+    // deployment that shipped with it (2026-04-24). Frames run 80KB–2.5MB
+    // so keepalive is unusable for this payload size. Tab-close durability
+    // for large media is tracked as a separate follow-up (direct-to-storage
+    // upload with a pre-signed Supabase URL).
     const res = await fetch("/api/media/capture", {
       method: "POST",
       body: form,
-      keepalive: true,
     });
     if (!res.ok) {
       // Don't throw — media capture is diagnostic, it must never block the
