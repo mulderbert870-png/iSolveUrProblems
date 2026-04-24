@@ -792,15 +792,33 @@ const LiveAvatarSessionComponent: React.FC<{
       setFallbackImage(null);
       setFallbackImagePreview(null);
 
-      // Analyze the photo
-      const formData = new FormData();
-      formData.append("image", frameFile, frameFile.name || "camera-frame.jpg");
-      formData.append("question", "Describe what you see briefly");
+      // Analyze the photo (with one retry on transient failures — Vercel cold
+      // starts can make the first invocation fail, and the second succeeds).
+      const buildForm = () => {
+        const fd = new FormData();
+        fd.append(
+          "image",
+          frameFile,
+          frameFile.name || "camera-frame.jpg",
+        );
+        fd.append("question", "Describe what you see briefly");
+        return fd;
+      };
 
-      const response = await fetch("/api/analyze-image", {
+      let response = await fetch("/api/analyze-image", {
         method: "POST",
-        body: formData,
+        body: buildForm(),
       });
+      if (!response.ok && response.status >= 500) {
+        console.warn(
+          `analyze-image first attempt failed (${response.status}), retrying once...`,
+        );
+        await new Promise((r) => setTimeout(r, 800));
+        response = await fetch("/api/analyze-image", {
+          method: "POST",
+          body: buildForm(),
+        });
+      }
 
       if (!response.ok) {
         let errorMessage = "Failed to analyze photo";
@@ -1688,13 +1706,23 @@ const LiveAvatarSessionComponent: React.FC<{
         });
         const frames = await extractVideoFrames(videoFile, 5);
 
-        const response = await fetch("/api/analyze-video", {
+        // Retry once on 5xx — Vercel cold starts and Gemini transient errors.
+        let response = await fetch("/api/analyze-video", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ frames }),
         });
+        if (!response.ok && response.status >= 500) {
+          console.warn(
+            `analyze-video first attempt failed (${response.status}), retrying once...`,
+          );
+          await new Promise((r) => setTimeout(r, 800));
+          response = await fetch("/api/analyze-video", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ frames }),
+          });
+        }
 
         if (!response.ok) {
           const error = await response.json();

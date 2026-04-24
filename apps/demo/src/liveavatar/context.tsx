@@ -205,8 +205,12 @@ export const LiveAvatarContextProvider = ({
   // and avoid 403/CORS when calling LiveAvatar from the browser.
   const apiUrl =
     typeof window !== "undefined" ? `${window.location.origin}/api` : "";
+  // voiceChat: false defers mic permission prompt until user hits Start button.
+  // When user hits Start, handleVoiceStartStop calls voiceChat.start() which will
+  // then prompt for mic permission — that's the user-initiated moment G wants.
+  // (Changed 2026-04-24 to fix "mic permission prompt on page load" bug.)
   const config = {
-    voiceChat: true,
+    voiceChat: false,
     apiUrl,
   };
   const sessionRef = useRef<LiveAvatarSession>(
