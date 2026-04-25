@@ -13,7 +13,7 @@ import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
 import { captureMedia } from "../lib/captureMedia";
-import { Radio, Camera, Images, Video, Play, Square, Mic, MicOff } from "lucide-react";
+import { Radio, Camera, Images, Video, Play, Square, MicOff } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -68,12 +68,12 @@ const LiveAvatarSessionComponent: React.FC<{
     useState(false);
   const [showVisionLoading, setShowVisionLoading] = useState(false);
   const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
-  // Mic permission UX (added 2026-04-25 per G — replaces just-letting-the-OS-
-  // dialog-auto-fire with a friendly explainer first, plus a recovery screen
-  // when permission has been denied. Industry-standard pattern.)
+  // Mic permission UX (added 2026-04-25 per G — let the OS dialog fire
+  // directly on Start (one-click experience), but show a clean recovery
+  // screen if permission has been denied. Pre-prompt explainer reverted —
+  // tap-twice was unwanted friction.)
   type MicPermState = "unknown" | "granted" | "prompt" | "denied";
   const [micPermState, setMicPermState] = useState<MicPermState>("unknown");
-  const [micExplainerOpen, setMicExplainerOpen] = useState(false);
   const [micDeniedOpen, setMicDeniedOpen] = useState(false);
   const [fallbackImage, setFallbackImage] = useState<File | null>(null);
   const [fallbackImagePreview, setFallbackImagePreview] = useState<
@@ -495,43 +495,6 @@ const LiveAvatarSessionComponent: React.FC<{
       if (status) status.removeEventListener("change", onChange);
     };
   }, []);
-
-  // Wrapper around the Start tap. If we already have mic permission, go
-  // straight to the existing handler. Otherwise show our friendly pre-prompt
-  // explainer (Option A). On Allow click, we trigger getUserMedia ourselves —
-  // if it resolves we proceed, if it rejects we show the recovery screen
-  // (Option B).
-  const handleStartButtonTap = useCallback(async () => {
-    if (isActive) {
-      void handleVoiceStartStop();
-      return;
-    }
-    if (micPermState === "granted") {
-      await handleVoiceStartStop();
-      return;
-    }
-    if (micPermState === "denied") {
-      setMicDeniedOpen(true);
-      return;
-    }
-    // unknown / prompt → show our explainer first.
-    setMicExplainerOpen(true);
-  }, [isActive, micPermState, handleVoiceStartStop]);
-
-  const handleMicExplainerAllow = useCallback(async () => {
-    setMicExplainerOpen(false);
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // We only wanted permission — release the stream so the SDK can grab
-      // its own when start() runs.
-      s.getTracks().forEach((t) => t.stop());
-      setMicPermState("granted");
-      await handleVoiceStartStop();
-    } catch {
-      setMicPermState("denied");
-      setMicDeniedOpen(true);
-    }
-  }, [handleVoiceStartStop]);
 
   const handleMicDeniedRetry = useCallback(async () => {
     // Re-attempt — if the user enabled mic in browser settings, this will
@@ -2553,43 +2516,6 @@ const LiveAvatarSessionComponent: React.FC<{
         </div>
       )}
 
-      {/* MIC PERMISSION — pre-prompt explainer (Option A).
-          Industry-standard pattern: show our own friendly screen BEFORE the
-          OS dialog fires, so the user knows what's about to happen and why. */}
-      {micExplainerOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 px-6">
-          <div className="w-full max-w-sm rounded-2xl bg-gray-900 border border-white/10 shadow-2xl p-7 text-center">
-            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-              <Mic className="w-8 h-8 text-white" aria-hidden />
-            </div>
-            <h2 className="text-white text-xl font-semibold mb-2">
-              6 needs your microphone
-            </h2>
-            <p className="text-white/70 text-sm leading-relaxed mb-6">
-              So you can talk to him out loud. Tap{" "}
-              <span className="font-semibold text-white">Allow</span> when your
-              phone asks.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => void handleMicExplainerAllow()}
-                className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-white/90 transition"
-              >
-                Allow Microphone
-              </button>
-              <button
-                type="button"
-                onClick={() => setMicExplainerOpen(false)}
-                className="w-full text-white/60 text-sm py-2 hover:text-white/80 transition"
-              >
-                Not now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MIC PERMISSION — denied/blocked recovery (Option B).
           Fires when the OS dialog was rejected, or permission state probes
           as 'denied'. Gives clear instructions per platform + retry. */}
@@ -2909,7 +2835,7 @@ const LiveAvatarSessionComponent: React.FC<{
                       voiceStartAwaitingReady ||
                       (isLoading && !isActive)
                     }
-                    onClick={() => void handleStartButtonTap()}
+                    onClick={() => void handleVoiceStartStop()}
                   >
                     {/* <span className="inline-flex items-center gap-1.5">
                       <span
