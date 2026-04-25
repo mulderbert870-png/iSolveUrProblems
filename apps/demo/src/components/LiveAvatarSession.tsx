@@ -1311,16 +1311,30 @@ const LiveAvatarSessionComponent: React.FC<{
         //
         // OBJECT_NOT_VISIBLE is handled above before this branch — it always
         // speaks via repeat() because it's a user-facing reframe ask.
-        // Skip speech entirely if Go Live has already been stopped by the
-        // user (Stop button, camera close, etc.) — otherwise in-flight
-        // observations speak after the screen has changed.
+        // PROACTIVE NARRATION (added 2026-04-25 after smoke test where 6
+        // saw "finial in your hand, off the lamp" but stayed silent until
+        // G asked "what do I have in my hand?"). Three speech paths now:
+        //
+        //   1) USER ASKED A VISION QUESTION → speak the observation directly.
+        //   2) NEW STATE CHANGE (non-duplicate observation on idle poll) →
+        //      ALSO speak via repeat(). 6 announces what changed without
+        //      waiting for a prompt. Dedup ensures we don't fire on every
+        //      frame — only when the scene meaningfully shifts.
+        //   3) STALE RE-INJECT (duplicate but >25s since last inject) →
+        //      message() inject only, no speech. Keeps TALK brain grounded
+        //      without repeating ourselves out loud.
+        //
+        // Skip everything if Go Live has already been stopped by the user.
         if (mode === "FULL" && goLiveActiveRef.current) {
-          if (userHasVisionIntent) {
-            console.log("Vision observation → speak (vision intent detected).");
+          const isNewStateChange = !isDuplicate;
+          if (userHasVisionIntent || isNewStateChange) {
+            console.log(
+              `Vision observation → speak (visionIntent=${userHasVisionIntent}, stateChange=${isNewStateChange}).`,
+            );
             await repeat(responseMessage);
           } else if (sessionRef.current) {
             console.log(
-              "Vision observation → inject as context (no vision intent).",
+              "Vision observation → stale re-inject (no speech).",
             );
             sessionRef.current.message(
               `[VISION — current view] ${responseMessage}`,
@@ -2804,7 +2818,7 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Stop: exit Go Live / camera overlay (or end session when already on home) */}
       {(visionMode === "streaming" || isCameraActive) && (
         <>
-          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
             <div className="flex justify-center">
               <button
                 className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
@@ -2815,7 +2829,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 }}
               >
                   <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden className="text-red-500">⏹</span>
+                  <span aria-hidden className="text-white">⏹</span>
                   <span>Stop</span>
                 </span>
               </button>
