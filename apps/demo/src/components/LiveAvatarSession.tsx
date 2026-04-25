@@ -2757,13 +2757,13 @@ const LiveAvatarSessionComponent: React.FC<{
                     {isActive ? (
                       // Hollow (no fill-current) + slightly smaller. 2026-04-25 per G.
                       <Square
-                        className="mr-1.5 w-3 h-3 shrink-0 text-white"
+                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-white"
                         strokeWidth={2.5}
                         aria-hidden
                       />
                     ) : (
                       <Play
-                        className="mr-1.5 w-3 h-3 shrink-0 text-white"
+                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-white"
                         strokeWidth={2.5}
                         aria-hidden
                       />
