@@ -2828,8 +2828,11 @@ const LiveAvatarSessionComponent: React.FC<{
                   handleStopSession();
                 }}
               >
-                  <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden className="text-white">⏹</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Square
+                    className="w-4 h-4 shrink-0 text-white fill-current"
+                    aria-hidden
+                  />
                   <span>Stop</span>
                 </span>
               </button>
