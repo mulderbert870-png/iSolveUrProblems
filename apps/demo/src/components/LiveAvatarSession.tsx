@@ -2707,12 +2707,12 @@ const LiveAvatarSessionComponent: React.FC<{
                     </span> */}
                     {isActive ? (
                       <Square
-                        className="mr-1.5 w-4 h-4 shrink-0 text-orange-500 fill-current"
+                        className="mr-1.5 w-4 h-4 shrink-0 text-white fill-current"
                         aria-hidden
                       />
                     ) : (
                       <Play
-                        className="mr-1.5 w-4 h-4 shrink-0 text-orange-500 fill-current"
+                        className="mr-1.5 w-4 h-4 shrink-0 text-white fill-current"
                         aria-hidden
                       />
                     )}
