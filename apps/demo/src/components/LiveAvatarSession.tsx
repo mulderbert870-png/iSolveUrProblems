@@ -85,11 +85,6 @@ const LiveAvatarSessionComponent: React.FC<{
   const isDebugProcessingRef = useRef<boolean>(false);
   const lastAvatarResponseRef = useRef<string>("");
   const lastVisionResponseTimeRef = useRef<number>(0);
-  // Rotating conversational filler during Go Live silent polling. Without this
-  // the avatar appears frozen whenever Gemini returns [SILENT] — the user
-  // shows the object for 10+ seconds and hears nothing back. (Added 2026-04-24
-  // per G's "he's silent and people will click off" feedback.)
-  const lastFillerTimeRef = useRef<number>(0);
   // Tracks the last time we actually injected a VISION observation into the
   // TALK brain context. If the scene is genuinely unchanged but the last
   // inject was >25s ago, we re-inject so the TALK brain stays grounded on
@@ -103,14 +98,12 @@ const LiveAvatarSessionComponent: React.FC<{
   // ref lets Stop immediately halt pending speech. (Added 2026-04-24 after
   // fillers fired after the user hit the main Stop button.)
   const goLiveActiveRef = useRef<boolean>(false);
-  const fillerIndexRef = useRef<number>(0);
-  const GO_LIVE_FILLERS: string[] = [
-    "Hang tight, I'm getting eyes on this.",
-    "Give me a sec to see what we're working with.",
-    "Still taking this in — keep it steady.",
-    "Almost got it — show me a little more.",
-    "Alright, I'm watching. Walk me through what you're trying.",
-  ];
+  // Rotating "Hang tight" / "I'm watching" filler was REMOVED 2026-04-25 after
+  // smoke test showed those lines polluting conversation_messages and the TALK
+  // brain hallucinating contradictions. Loading overlay + proactive narration
+  // (state-change speech) cover the "avatar isn't frozen" need without
+  // dirtying transcript context. Don't re-add without a way to keep them out
+  // of the LiveAvatar transcript.
   // Debounces the "Oops!" error message so a string of failed vision calls
   // doesn't make the avatar say "Oops" 4+ times in 15 seconds (observed bug).
   const lastOopsTimeRef = useRef<number>(0);
@@ -1211,42 +1204,14 @@ const LiveAvatarSessionComponent: React.FC<{
           problem: currentProblemRef.current || null,
         });
 
-        // Silent-first: Gemini outputs [SILENT] when nothing meaningful has changed.
-        // Normally we keep 6 quiet — but if [SILENT] comes back on an IDLE poll
-        // (empty user question) AND 6 hasn't said anything in ~4 seconds, fire
-        // a short conversational filler so the avatar doesn't look frozen.
+        // Silent-first: Gemini outputs [SILENT] when nothing meaningful has
+        // changed. Stay quiet — the loading overlay + proactive narration on
+        // real state changes already cover the "avatar isn't frozen" need.
+        // (2026-04-25: removed the rotating "Hang tight" filler that was
+        // polluting transcript and confusing the TALK brain.)
         const trimmed = analysis.trim();
         if (trimmed === "[SILENT]" || trimmed.startsWith("[SILENT]")) {
           console.log("Vision: [SILENT] — avatar staying quiet.");
-          const nowMs = Date.now();
-          const idlePoll = userText.length === 0;
-          const longSinceLastSpeech =
-            nowMs - lastVisionResponseTimeRef.current > 6000;
-          const longSinceLastFiller =
-            nowMs - lastFillerTimeRef.current > 6000;
-          if (
-            mode === "FULL" &&
-            idlePoll &&
-            longSinceLastSpeech &&
-            longSinceLastFiller &&
-            !isVideoBusy() &&
-            goLiveActiveRef.current
-          ) {
-            // Claim the cooldown BEFORE the await so a second in-flight poll
-            // that landed at nearly the same time won't ALSO fire a filler
-            // (observed 2026-04-24: two fillers fired 2s apart because both
-            // polls saw stale timestamps before either repeat() completed).
-            lastFillerTimeRef.current = nowMs;
-            lastVisionResponseTimeRef.current = nowMs;
-            const line =
-              GO_LIVE_FILLERS[fillerIndexRef.current % GO_LIVE_FILLERS.length];
-            fillerIndexRef.current += 1;
-            try {
-              await repeat(line);
-            } catch (err) {
-              console.error("Error speaking Go Live filler:", err);
-            }
-          }
           // Reset the last processed question so the user can ask again if they want.
           processingTimeoutRef.current = setTimeout(() => {
             lastProcessedQuestionRef.current = "";
@@ -1299,9 +1264,14 @@ const LiveAvatarSessionComponent: React.FC<{
         //
         // 3. Duplicate observation AND last inject was recent: skip.
         const userLower = userText.toLowerCase();
+        // Vision-intent matcher — broadened 2026-04-25 after smoke test where
+        // "What does the poster say?" / "What name on the poster?" failed to
+        // trigger fresh vision because the regex only covered "what is/are/do
+        // you" not "what does". Same scene-shift problem applied to "read the
+        // X" and "what color/brand/logo" asks.
         const userHasVisionIntent =
           userLower.length > 0 &&
-          /\b(see|look|looking|view|visible|notice|spot|describe|show|find|what('?s| is| are| do you)|is it (off|on|loose|tight|stuck|done|working)|did (i|it|we|that)|can you (see|see it|tell))/.test(
+          /\b(see|look|looking|view|visible|notice|spot|describe|show|find|read(ing)?|what('?s| is| are| do you| does| do| name| color| brand| logo| label| word| say| number)|where('?s| is)?|which|how does it look|is it (off|on|loose|tight|stuck|done|working)|did (i|it|we|that)|can you (see|see it|tell|read|make out))/.test(
             userLower,
           );
 

@@ -232,6 +232,7 @@ async function upsertLeadSession(
 function chooseNextPrompt(
   lead: LeadSessionRow,
   latest: { email: string | null; phone: string | null; fullName: string | null },
+  userUtteranceCount: number,
 ): {
   prompt: string | null;
   promptField: string | null;
@@ -249,6 +250,25 @@ function chooseNextPrompt(
 
   if (lead.consent_status === "declined") {
     return { prompt: null, promptField: null, shouldSkipVision: false };
+  }
+
+  // CLIENT-SIDE NAME-ASK ENFORCEMENT (added 2026-04-25 after smoke test where
+  // 6 went 60+ turns without ever asking a name despite CW v13 saying to ask
+  // by turn 3). When the user has racked up >=3 utterances and we still have
+  // no name AND we haven't asked yet, fire a one-time friendly ask. Won't
+  // re-fire because last_prompted_at gates it via the cooldown above.
+  const hasName = Boolean(lead.full_name && lead.full_name.trim().length >= 2);
+  if (
+    !hasName &&
+    !lead.last_prompted_field &&
+    userUtteranceCount >= 3
+  ) {
+    return {
+      prompt:
+        "Before we go too far — what should I call you? Just your first name is fine.",
+      promptField: "full_name",
+      shouldSkipVision: true,
+    };
   }
 
   // Deterministic acknowledgement when user just shared contact details.
@@ -318,6 +338,36 @@ export async function persistUserUtteranceLeadCapture(
   let existingLead: LeadSessionRow | null = null;
   existingLead = await getLeadSession(url, serviceRoleKey, sessionId);
 
+  // Count of prior user utterances on this session (used to gate the
+  // turn-3 name-ask enforcement). Counts transcript_events that already
+  // exist BEFORE we insert the current one.
+  let userUtteranceCount = 1;
+  try {
+    const headRes = await fetch(
+      `${url}/rest/v1/transcript_events?session_id=eq.${encodeURIComponent(sessionId)}&select=id`,
+      {
+        method: "GET",
+        headers: {
+          ...supabaseHeaders(serviceRoleKey),
+          Prefer: "count=exact",
+          "Range-Unit": "items",
+          Range: "0-0",
+        },
+      },
+    );
+    if (headRes.ok) {
+      const range = headRes.headers.get("content-range");
+      const total = range?.split("/")[1];
+      const n = total ? parseInt(total, 10) : NaN;
+      if (Number.isFinite(n) && n >= 0) {
+        userUtteranceCount = n + 1;
+      }
+    }
+  } catch {
+    // Best-effort count; if the lookup fails we just default to 1 and
+    // skip the name-ask enforcement until next utterance.
+  }
+
   const currentLead: LeadSessionRow = existingLead ?? {
     session_id: sessionId,
     consent_status: "unknown",
@@ -343,11 +393,15 @@ export async function persistUserUtteranceLeadCapture(
     last_prompted_at: currentLead.last_prompted_at,
   };
 
-  const next = chooseNextPrompt(mergedLead, {
-    email,
-    phone,
-    fullName,
-  });
+  const next = chooseNextPrompt(
+    mergedLead,
+    {
+      email,
+      phone,
+      fullName,
+    },
+    userUtteranceCount,
+  );
   const nowIso = new Date().toISOString();
   if (next.promptField) {
     mergedLead.last_prompted_field = next.promptField;
