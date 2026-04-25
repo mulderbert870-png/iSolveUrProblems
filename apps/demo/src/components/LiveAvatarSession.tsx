@@ -2712,7 +2712,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 !isAvatarTalking &&
                 isStreamReady && (
                   <div className="mb-4 w-full flex items-center justify-center text-center">
-                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight">
+                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[1.05rem] sm:text-[1.2rem] font-semibold leading-tight">
                       {!isActive ? (
                         voiceStartAwaitingReady ? (
                           <span className="block">Starting…</span>
