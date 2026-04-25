@@ -2695,9 +2695,9 @@ const LiveAvatarSessionComponent: React.FC<{
           )} */}
 
           {/* Analyzing text for vision recognition in streaming mode - ONLY show when actually processing */}
-          {/* Positioned just above Stop button when four boxes are not visible */}
+          {/* Positioned above Stop button (bottom-16) with breathing room — bumped from bottom-28 to bottom-36 2026-04-25 per G */}
           {visionMode === "streaming" && isProcessingCameraQuestion && (
-            <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30">
+            <div className="fixed bottom-36 left-1/2 -translate-x-1/2 z-30">
               <p className="text-inset text-2xl font-semibold text-center drop-shadow-lg">
                 <span className="inline-flex items-center">
                   Analyzing...
