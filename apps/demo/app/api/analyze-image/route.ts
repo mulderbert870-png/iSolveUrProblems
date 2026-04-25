@@ -236,12 +236,12 @@ Do not tell the user to point a camera, show you something on video later, or of
       ? STREAMING_VISION_SYSTEM_PROMPT
       : HUMOR_STYLE_GUIDE;
     const res = await fetch(
-      // Gemini 2.5 Pro — second upgrade attempt 2026-04-24. The first failed
-      // because Pro rejects thinkingBudget:0. Direct testing showed
-      // thinkingBudget:128 works in ~1.9s (vs Flash's ~500ms) with real
-      // output. Without any thinkingConfig, Pro returns empty text because
-      // thinking eats all the output tokens.
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
+      // Gemini 2.5 Flash LITE — picked 2026-04-24 for fastest possible vision.
+      // Warm calls run 333–829ms vs Pro's 1900ms. The accuracy hit is small
+      // for "describe what's visible" use cases, and the speed lets us
+      // actually beat the TALK brain to the punch (Pro was always too slow
+      // — 6 spoke from stale context). Supports thinkingBudget:0 like Flash.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -265,11 +265,9 @@ Do not tell the user to point a camera, show you something on video later, or of
           ],
           generationConfig: {
             maxOutputTokens: 150,
-            // thinkingBudget=128 is the minimum viable for Pro — verified
-            // 2026-04-24 against the real API. =0 is rejected (Flash-only),
-            // omitted/=- 1 returns empty text because thinking burns all
-            // output tokens.
-            thinkingConfig: { thinkingBudget: 128 },
+            // thinkingBudget=0 disables chain-of-thought for fastest output.
+            // Flash Lite supports this (same as Flash); Pro doesn't.
+            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       },

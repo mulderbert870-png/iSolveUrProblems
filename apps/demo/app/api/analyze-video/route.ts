@@ -96,11 +96,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // Gemini 2.5 Pro with thinkingBudget=128 — second upgrade attempt
-    // 2026-04-24, properly verified. Pro rejects thinkingBudget:0 (Flash-
-    // only); 128 is the minimum that returns content reliably.
+    // Gemini 2.5 Flash Lite — picked 2026-04-24 for max speed. Same family
+    // as Flash, slightly lighter, supports thinkingBudget:0.
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,7 +115,7 @@ export async function POST(request: Request) {
           ],
           generationConfig: {
             maxOutputTokens: 200,
-            thinkingConfig: { thinkingBudget: 128 },
+            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       },
