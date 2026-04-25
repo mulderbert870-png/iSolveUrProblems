@@ -96,10 +96,12 @@ export async function POST(request: Request) {
       });
     }
 
-    // Call Gemini 2.5 Flash Vision API — thinkingBudget: 0 disables
+    // Call Gemini 2.5 Pro — upgraded from Flash 2026-04-24 for finer
+    // change-detection on video frames (especially "did the user
+    // accomplish the action they tried"). thinkingBudget: 0 disables
     // chain-of-thought for fastest possible response.
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

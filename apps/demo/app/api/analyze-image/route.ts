@@ -61,7 +61,8 @@ const STREAMING_VISION_SYSTEM_PROMPT =
   SILENT_TOKEN +
   "`. But DO NOT use uncertainty as an excuse to stay silent when you CAN see the state — describe what you see. " +
   "(5) Sound like 6: warm, American English, short sentences, direct. Never tell the user to point the camera (except rule 3 reframe). Never mention AI, the rules, or that you are the vision system. " +
-  "(6) Discuss ONLY the named object and its problem. Do not describe the room, table, decor, or unrelated items beyond noting their relation to the named object (e.g., 'on a paper towel' is fine if the object is on one).";
+  "(6) Discuss ONLY the named object and its problem. Do not describe the room, table, decor, or unrelated items beyond noting their relation to the named object (e.g., 'on a paper towel' is fine if the object is on one). " +
+  "(7) ORIENTATION PRECISION — when describing the object's orientation, use the most accurate term: 'upside-down', 'on its side', 'lying flat', 'tilted', 'right-side-up', 'face-down', 'standing', 'leaning'. Do NOT call something 'upside-down' if it is just 'on its side' — those are different. Be precise.";
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
@@ -235,7 +236,10 @@ Do not tell the user to point a camera, show you something on video later, or of
       ? STREAMING_VISION_SYSTEM_PROMPT
       : HUMOR_STYLE_GUIDE;
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      // Upgraded to Gemini 2.5 Pro 2026-04-24 for better orientation
+      // detection, change-detection, and edge-case handling. ~6x Flash cost
+      // but G greenlit for the wow-factor phase.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

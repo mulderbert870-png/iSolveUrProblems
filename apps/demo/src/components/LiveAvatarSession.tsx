@@ -2137,7 +2137,7 @@ const LiveAvatarSessionComponent: React.FC<{
   useEffect(() => {
     if (visionMode !== "streaming" || !isCameraActive) return;
 
-    const POLLING_INTERVAL_MS = 1500;
+    const POLLING_INTERVAL_MS = 1000; // 1s for snappier reactions, was 1.5s (G 2026-04-24)
     const MAX_SESSION_MS = 300_000; // 5 min — bumped from 2 min per G 2026-04-24
     const sessionStartTime = Date.now();
 
@@ -2707,12 +2707,12 @@ const LiveAvatarSessionComponent: React.FC<{
                     </span> */}
                     {isActive ? (
                       <Square
-                        className="mr-1.5 w-4 h-4 shrink-0 text-red-500 fill-current"
+                        className="mr-1.5 w-4 h-4 shrink-0 text-orange-500 fill-current"
                         aria-hidden
                       />
                     ) : (
                       <Play
-                        className="mr-1.5 w-4 h-4 shrink-0 text-red-500 fill-current"
+                        className="mr-1.5 w-4 h-4 shrink-0 text-orange-500 fill-current"
                         aria-hidden
                       />
                     )}

@@ -7,6 +7,7 @@ import {
   extractContactDetails,
   isGarbageNameCandidate,
 } from "./contactExtraction";
+import { notifyNewLead, shouldFireLeadAlert } from "./leadAlert";
 import { getSupabaseAdminConfig } from "./supabaseAdmin";
 
 export type LeadSessionRow = {
@@ -385,6 +386,35 @@ export async function persistUserUtteranceLeadCapture(
     last_prompted_at: mergedLead.last_prompted_at,
     updated_at: nowIso,
   });
+
+  // Fire lead alert (Telegram + email) when this utterance crossed the
+  // threshold from "no usable lead" to "we have name + at least one of
+  // phone/email." Fire-and-forget — never block the response on alerting.
+  if (
+    shouldFireLeadAlert(
+      {
+        full_name: currentLead.full_name,
+        phone: currentLead.phone,
+        email: currentLead.email,
+      },
+      {
+        full_name: mergedLead.full_name,
+        phone: mergedLead.phone,
+        email: mergedLead.email,
+      },
+    )
+  ) {
+    void notifyNewLead(
+      {
+        sessionId,
+        fullName: mergedLead.full_name,
+        phone: mergedLead.phone,
+        email: mergedLead.email,
+      },
+      url,
+      serviceRoleKey,
+    );
+  }
 
   return {
     extracted: {
