@@ -96,12 +96,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // Call Gemini 2.5 Pro — upgraded from Flash 2026-04-24 for finer
-    // change-detection on video frames (especially "did the user
-    // accomplish the action they tried"). thinkingBudget: 0 disables
-    // chain-of-thought for fastest possible response.
+    // Reverted to Gemini 2.5 Flash 2026-04-24 — Pro rejected thinkingBudget:0
+    // (returned 400 on every frame). Same revert as analyze-image route.
+    // Pro upgrade tracked as followup once we untangle the thinking config.
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
