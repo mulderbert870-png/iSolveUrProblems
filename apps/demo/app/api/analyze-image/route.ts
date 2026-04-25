@@ -236,11 +236,12 @@ Do not tell the user to point a camera, show you something on video later, or of
       ? STREAMING_VISION_SYSTEM_PROMPT
       : HUMOR_STYLE_GUIDE;
     const res = await fetch(
-      // Reverted to Gemini 2.5 Flash 2026-04-24 — Pro rejected our request
-      // shape (thinkingBudget: 0 not supported by Pro, returned 400 on every
-      // frame). Pro upgrade needs a deeper rewrite to remove or replace the
-      // thinking config; tracked as followup. Flash is the proven workhorse.
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      // Gemini 2.5 Pro — second upgrade attempt 2026-04-24. The first failed
+      // because Pro rejects thinkingBudget:0. Direct testing showed
+      // thinkingBudget:128 works in ~1.9s (vs Flash's ~500ms) with real
+      // output. Without any thinkingConfig, Pro returns empty text because
+      // thinking eats all the output tokens.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -264,7 +265,11 @@ Do not tell the user to point a camera, show you something on video later, or of
           ],
           generationConfig: {
             maxOutputTokens: 150,
-            thinkingConfig: { thinkingBudget: 0 },
+            // thinkingBudget=128 is the minimum viable for Pro — verified
+            // 2026-04-24 against the real API. =0 is rejected (Flash-only),
+            // omitted/=- 1 returns empty text because thinking burns all
+            // output tokens.
+            thinkingConfig: { thinkingBudget: 128 },
           },
         }),
       },

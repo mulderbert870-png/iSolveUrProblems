@@ -96,11 +96,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // Reverted to Gemini 2.5 Flash 2026-04-24 — Pro rejected thinkingBudget:0
-    // (returned 400 on every frame). Same revert as analyze-image route.
-    // Pro upgrade tracked as followup once we untangle the thinking config.
+    // Gemini 2.5 Pro with thinkingBudget=128 — second upgrade attempt
+    // 2026-04-24, properly verified. Pro rejects thinkingBudget:0 (Flash-
+    // only); 128 is the minimum that returns content reliably.
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
           ],
           generationConfig: {
             maxOutputTokens: 200,
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: { thinkingBudget: 128 },
           },
         }),
       },
