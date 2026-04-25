@@ -1052,6 +1052,40 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
+        // BLACK-FRAME SKIP — when the camera is face-down, in a pocket, or
+        // pointed at a uniform surface, JPEG compression collapses the file
+        // to ~2-3 KB. Burning a Gemini call (and Vercel function invocation)
+        // on that frame is pure waste. Threshold of 8 KB is empirical:
+        // breakthrough-session frames were 80-140 KB; black/laid-down
+        // frames in the same session were 2.5 KB. (Added 2026-04-25 after
+        // Vercel 75% credit warning.)
+        if (frameFile.size < 8 * 1024) {
+          console.log(
+            `Vision: skipping tiny frame (${frameFile.size}b) — likely black/laid-down camera.`,
+          );
+          // Still inject a context line so 6 knows the camera isn't aimed.
+          if (sessionRef.current && goLiveActiveRef.current) {
+            sessionRef.current.message(
+              "[VISION — camera not aimed at the problem object right now]",
+            );
+          }
+          // Also persist as a media event so the audit trail shows we saw
+          // a black frame (not that vision broke).
+          void captureMedia({
+            file: frameFile,
+            source: "go_live_frame",
+            sessionId: sessionRef.current?.sessionId ?? null,
+            problem: currentProblemRef.current || null,
+            geminiAnalysis: "[SKIPPED — black/blank frame]",
+          });
+          setIsProcessingCameraQuestion(false);
+          setIsAnalyzingImage(false);
+          processingTimeoutRef.current = setTimeout(() => {
+            lastProcessedQuestionRef.current = "";
+          }, 2000);
+          return;
+        }
+
         // Build up `currentProblemRef` during the first 20 seconds of vision:
         // accumulate non-question user utterances so multi-part problem descriptions
         // like "I got scratches" + "on my sunglasses" both land in the problem.
@@ -2137,7 +2171,7 @@ const LiveAvatarSessionComponent: React.FC<{
   useEffect(() => {
     if (visionMode !== "streaming" || !isCameraActive) return;
 
-    const POLLING_INTERVAL_MS = 1000; // 1s for snappier reactions, was 1.5s (G 2026-04-24)
+    const POLLING_INTERVAL_MS = 1500; // back to 1.5s 2026-04-25 — Vercel 75% credit warning, drop poll rate to save function invocations. Combined with black-frame skip, ~50% reduction in vision API calls.
     const MAX_SESSION_MS = 300_000; // 5 min — bumped from 2 min per G 2026-04-24
     const sessionStartTime = Date.now();
 
@@ -2427,8 +2461,9 @@ const LiveAvatarSessionComponent: React.FC<{
           </p>
         </div>
         {microphoneWarning && (
-          <div className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded-md max-w-2xl text-center">
-            <p className="font-semibold">⚠️ Warning: {microphoneWarning}</p>
+          // Ordinary, small, no color — per G 2026-04-25.
+          <div className="mt-2 px-3 py-1 text-xs text-white/70 text-center">
+            {microphoneWarning}
           </div>
         )}
         {/* {isAnalyzingImage && (
