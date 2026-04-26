@@ -109,6 +109,7 @@ const sections: Array<{
       "are the exclusive property of iSolveUrProblems.ai.",
       "You may not:",
       "any part of the Service.",
+      "iSolveUrProblems is a trademark of DietzX.",
     ],
     bullets: [
       "software",
