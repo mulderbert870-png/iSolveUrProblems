@@ -24,7 +24,9 @@
 
 @layer components {
   /* Inset button: gold lettering inset in semi-transparent grey (button + text recessed)
-     Updated 2026-04-30 to match aiASAP gold theme. */
+     Updated 2026-04-30 to match aiASAP gold theme.
+     Browser-default neutralization (added to keep Start/Stop visually
+     identical to the other 3 home buttons regardless of focus/tap/active state). */
   .btn-inset {
     background: rgba(80, 80, 80, 0.55);
     color: #D4A943;
@@ -33,6 +35,18 @@
     text-shadow:
       0 1px 0 rgba(0, 0, 0, 0.4),
       0 -1px 0 rgba(212, 169, 67, 0.08);
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+  .btn-inset:focus,
+  .btn-inset:focus-visible,
+  .btn-inset:active {
+    outline: none;
+    background: rgba(80, 80, 80, 0.55);
+    color: #D4A943;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   .btn-inset:hover:not(:disabled) {
     background: rgba(90, 90, 90, 0.6);

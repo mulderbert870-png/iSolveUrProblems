@@ -2776,7 +2776,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 !isAvatarTalking &&
                 isStreamReady && (
                   <div className="mb-4 w-full flex items-center justify-center text-center">
-                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[1.05rem] sm:text-[1.2rem] font-semibold leading-tight">
+                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[1.3rem] sm:text-[1.5rem] font-semibold leading-tight">
                       {!isActive ? (
                         voiceStartAwaitingReady ? (
                           <span className="block">Starting…</span>
@@ -2826,7 +2826,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     </span> */}
                     {isActive ? (
                       <svg
-                        className="mr-1.5 w-4 h-4 shrink-0"
+                        className="mr-1.5 w-3.5 h-3.5 shrink-0"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -2918,7 +2918,7 @@ const LiveAvatarSessionComponent: React.FC<{
               >
                 <span className="inline-flex items-center gap-1.5">
                   <svg
-                    className="w-4 h-4 shrink-0 text-gold"
+                    className="w-3.5 h-3.5 shrink-0 text-gold"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
