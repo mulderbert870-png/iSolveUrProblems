@@ -295,8 +295,8 @@ export const LiveAvatarDemo = () => {
     return (
       <div className="w-full min-h-screen flex flex-col items-center justify-center gap-4 bg-black px-4">
         {error && (
-          <div className="max-w-xl rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-white/10">
-            <p className="text-center text-white text-lg font-semibold leading-snug">
+          <div className="max-w-xl rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-gold/20">
+            <p className="text-center text-gold text-lg font-semibold leading-snug">
               {error}
             </p>
             <button

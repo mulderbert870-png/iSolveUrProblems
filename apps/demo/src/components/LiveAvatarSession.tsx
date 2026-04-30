@@ -2495,7 +2495,7 @@ const LiveAvatarSessionComponent: React.FC<{
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
               <MicOff className="w-8 h-8 text-white" aria-hidden />
             </div>
-            <h2 className="text-white text-xl font-semibold mb-2">
+            <h2 className="text-gold text-xl font-semibold mb-2">
               Microphone blocked
             </h2>
             <p className="text-white/70 text-sm leading-relaxed mb-4">
@@ -2512,7 +2512,7 @@ const LiveAvatarSessionComponent: React.FC<{
               <button
                 type="button"
                 onClick={() => void handleMicDeniedRetry()}
-                className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-white/90 transition"
+                className="w-full bg-gold text-black font-semibold py-3 rounded-lg hover:bg-gold-light transition"
               >
                 Try Again
               </button>
@@ -2531,10 +2531,10 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-2 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="inline-block text-white text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
+          <h1 className="inline-block text-gold text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="mx-auto max-w-[16.5rem] text-white text-[0.72rem] sm:text-[0.78rem] font-medium text-white/85 leading-snug">
+          <p className="mx-auto max-w-[16.5rem] text-gold-light text-[0.72rem] sm:text-[0.78rem] font-medium leading-snug">
             Your Home &amp; Garden Solution Center
           </p>
         </div>
@@ -2647,7 +2647,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 />
                 <button
                   onClick={() => fallbackImageInputRef.current?.click()}
-                  className="absolute top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-md z-40 hover:bg-blue-700 text-sm"
+                  className="absolute top-4 right-4 bg-gold text-black font-medium px-4 py-2 rounded-md z-40 hover:bg-gold-light text-sm"
                 >
                   Change Image
                 </button>
