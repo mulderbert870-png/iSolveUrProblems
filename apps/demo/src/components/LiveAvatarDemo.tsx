@@ -311,7 +311,7 @@ export const LiveAvatarDemo = () => {
           </div>
         )}
         {!error && (
-          <div className="text-inset text-xl text-white/90">Loading...</div>
+          <div className="text-inset text-xl">Loading...</div>
         )}
         <Link
           href="/terms"

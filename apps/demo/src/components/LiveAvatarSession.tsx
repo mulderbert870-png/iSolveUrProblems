@@ -2819,9 +2819,9 @@ const LiveAvatarSessionComponent: React.FC<{
                       </span>
                     </span> */}
                     {isActive ? (
-                      <Square className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                      <Square className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     ) : (
-                      <Play className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                      <Play className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     )}
                     {isActive ? "Stop" : "Start"}
                   </button>
@@ -2833,7 +2833,7 @@ const LiveAvatarSessionComponent: React.FC<{
                       handleGoLive();
                     }}
                   >
-                    <Radio className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    <Radio className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     Go Live
                   </button>
                 </div>
@@ -2846,7 +2846,7 @@ const LiveAvatarSessionComponent: React.FC<{
                       void handleCameraClick();
                     }}
                   >
-                    <Camera className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    <Camera className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     Camera
                   </button>
                   <button
@@ -2854,7 +2854,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
                     onClick={() => void handleGalleryClick()}
                   >
-                    <Images className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    <Images className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     Gallery
                   </button>
                 </div>
@@ -2888,7 +2888,8 @@ const LiveAvatarSessionComponent: React.FC<{
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Square
-                    className="w-4 h-4 shrink-0 text-gold fill-current"
+                    className="w-4 h-4 shrink-0 text-gold"
+                    strokeWidth={3}
                     aria-hidden
                   />
                   <span>Stop</span>
