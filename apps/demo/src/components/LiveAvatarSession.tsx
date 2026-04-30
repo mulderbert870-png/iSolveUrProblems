@@ -2819,9 +2819,9 @@ const LiveAvatarSessionComponent: React.FC<{
                       </span>
                     </span> */}
                     {isActive ? (
-                      <Square className="mr-1.5 w-4 h-4 shrink-0 fill-current" aria-hidden />
+                      <Square className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
                     ) : (
-                      <Play className="mr-1.5 w-4 h-4 shrink-0 fill-current" aria-hidden />
+                      <Play className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
                     )}
                     {isActive ? "Stop" : "Start"}
                   </button>
