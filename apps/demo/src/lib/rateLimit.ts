@@ -1,4 +1,6 @@
-import { createHash } from "node:crypto";
+// Web Crypto SHA-256 — works in both Node and Vercel Edge runtimes.
+// Switched from node:crypto on 2026-04-30 so this lib stays edge-compatible
+// (analyze-image, analyze-video, openai-chat, elevenlabs-tts now run on edge).
 
 const WINDOW_SECONDS = 60;
 const DEFAULT_PER_MINUTE = 30;
@@ -19,8 +21,15 @@ function currentDayBucket(): string {
   return new Date().toISOString().slice(0, 10); // "2026-04-19"
 }
 
-function hashIp(ip: string): string {
-  return createHash("sha256").update(ip).digest("hex").slice(0, 16);
+async function hashIp(ip: string): Promise<string> {
+  const data = new TextEncoder().encode(ip);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const bytes = new Uint8Array(hashBuffer);
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, "0");
+  }
+  return hex.slice(0, 16);
 }
 
 function getClientIp(request: Request): string {
@@ -68,7 +77,7 @@ export async function checkRateLimit(
   if (!base || !token) return null;
 
   const ip = getClientIp(request);
-  const hashed = hashIp(ip);
+  const hashed = await hashIp(ip);
   const minKey = `rl:ip:${hashed}:m:${currentMinuteBucket()}`;
   const dayKey = `rl:ip:${hashed}:d:${currentDayBucket()}`;
 
