@@ -2381,7 +2381,11 @@ const LiveAvatarSessionComponent: React.FC<{
           problem: currentProblemRef.current || null,
           error: error instanceof Error ? error.message : String(error),
         });
-        alert("Failed to analyze image. Please try again.");
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Failed to analyze image. Please try again.",
+        );
       } finally {
         setIsAnalyzingImage(false);
         setIsProcessingCameraQuestion(false);

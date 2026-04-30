@@ -12,6 +12,36 @@ const MAX_PROBLEM_CHARS = 300;
 const MAX_LAST_ANALYSIS_CHARS = 400;
 const SILENT_TOKEN = "[SILENT]";
 
+// Retry config for Gemini Vision transient failures.
+// 2026-04-30 — Bert hit a 503 "model experiencing high demand" between two
+// successful calls of the same image. Classic transient spike. 2 retries with
+// short backoff cover most spikes (~750ms total added latency worst case).
+const GEMINI_MAX_ATTEMPTS = 3;
+const GEMINI_RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+const GEMINI_BASE_DELAY_MS = 250;
+
+async function fetchGeminiWithRetry(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok || !GEMINI_RETRY_STATUSES.has(res.status)) {
+      return res;
+    }
+    lastResponse = res;
+    if (attempt < GEMINI_MAX_ATTEMPTS) {
+      const delay = GEMINI_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      console.warn(
+        `Gemini Vision API ${res.status} on attempt ${attempt}/${GEMINI_MAX_ATTEMPTS}, retrying in ${delay}ms`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  return lastResponse!;
+}
+
 // Snapshot / Gallery / Video-upload mode. User deliberately captured or uploaded an image
 // and wants 6 to engage with it. Light dry humor OK. Not silent-first.
 const HUMOR_STYLE_GUIDE =
@@ -235,12 +265,13 @@ Do not tell the user to point a camera, show you something on video later, or of
     const systemInstruction = isStreaming
       ? STREAMING_VISION_SYSTEM_PROMPT
       : HUMOR_STYLE_GUIDE;
-    const res = await fetch(
+    const res = await fetchGeminiWithRetry(
       // Gemini 2.5 Flash LITE — picked 2026-04-24 for fastest possible vision.
       // Warm calls run 333–829ms vs Pro's 1900ms. The accuracy hit is small
       // for "describe what's visible" use cases, and the speed lets us
       // actually beat the TALK brain to the punch (Pro was always too slow
       // — 6 spoke from stale context). Supports thinkingBudget:0 like Flash.
+      // Retry wrapper added 2026-04-30 for 503/429/5xx transient failures.
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
@@ -276,9 +307,13 @@ Do not tell the user to point a camera, show you something on video later, or of
     if (!res.ok) {
       const errorData = await res.text();
       console.error("Gemini Vision API error:", errorData);
+      const isOverloaded =
+        res.status === 503 || res.status === 429 || res.status === 504;
       return new Response(
         JSON.stringify({
-          error: "Failed to analyze image",
+          error: isOverloaded
+            ? "Vision is busy right now — give it a moment and try again."
+            : "Failed to analyze image",
         }),
         {
           status: res.status <= 599 ? res.status : 502,
