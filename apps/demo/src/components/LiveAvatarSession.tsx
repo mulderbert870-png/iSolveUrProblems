@@ -13,7 +13,7 @@ import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
 import { captureMedia } from "../lib/captureMedia";
-import { Radio, Camera, Images, Video, Play, MicOff } from "lucide-react";
+import { Radio, Camera, Images, Video, MicOff } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -2833,7 +2833,19 @@ const LiveAvatarSessionComponent: React.FC<{
                         <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none" />
                       </svg>
                     ) : (
-                      <Play className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
+                      <svg
+                        className="mr-1.5 w-4 h-4 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <polygon points="6 3 20 12 6 21" />
+                        <polygon points="9 10 13 12 9 14" fill="currentColor" stroke="none" />
+                      </svg>
                     )}
                     {isActive ? "Stop" : "Start"}
                   </button>
