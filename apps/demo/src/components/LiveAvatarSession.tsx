@@ -2819,18 +2819,9 @@ const LiveAvatarSessionComponent: React.FC<{
                       </span>
                     </span> */}
                     {isActive ? (
-                      // Hollow (no fill-current) + slightly smaller. 2026-04-25 per G.
-                      <Square
-                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-gold"
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
+                      <Square className="mr-1.5 w-4 h-4 shrink-0 fill-current" aria-hidden />
                     ) : (
-                      <Play
-                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-gold"
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
+                      <Play className="mr-1.5 w-4 h-4 shrink-0 fill-current" aria-hidden />
                     )}
                     {isActive ? "Stop" : "Start"}
                   </button>
