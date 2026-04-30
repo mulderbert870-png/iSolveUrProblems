@@ -11,7 +11,9 @@ import {
 import Link from "next/link";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
-import { Radio, Camera, Images, Video, Play, Square } from "lucide-react";
+import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
+import { captureMedia } from "../lib/captureMedia";
+import { Radio, Camera, Images, Video, MicOff } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -66,6 +68,13 @@ const LiveAvatarSessionComponent: React.FC<{
     useState(false);
   const [showVisionLoading, setShowVisionLoading] = useState(false);
   const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
+  // Mic permission UX (added 2026-04-25 per G — let the OS dialog fire
+  // directly on Start (one-click experience), but show a clean recovery
+  // screen if permission has been denied. Pre-prompt explainer reverted —
+  // tap-twice was unwanted friction.)
+  type MicPermState = "unknown" | "granted" | "prompt" | "denied";
+  const [micPermState, setMicPermState] = useState<MicPermState>("unknown");
+  const [micDeniedOpen, setMicDeniedOpen] = useState(false);
   const [fallbackImage, setFallbackImage] = useState<File | null>(null);
   const [fallbackImagePreview, setFallbackImagePreview] = useState<
     string | null
@@ -76,10 +85,41 @@ const LiveAvatarSessionComponent: React.FC<{
   const isDebugProcessingRef = useRef<boolean>(false);
   const lastAvatarResponseRef = useRef<string>("");
   const lastVisionResponseTimeRef = useRef<number>(0);
+  // Tracks the last time we actually injected a VISION observation into the
+  // TALK brain context. If the scene is genuinely unchanged but the last
+  // inject was >25s ago, we re-inject so the TALK brain stays grounded on
+  // the current state instead of losing the thread. (Added 2026-04-24 after
+  // 6 said "I don't see anything" while Gemini had been reporting the
+  // lampshade for 70+ seconds but every frame was deduped.)
+  const lastVisionInjectTimeRef = useRef<number>(0);
+  const VISION_REINJECT_STALE_MS = 25_000;
+  // Synchronous mirror of (isCameraActive && visionMode === "streaming"). State
+  // props are stale inside in-flight callbacks due to closure capture; this
+  // ref lets Stop immediately halt pending speech. (Added 2026-04-24 after
+  // fillers fired after the user hit the main Stop button.)
+  const goLiveActiveRef = useRef<boolean>(false);
+  // Rotating "Hang tight" / "I'm watching" filler was REMOVED 2026-04-25 after
+  // smoke test showed those lines polluting conversation_messages and the TALK
+  // brain hallucinating contradictions. Loading overlay + proactive narration
+  // (state-change speech) cover the "avatar isn't frozen" need without
+  // dirtying transcript context. Don't re-add without a way to keep them out
+  // of the LiveAvatar transcript.
+  // Debounces the "Oops!" error message so a string of failed vision calls
+  // doesn't make the avatar say "Oops" 4+ times in 15 seconds (observed bug).
+  const lastOopsTimeRef = useRef<number>(0);
+  // Debounces OBJECT_NOT_VISIBLE reframe asks. Gemini often returns the same
+  // reframe on 10+ consecutive frames — without this, 6 repeats "Can you make
+  // sure the camera is pointing..." every 1.5s for the whole session.
+  const lastReframeTimeRef = useRef<number>(0);
   const hasAutoAnalyzedRef = useRef<boolean>(false);
   // Tracks the specific problem the user is trying to fix (persists across vision calls so
-  // Grok can stay laser-focused on the object/problem the user named at the start).
+  // Gemini can stay laser-focused on the object/problem the user named at the start).
   const currentProblemRef = useRef<string>("");
+  // Timestamp when currentProblemRef was first set. We accumulate user text for
+  // the first 20 seconds (so "I got some issues with scratches" + "on my sunglasses"
+  // both end up in the problem) then lock — prevents later questions from
+  // polluting the problem statement.
+  const problemFirstSetAtRef = useRef<number>(0);
   // Tracks the last non-silent vision analysis so Grok can compare frames and only break
   // silence when something meaningful has actually changed.
   const lastAnalysisRef = useRef<string>("");
@@ -206,7 +246,17 @@ const LiveAvatarSessionComponent: React.FC<{
   }, [sessionState, sessionRef]);
 
   // Function to reset to home screen (close camera, clear uploads, but keep session)
+  // Keep goLiveActiveRef in sync with Go Live state so in-flight async work
+  // sees the current value synchronously (closures over state are stale).
+  useEffect(() => {
+    goLiveActiveRef.current =
+      isCameraActive && visionMode === "streaming";
+  }, [isCameraActive, visionMode]);
+
   const resetToHomeScreen = useCallback(() => {
+    // Immediately halt in-flight Go Live speech/filler work.
+    goLiveActiveRef.current = false;
+
     // Close camera if active
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
@@ -302,6 +352,11 @@ const LiveAvatarSessionComponent: React.FC<{
       if (!audioUnlockedRef.current) {
         void interrupt();
       }
+      // Mark that the avatar just started speaking so Go Live filler knows
+      // not to fire on top. Without this, filler tracked only OUR repeat()
+      // calls and ignored the TALK brain's own responses — leading to
+      // "talky talky" overlap where filler fired 3s after a TALK response.
+      lastVisionResponseTimeRef.current = Date.now();
     };
     session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
     return () => {
@@ -401,9 +456,54 @@ const LiveAvatarSessionComponent: React.FC<{
     ensureAudioOutputReady,
   ]);
 
+  // Probe mic permission state on mount + listen for changes. Falls back to
+  // "prompt" if the browser doesn't expose Permissions API for microphone
+  // (some older Android variants).
   useEffect(() => {
-    // console.log("isStreamReady: ", isStreamReady);
-    // console.log("videoRef.current: ", videoRef.current);
+    if (typeof navigator === "undefined" || !navigator.permissions) {
+      setMicPermState("prompt");
+      return;
+    }
+    let cancelled = false;
+    let status: PermissionStatus | null = null;
+    const onChange = () => {
+      if (!cancelled && status) {
+        setMicPermState(status.state as MicPermState);
+        if (status.state === "denied") setMicDeniedOpen(true);
+      }
+    };
+    navigator.permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((p) => {
+        if (cancelled) return;
+        status = p;
+        setMicPermState(p.state as MicPermState);
+        p.addEventListener("change", onChange);
+      })
+      .catch(() => {
+        if (!cancelled) setMicPermState("prompt");
+      });
+    return () => {
+      cancelled = true;
+      if (status) status.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  const handleMicDeniedRetry = useCallback(async () => {
+    // Re-attempt — if the user enabled mic in browser settings, this will
+    // succeed silently. If still blocked, getUserMedia will reject again.
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach((t) => t.stop());
+      setMicPermState("granted");
+      setMicDeniedOpen(false);
+      await handleVoiceStartStop();
+    } catch {
+      // stays open — user still hasn't enabled it
+    }
+  }, [handleVoiceStartStop]);
+
+  useEffect(() => {
     if (isStreamReady && videoRef.current) {
       const video = videoRef.current;
       // Muted autoplay is allowed without user gesture - avatar displays automatically
@@ -580,12 +680,46 @@ const LiveAvatarSessionComponent: React.FC<{
           });
       }
     }
+
+    // Inject a state signal into the TALK conversation so the avatar's LLM
+    // knows vision is now on. Prevents the "6 doesn't know Go Live state" bug
+    // where users said "I hit Go Live" but 6 kept asking them to pick a button.
+    //
+    // Then FORCE-SPEAK a short opener via repeat() so 6 engages immediately.
+    // message() alone was unreliable — users saw 30+ seconds of silence after
+    // Go Live activated (observed 2026-04-24). repeat() guarantees audible
+    // engagement. The opener is templated on whether a problem was already
+    // stated so it lands appropriately.
+    try {
+      if (mode === "FULL" && sessionRef.current) {
+        sessionRef.current.message(
+          "[GO LIVE IS NOW ACTIVE — the camera feed is live and vision reports are coming in]",
+        );
+        const hasProblem = !!currentProblemRef.current;
+        const opener = hasProblem
+          ? "OK — I can see you now. Show me where you're stuck."
+          : "Camera's live — show me what we're looking at.";
+        // Small delay so the state signal is registered before we force speech.
+        setTimeout(() => {
+          try {
+            sessionRef.current?.repeat(opener);
+            lastVisionResponseTimeRef.current = Date.now();
+          } catch (err) {
+            console.error("Error speaking Go Live opener:", err);
+          }
+        }, 300);
+      }
+    } catch (signalError) {
+      console.error("Error injecting Go Live ON signal:", signalError);
+    }
   }, [
     triggerGreetingIfNeeded,
     visionMode,
     cameraAvailable,
     fallbackImage,
     loadFallbackImage,
+    mode,
+    sessionRef,
   ]);
 
   // Allow the initial greeting (intro line) from the backend to play when session is fully loaded
@@ -731,14 +865,22 @@ const LiveAvatarSessionComponent: React.FC<{
     if (!isCameraActive || visionMode !== "snapshot") {
       return;
     }
+    // Silence 6 the moment the shutter fires.
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
+    }
 
+    // Hoisted so the catch block can also store the frame for failure audit.
+    let frameFile: File | null = null;
     try {
       setIsAnalyzingImage(true);
       // Show "Analyzing" immediately (not "Loading")
       setIsProcessingCameraQuestion(true);
 
       // Capture frame from camera or use fallback image
-      const frameFile = await captureCameraFrame();
+      frameFile = await captureCameraFrame();
 
       if (!frameFile) {
         console.error("Failed to capture camera frame");
@@ -765,15 +907,35 @@ const LiveAvatarSessionComponent: React.FC<{
       setFallbackImage(null);
       setFallbackImagePreview(null);
 
-      // Analyze the photo
-      const formData = new FormData();
-      formData.append("image", frameFile, frameFile.name || "camera-frame.jpg");
-      formData.append("question", "Describe what you see briefly");
+      // Analyze the photo (with one retry on transient failures — Vercel cold
+      // starts can make the first invocation fail, and the second succeeds).
+      // Bind to a local const so the closure sees a non-null type.
+      const frame = frameFile;
+      const buildForm = () => {
+        const fd = new FormData();
+        fd.append(
+          "image",
+          frame,
+          frame.name || "camera-frame.jpg",
+        );
+        fd.append("question", "Describe what you see briefly");
+        return fd;
+      };
 
-      const response = await fetch("/api/analyze-image", {
+      let response = await fetch("/api/analyze-image", {
         method: "POST",
-        body: formData,
+        body: buildForm(),
       });
+      if (!response.ok && response.status >= 500) {
+        console.warn(
+          `analyze-image first attempt failed (${response.status}), retrying once...`,
+        );
+        await new Promise((r) => setTimeout(r, 800));
+        response = await fetch("/api/analyze-image", {
+          method: "POST",
+          body: buildForm(),
+        });
+      }
 
       if (!response.ok) {
         let errorMessage = "Failed to analyze photo";
@@ -791,19 +953,46 @@ const LiveAvatarSessionComponent: React.FC<{
       const analysis = data.analysis;
       setImageAnalysis(analysis);
 
-      // Store analysis as context for future questions (no scripted repeat prompt)
+      // Store a copy of this snapshot + analysis to Supabase for later audit.
+      void captureMedia({
+        file: frameFile,
+        source: "camera_snapshot",
+        sessionId: sessionRef.current?.sessionId ?? null,
+        geminiAnalysis: analysis,
+        problem: currentProblemRef.current || null,
+      });
+
+      // Inject the analysis as context to the TALK brain so it can respond
+      // intelligently in the flow of the conversation (e.g. tying a snapshot of
+      // a lampshade back to the user's earlier "how do I get this off" question).
+      // REVERTED from plain repeat() on 2026-04-24 — repeat() made the avatar
+      // read Gemini's raw description without connecting it to the prior thread.
       if (mode === "FULL" && sessionRef.current) {
-        const contextMessage = `You are directly viewing an image. Here's what you see: ${analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this image.`;
+        const contextMessage = `[IMAGE CONTEXT — not spoken by user] Vision just processed an image the user captured. You are viewing it directly. Here is what's in it: ${analysis}. Respond naturally in first person as 6, tie what you see to the ongoing conversation (especially any problem the user was trying to solve), and ask intelligent follow-up questions about the object or problem. Respond briefly (1-2 sentences). Never say you can't see it or that you're relying on someone else's analysis — you can see it directly.`;
         sessionRef.current.message(contextMessage);
       }
 
       setIsAnalyzingImage(false);
     } catch (error) {
       console.error("Error capturing and analyzing photo:", error);
+      // Capture the frame + error so we can audit failures later.
+      if (frameFile) {
+        void captureMedia({
+          file: frameFile,
+          source: "camera_snapshot",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          problem: currentProblemRef.current || null,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       if (mode === "FULL") {
-        await repeat(
-          "Oops! I had a little trouble analyzing the photo. Could you try again?",
-        );
+        const oopsNow = Date.now();
+        if (oopsNow - lastOopsTimeRef.current > 15000) {
+          lastOopsTimeRef.current = oopsNow;
+          await repeat(
+            "Oops! I had a little trouble analyzing the photo. Could you try again?",
+          );
+        }
       }
       setIsAnalyzingImage(false);
     }
@@ -878,10 +1067,13 @@ const LiveAvatarSessionComponent: React.FC<{
       // Removed setShowVisionLoading(true) to prevent flashing text
       lastProcessedQuestionRef.current = userText;
 
+      // Hoisted so catch can still store the frame + error for audit.
+      let pollFrameFile: File | null = null;
       try {
         // Capture frame from camera or use fallback image
         console.log("Capturing camera frame or using fallback image...");
         const frameFile = await captureCameraFrame();
+        pollFrameFile = frameFile;
 
         if (!frameFile) {
           console.error("Failed to capture camera frame or no fallback image");
@@ -905,11 +1097,65 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
-        // Persist the current problem so Grok stays locked on it across every
-        // subsequent frame in this Go Live session. We only overwrite when the
-        // user says something meaningful — empty / auto-fire calls reuse the last problem.
+        // BLACK-FRAME SKIP — when the camera is face-down, in a pocket, or
+        // pointed at a uniform surface, JPEG compression collapses the file
+        // to ~2-3 KB. Burning a Gemini call (and Vercel function invocation)
+        // on that frame is pure waste. Threshold of 8 KB is empirical:
+        // breakthrough-session frames were 80-140 KB; black/laid-down
+        // frames in the same session were 2.5 KB. (Added 2026-04-25 after
+        // Vercel 75% credit warning.)
+        if (frameFile.size < 8 * 1024) {
+          console.log(
+            `Vision: skipping tiny frame (${frameFile.size}b) — likely black/laid-down camera.`,
+          );
+          // Still inject a context line so 6 knows the camera isn't aimed.
+          if (sessionRef.current && goLiveActiveRef.current) {
+            sessionRef.current.message(
+              "[VISION — camera not aimed at the problem object right now]",
+            );
+          }
+          // Also persist as a media event so the audit trail shows we saw
+          // a black frame (not that vision broke).
+          void captureMedia({
+            file: frameFile,
+            source: "go_live_frame",
+            sessionId: sessionRef.current?.sessionId ?? null,
+            problem: currentProblemRef.current || null,
+            geminiAnalysis: "[SKIPPED — black/blank frame]",
+          });
+          setIsProcessingCameraQuestion(false);
+          setIsAnalyzingImage(false);
+          processingTimeoutRef.current = setTimeout(() => {
+            lastProcessedQuestionRef.current = "";
+          }, 2000);
+          return;
+        }
+
+        // Build up `currentProblemRef` during the first 20 seconds of vision:
+        // accumulate non-question user utterances so multi-part problem descriptions
+        // like "I got scratches" + "on my sunglasses" both land in the problem.
+        // Skip questions (contain "?") and very short responses so follow-up
+        // questions like "What are you looking at?" don't overwrite the problem.
         if (userText.length > 0) {
-          currentProblemRef.current = userText;
+          const isQuestion = userText.includes("?");
+          const isSubstantive = userText.length >= 15;
+          const nowMs = Date.now();
+          const problemWindowMs = 20000;
+
+          if (!currentProblemRef.current) {
+            // First capture — take whatever we got, mark the timestamp.
+            currentProblemRef.current = userText;
+            problemFirstSetAtRef.current = nowMs;
+          } else if (
+            !isQuestion &&
+            isSubstantive &&
+            problemFirstSetAtRef.current > 0 &&
+            nowMs - problemFirstSetAtRef.current < problemWindowMs
+          ) {
+            // Within the 20s accumulation window: append if not a question.
+            currentProblemRef.current = `${currentProblemRef.current} ${userText}`.trim();
+          }
+          // After 20s or for questions: problem stays locked.
         }
 
         console.log("Frame captured, sending to API with question:", userText);
@@ -948,8 +1194,21 @@ const LiveAvatarSessionComponent: React.FC<{
         const analysis: string = (data.analysis ?? "").toString();
         console.log("Analysis received:", analysis.substring(0, 100) + "...");
 
-        // Silent-first: Grok outputs [SILENT] when nothing meaningful has changed.
-        // Keep the avatar quiet entirely — no repeat(), no state churn.
+        // Store the frame + Gemini's verdict (including [SILENT]) so we can
+        // audit what 6 was actually looking at during Go Live.
+        void captureMedia({
+          file: frameFile,
+          source: "go_live_frame",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: analysis,
+          problem: currentProblemRef.current || null,
+        });
+
+        // Silent-first: Gemini outputs [SILENT] when nothing meaningful has
+        // changed. Stay quiet — the loading overlay + proactive narration on
+        // real state changes already cover the "avatar isn't frozen" need.
+        // (2026-04-25: removed the rotating "Hang tight" filler that was
+        // polluting transcript and confusing the TALK brain.)
         const trimmed = analysis.trim();
         if (trimmed === "[SILENT]" || trimmed.startsWith("[SILENT]")) {
           console.log("Vision: [SILENT] — avatar staying quiet.");
@@ -960,37 +1219,151 @@ const LiveAvatarSessionComponent: React.FC<{
           return;
         }
 
-        // OBJECT_NOT_VISIBLE: "Can you hold the [object] up center of frame for me?"
-        // Strip the prefix and speak only the quoted prompt.
+        // OBJECT_NOT_VISIBLE: strip the prefix and speak only the quoted prompt.
+        // Debounce — if we already spoke a reframe in the last 12 seconds, treat
+        // this one as [SILENT]. Gemini can fire OBJECT_NOT_VISIBLE on 10+ frames
+        // in a row; without this the avatar spams the same ask every 1.5s.
         let responseMessage = trimmed;
+        let isReframe = false;
         const objectNotVisibleMatch = trimmed.match(
           /^OBJECT_NOT_VISIBLE\s*:\s*["“]?(.+?)["”]?$/s,
         );
         if (objectNotVisibleMatch) {
           responseMessage = objectNotVisibleMatch[1].trim();
-          console.log("Vision: object not visible — asking user to reframe.");
+          isReframe = true;
+          console.log("Vision: object not visible — reframe response.");
+        }
+
+        if (isReframe) {
+          const nowMs = Date.now();
+          if (nowMs - lastReframeTimeRef.current < 25000) {
+            console.log(
+              "Vision: reframe already spoken in last 25s — suppressing duplicate.",
+            );
+            processingTimeoutRef.current = setTimeout(() => {
+              lastProcessedQuestionRef.current = "";
+            }, 2000);
+            return;
+          }
+          lastReframeTimeRef.current = nowMs;
+        }
+
+        // CLIENT-SIDE DEDUP — but with escape valves so 6 stays grounded.
+        //
+        // 1. Vision-intent utterance (user just asked "what do you see?"):
+        //    ALWAYS speak the observation, even if duplicate. Skipping it
+        //    makes 6 appear to not know, which is exactly the bug the
+        //    vision system is meant to prevent. (Fixed 2026-04-24 after
+        //    6 said "I don't see anything" with 30 consecutive duplicate
+        //    observations deduped away.)
+        //
+        // 2. Duplicate observation but last inject was stale (>25s ago):
+        //    re-inject as context so the TALK brain doesn't lose the
+        //    thread. The observation hasn't changed, but we need to keep
+        //    it fresh in 6's memory.
+        //
+        // 3. Duplicate observation AND last inject was recent: skip.
+        const userLower = userText.toLowerCase();
+        // Vision-intent matcher — broadened 2026-04-25 after smoke test where
+        // "What does the poster say?" / "What name on the poster?" failed to
+        // trigger fresh vision because the regex only covered "what is/are/do
+        // you" not "what does". Same scene-shift problem applied to "read the
+        // X" and "what color/brand/logo" asks.
+        const userHasVisionIntent =
+          userLower.length > 0 &&
+          /\b(see|look|looking|view|visible|notice|spot|describe|show|find|read(ing)?|what('?s| is| are| do you| does| do| name| color| brand| logo| label| word| say| number)|where('?s| is)?|which|how does it look|is it (off|on|loose|tight|stuck|done|working)|did (i|it|we|that)|can you (see|see it|tell|read|make out))/.test(
+            userLower,
+          );
+
+        let isDuplicate = false;
+        if (!isReframe && lastAnalysisRef.current) {
+          const norm = (s: string) =>
+            s
+              .toLowerCase()
+              .replace(/[^\p{L}\p{N}\s]/gu, " ")
+              .split(/\s+/)
+              .filter((w) => w.length > 2);
+          const prevTokens = new Set(norm(lastAnalysisRef.current));
+          const currTokens = norm(responseMessage);
+          if (currTokens.length > 0 && prevTokens.size > 0) {
+            const overlap = currTokens.filter((w) => prevTokens.has(w)).length;
+            const ratio = overlap / Math.max(currTokens.length, prevTokens.size);
+            if (ratio >= 0.85) {
+              isDuplicate = true;
+              const injectAgeMs =
+                Date.now() - lastVisionInjectTimeRef.current;
+              const stale = injectAgeMs > VISION_REINJECT_STALE_MS;
+              if (!userHasVisionIntent && !stale) {
+                console.log(
+                  `Vision dedup: ${(ratio * 100).toFixed(0)}% overlap, inject age ${Math.round(injectAgeMs / 1000)}s — skipping.`,
+                );
+                processingTimeoutRef.current = setTimeout(() => {
+                  lastProcessedQuestionRef.current = "";
+                }, 2000);
+                return;
+              }
+              console.log(
+                `Vision dedup bypassed: overlap ${(ratio * 100).toFixed(0)}%, age ${Math.round(injectAgeMs / 1000)}s, visionIntent=${userHasVisionIntent}, stale=${stale}`,
+              );
+            }
+          }
         }
 
         setImageAnalysis(responseMessage);
         // Remember this analysis so the next frame can be compared against it for change detection.
-        lastAnalysisRef.current = responseMessage;
+        // Only update on non-duplicates so dedup still works across stale re-injects.
+        if (!isDuplicate) {
+          lastAnalysisRef.current = responseMessage;
+        }
 
         // Store the response to filter out avatar transcriptions later
         lastAvatarResponseRef.current = responseMessage.substring(0, 100); // Store first 100 chars for comparison
 
-        // Hide loading is handled by isProcessingCameraQuestion state
-
-        // Send the response to the avatar - use repeat() to speak directly without AI processing
-        // IMPORTANT: Use repeat() which speaks directly without AI processing to prevent monologuing
-        if (mode === "FULL") {
-          console.log(
-            "Sending response to avatar using repeat() - direct speech only",
-          );
-          // Use repeat() to make avatar speak ONLY this message, no AI processing = no monologue
-          await repeat(responseMessage);
+        // Two paths (rewrote 2026-04-24 after vision-hallucination smoke test;
+        // tightened further after "talky talky" smoke test same day):
+        //
+        // VISION-INTENT POLL → the user's latest utterance clearly asks about
+        //   what 6 sees. Speak the observation directly via repeat() so the
+        //   answer lands fast.
+        //
+        // EVERYTHING ELSE (idle polls, affirmations like "sure"/"yeah",
+        // off-topic utterances) → inject the observation as CONTEXT via
+        // message(). The TALK brain has visual grounding for its NEXT
+        // response but 6 does NOT parrot the observation aloud unprompted.
+        //
+        // OBJECT_NOT_VISIBLE is handled above before this branch — it always
+        // speaks via repeat() because it's a user-facing reframe ask.
+        // PROACTIVE NARRATION (added 2026-04-25 after smoke test where 6
+        // saw "finial in your hand, off the lamp" but stayed silent until
+        // G asked "what do I have in my hand?"). Three speech paths now:
+        //
+        //   1) USER ASKED A VISION QUESTION → speak the observation directly.
+        //   2) NEW STATE CHANGE (non-duplicate observation on idle poll) →
+        //      ALSO speak via repeat(). 6 announces what changed without
+        //      waiting for a prompt. Dedup ensures we don't fire on every
+        //      frame — only when the scene meaningfully shifts.
+        //   3) STALE RE-INJECT (duplicate but >25s since last inject) →
+        //      message() inject only, no speech. Keeps TALK brain grounded
+        //      without repeating ourselves out loud.
+        //
+        // Skip everything if Go Live has already been stopped by the user.
+        if (mode === "FULL" && goLiveActiveRef.current) {
+          const isNewStateChange = !isDuplicate;
+          if (userHasVisionIntent || isNewStateChange) {
+            console.log(
+              `Vision observation → speak (visionIntent=${userHasVisionIntent}, stateChange=${isNewStateChange}).`,
+            );
+            await repeat(responseMessage);
+          } else if (sessionRef.current) {
+            console.log(
+              "Vision observation → stale re-inject (no speech).",
+            );
+            sessionRef.current.message(
+              `[VISION — current view] ${responseMessage}`,
+            );
+          }
           lastVisionResponseTimeRef.current = Date.now();
-          // CRITICAL: Do NOT send any additional messages to prevent continued talking
-          // Do NOT use sessionRef.current.message() here as it triggers AI processing and monologuing
+          lastVisionInjectTimeRef.current = Date.now();
         }
 
         // Reset the last processed question after a delay to allow the same question to be asked again later
@@ -999,12 +1372,20 @@ const LiveAvatarSessionComponent: React.FC<{
         }, 5000);
       } catch (error) {
         console.error("Error processing camera question:", error);
-        // Send a friendly error message - use repeat() to speak directly
-        if (mode === "FULL") {
-          await repeat(
-            "Oops! I had a little trouble analyzing what I'm seeing right now. Could you try asking again?",
-          );
+        // Audit: store the frame + error so we can see what Gemini choked on.
+        if (pollFrameFile) {
+          void captureMedia({
+            file: pollFrameFile,
+            source: "go_live_frame",
+            sessionId: sessionRef.current?.sessionId ?? null,
+            problem: currentProblemRef.current || null,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
+        // Polling runs every 1.5s; a transient error resolves within 1-2 polls.
+        // Speaking "Oops" at the user for a transient cold-start is just noise —
+        // swallow silently and let the next poll try again. (2026-04-24: removed
+        // the user-visible Oops during Go Live per G's "no oops on retry" ask.)
         // Reset after error
         processingTimeoutRef.current = setTimeout(() => {
           lastProcessedQuestionRef.current = "";
@@ -1226,23 +1607,10 @@ const LiveAvatarSessionComponent: React.FC<{
         console.error("Error calling transcription capture route:", captureError);
       }
 
-      // If user asks about video and videoAnalysis exists, re-send video context
-      const userTextLower = userText.toLowerCase();
-      const videoKeywords = ["video", "recording", "clip", "footage", "film"];
-      const mentionsVideo = videoKeywords.some((keyword) =>
-        userTextLower.includes(keyword),
-      );
-
-      if (
-        mentionsVideo &&
-        videoAnalysis &&
-        sessionRef.current &&
-        mode === "FULL"
-      ) {
-        console.log("User asked about video, re-sending video context");
-        const contextMessage = `You are directly viewing a video. Here's what you see: ${videoAnalysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
-        sessionRef.current.message(contextMessage);
-      }
+      // Removed: prior code re-injected a long video-context prompt into the avatar
+      // via sessionRef.current.message(), which was being treated as USER input and
+      // overwhelming the TALK brain. Follow-up questions about the video are now
+      // handled by the normal streaming flow via processCameraQuestion below.
 
       // Process the question using the reusable function (only in streaming mode)
       await processCameraQuestion(userText, false);
@@ -1321,11 +1689,13 @@ const LiveAvatarSessionComponent: React.FC<{
         clearTimeout(timeoutId);
       };
     } else if (visionMode !== "streaming" && !isCameraActive) {
-      // Reset processing state and initial analysis flag when vision mode is deactivated
+      // Reset processing state and initial analysis flag when vision mode is deactivated,
+      // so the next Go Live session can fire its initial analysis.
       setIsProcessingCameraQuestion(false);
       hasInitialAnalysisRef.current = false;
-      // Clear per-session problem and analysis history so the next Go Live starts fresh.
-      currentProblemRef.current = "";
+      // PERSIST currentProblemRef across Go Live restarts so 6 picks up where he left off
+      // (e.g. user restarts Go Live after 2-minute timeout to continue on the same problem).
+      // Only clear last-analysis so Grok's frame-change comparison starts fresh each session.
       lastAnalysisRef.current = "";
     }
   }, [
@@ -1444,6 +1814,13 @@ const LiveAvatarSessionComponent: React.FC<{
   }, [loadFallbackImage]);
 
   const handleCameraClick = async () => {
+    // If 6 is mid-sentence, cut him off. User wants to show us something —
+    // talking over that is a UX fail. (Added 2026-04-24 per G.)
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
+    }
     if (visionMode === "snapshot") {
       // Stop camera if already in snapshot mode
       if (cameraStream) {
@@ -1559,17 +1936,29 @@ const LiveAvatarSessionComponent: React.FC<{
   };
 
   const handleGalleryClick = useCallback(async () => {
+    // Interrupt 6 if he's mid-speech — user is showing us something.
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
+    }
     await unlockAudio();
     if (fileInputRef.current) {
       fileInputRef.current.setAttribute("accept", "image/*,video/*");
       fileInputRef.current.click();
     }
-  }, [unlockAudio]);
+  }, [unlockAudio, sessionRef]);
 
   // Record video from the live camera preview (snapshot mode only)
   const handleStartRecording = useCallback(() => {
     if (visionMode !== "snapshot" || !cameraStream) {
       return;
+    }
+    // Interrupt 6 mid-sentence — user is about to record, don't talk over it.
+    try {
+      sessionRef.current?.interrupt?.();
+    } catch {
+      // non-fatal
     }
     const stream = cameraStream;
 
@@ -1614,19 +2003,33 @@ const LiveAvatarSessionComponent: React.FC<{
       setFallbackImagePreview(null);
 
       setIsAnalyzingVideo(true);
+      // Hoisted so catch can still store the file for failure audit.
+      let recordedVideoFile: File | null = null;
       try {
-        const videoFile = new File([blob], "recorded-video.webm", {
+        recordedVideoFile = new File([blob], "recorded-video.webm", {
           type: "video/webm",
         });
-        const frames = await extractVideoFrames(videoFile, 5);
+        // 10 frames over a 15s video = 1.5s granularity, enough to catch quick
+        // actions like a finial coming off. Was 5 frames which missed fast moments.
+        const frames = await extractVideoFrames(recordedVideoFile, 10);
 
-        const response = await fetch("/api/analyze-video", {
+        // Retry once on 5xx — Vercel cold starts and Gemini transient errors.
+        let response = await fetch("/api/analyze-video", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ frames }),
         });
+        if (!response.ok && response.status >= 500) {
+          console.warn(
+            `analyze-video first attempt failed (${response.status}), retrying once...`,
+          );
+          await new Promise((r) => setTimeout(r, 800));
+          response = await fetch("/api/analyze-video", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ frames }),
+          });
+        }
 
         if (!response.ok) {
           const error = await response.json();
@@ -1638,22 +2041,73 @@ const LiveAvatarSessionComponent: React.FC<{
 
         setVideoAnalysis(data.analysis);
 
+        // Audit capture: recorded video + Gemini analysis.
+        void captureMedia({
+          file: recordedVideoFile,
+          source: "video_recording",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: data.analysis,
+          problem: currentProblemRef.current || null,
+        });
+
         if (mode === "FULL" && sessionRef.current) {
-          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
+          // Inject the video analysis as context so the TALK brain can respond
+          // in the flow of the conversation (tying the video back to the problem
+          // the user was trying to solve). Previously used repeat() which made
+          // the avatar read Gemini's flowery description aloud without tying
+          // it to what the user had been asking about. (Fixed 2026-04-24.)
+          const contextMessage = `[VIDEO CONTEXT — not spoken by user] Vision just processed a video the user recorded. You are viewing it directly. Here is what happens in it: ${data.analysis}. Respond naturally in first person as 6, tie what you saw to the ongoing conversation (especially any problem the user was trying to solve), and ask intelligent follow-up questions about the object or problem. Respond briefly (1-2 sentences). Never say you can't see it or that you're relying on someone else's analysis — you can see it directly.`;
           sessionRef.current.message(contextMessage);
         }
 
         setIsAnalyzingVideo(false);
+        setVideoBusy(false);
       } catch (error) {
         console.error("Error analyzing video:", error);
+        // Audit capture for failure — keep the file for debugging.
+        if (recordedVideoFile) {
+          void captureMedia({
+            file: recordedVideoFile,
+            source: "video_recording",
+            sessionId: sessionRef.current?.sessionId ?? null,
+            problem: currentProblemRef.current || null,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         alert("Failed to analyze video. Please try again.");
         setIsAnalyzingVideo(false);
+        setVideoBusy(false);
       }
     };
 
     mediaRecorderRef.current = mediaRecorder;
     mediaRecorder.start();
     setIsRecording(true);
+    // Block silence re-engage signals + any avatar speech while recording.
+    // Flag stays on through analysis and is cleared in the onstop handler below.
+    setVideoBusy(true);
+
+    // Auto-stop recording at 15 seconds so users don't have to remember to hit Stop
+    // and so analyze-video has a bounded input (Gemini timeout risk on very long clips).
+    setTimeout(() => {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        console.log("Video: auto-stopping at 15s cap.");
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+        // handleStopRecording handles mic restart — mirror the relevant cleanup here.
+        if (mode === "FULL") {
+          setTimeout(() => {
+            startListening();
+            if (isActive && isMuted && !wasMutedBeforeRecordingRef.current) {
+              unmute();
+            }
+          }, 500);
+        }
+      }
+    }, 15000);
 
     if (mode === "FULL") {
       stopListening();
@@ -1709,7 +2163,18 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   };
 
-  const closeCameraPreview = () => {
+  const closeCameraPreview = useCallback(() => {
+    // Inject a state signal so the TALK brain knows Go Live is no longer on.
+    // Without this, 6 keeps acting as if he can see.
+    try {
+      if (mode === "FULL" && sessionRef.current) {
+        sessionRef.current.message(
+          "[GO LIVE IS OFF — user must hit the Go Live button before you can see anything]",
+        );
+      }
+    } catch (signalError) {
+      console.error("Error injecting Go Live OFF signal:", signalError);
+    }
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
@@ -1734,7 +2199,52 @@ const LiveAvatarSessionComponent: React.FC<{
       clearTimeout(processingTimeoutRef.current);
       processingTimeoutRef.current = null;
     }
-  };
+  }, [cameraStream, fallbackImagePreview, fallbackImage, mode, sessionRef]);
+
+  // Continuous vision polling during Go Live.
+  // Fires every 1.5s; Grok's [SILENT] token keeps the avatar quiet when nothing meaningful has changed.
+  // Hard 2-minute cap: at the 2-minute mark, speak the timeout line and auto-deactivate Go Live.
+  useEffect(() => {
+    if (visionMode !== "streaming" || !isCameraActive) return;
+
+    const POLLING_INTERVAL_MS = 1500; // back to 1.5s 2026-04-25 — Vercel 75% credit warning, drop poll rate to save function invocations. Combined with black-frame skip, ~50% reduction in vision API calls.
+    const MAX_SESSION_MS = 300_000; // 5 min — bumped from 2 min per G 2026-04-24
+    const sessionStartTime = Date.now();
+
+    const intervalId = setInterval(() => {
+      const elapsed = Date.now() - sessionStartTime;
+      if (elapsed >= MAX_SESSION_MS) {
+        clearInterval(intervalId);
+        if (mode === "FULL") {
+          repeat(
+            "Sorry — we ran out of time on this one. If you need more time, restart Go Live and we'll pick it right back up.",
+          ).catch((err) => {
+            console.error("Error speaking timeout line:", err);
+          });
+        }
+        closeCameraPreview();
+        return;
+      }
+
+      // Skip if a previous vision call is still in flight — avoids overlapping requests.
+      if (isProcessingCameraQuestion) return;
+
+      // Skip if video recording/analysis is busy — don't compete with it.
+      if (isVideoBusy()) return;
+
+      processCameraQuestion("", true);
+    }, POLLING_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [
+    visionMode,
+    isCameraActive,
+    mode,
+    isProcessingCameraQuestion,
+    processCameraQuestion,
+    repeat,
+    closeCameraPreview,
+  ]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -1843,13 +2353,34 @@ const LiveAvatarSessionComponent: React.FC<{
         setImageAnalysis(data.analysis);
         console.log("Image analyzed successfully");
 
-        // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
+        // Audit capture: gallery image + Gemini's analysis.
+        void captureMedia({
+          file,
+          source: "gallery_image",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: data.analysis,
+          problem: currentProblemRef.current || null,
+        });
+
+        // Inject the analysis as context to the TALK brain so it can respond
+        // intelligently and tie the image to the ongoing conversation (e.g.
+        // a snapshot of a lampshade back to the user's "how do I get this off"
+        // question). REVERTED from plain repeat() on 2026-04-24 — repeat() made
+        // the avatar just read Gemini's description without conversational context.
         if (mode === "FULL" && sessionRef.current) {
-          const contextMessage = `You are directly viewing an image. Here's what you see: ${data.analysis}. When the user asks about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the image, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this image. When user asks about the image, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this image.`;
+          const contextMessage = `[IMAGE CONTEXT — not spoken by user] Vision just processed an image the user captured. You are viewing it directly. Here is what's in it: ${data.analysis}. Respond naturally in first person as 6, tie what you see to the ongoing conversation (especially any problem the user was trying to solve), and ask intelligent follow-up questions about the object or problem. Respond briefly (1-2 sentences). Never say you can't see it or that you're relying on someone else's analysis — you can see it directly.`;
           sessionRef.current.message(contextMessage);
         }
       } catch (error) {
         console.error("Error analyzing image:", error);
+        // Audit capture for failures — file still worth saving.
+        void captureMedia({
+          file,
+          source: "gallery_image",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          problem: currentProblemRef.current || null,
+          error: error instanceof Error ? error.message : String(error),
+        });
         alert("Failed to analyze image. Please try again.");
       } finally {
         setIsAnalyzingImage(false);
@@ -1880,13 +2411,37 @@ const LiveAvatarSessionComponent: React.FC<{
         // Store video analysis in state so it persists even after closing video button
         setVideoAnalysis(data.analysis);
 
+        // Audit capture: gallery video + analysis.
+        void captureMedia({
+          file,
+          source: "gallery_video",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          geminiAnalysis: data.analysis,
+          problem: currentProblemRef.current || null,
+        });
+
         // For FULL mode, send the analysis as context to the AI (no scripted repeat prompt)
-        if (mode === "FULL" && sessionRef.current) {
-          const contextMessage = `You are directly viewing a video. Here's what you see: ${data.analysis}. When the user asks about the video, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility. Never say you can't see the video, that you don't have eyes, or that you're relying on someone else's analysis. You are directly viewing this video. When user asks about the video, respond briefly (1-2 sentences). Never tell them to point a camera or offer to take a look—you already have this footage.`;
-          sessionRef.current.message(contextMessage);
+        if (mode === "FULL") {
+          // Speak the analysis directly via repeat() so the avatar says what it saw.
+          // Using repeat() keeps this as avatar speech (role=assistant); earlier this
+          // used sessionRef.current.message() which logged it as USER input and
+          // confused the TALK brain.
+          try {
+            await repeat(data.analysis);
+          } catch (speakError) {
+            console.error("Error speaking video analysis:", speakError);
+          }
         }
       } catch (error) {
         console.error("Error analyzing video:", error);
+        // Audit capture for failures.
+        void captureMedia({
+          file,
+          source: "gallery_video",
+          sessionId: sessionRef.current?.sessionId ?? null,
+          problem: currentProblemRef.current || null,
+          error: error instanceof Error ? error.message : String(error),
+        });
         alert("Failed to analyze video. Please try again.");
       } finally {
         setIsAnalyzingVideo(false);
@@ -1931,19 +2486,62 @@ const LiveAvatarSessionComponent: React.FC<{
         </div>
       )}
 
+      {/* MIC PERMISSION — denied/blocked recovery (Option B).
+          Fires when the OS dialog was rejected, or permission state probes
+          as 'denied'. Gives clear instructions per platform + retry. */}
+      {micDeniedOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-gray-900 border border-white/10 shadow-2xl p-7 text-center">
+            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+              <MicOff className="w-8 h-8 text-white" aria-hidden />
+            </div>
+            <h2 className="text-gold text-xl font-semibold mb-2">
+              Microphone blocked
+            </h2>
+            <p className="text-white/70 text-sm leading-relaxed mb-4">
+              6 can&apos;t hear you without it. Enable mic access for this
+              site, then tap Try Again.
+            </p>
+            <div className="text-left text-white/60 text-xs leading-relaxed mb-6 bg-white/5 rounded-lg p-3">
+              <p className="font-semibold text-white/80 mb-1">Android Chrome / Firefox / Comet</p>
+              <p>Tap the lock icon in the address bar → Site settings → Microphone → Allow.</p>
+              <p className="font-semibold text-white/80 mt-3 mb-1">iPhone Safari</p>
+              <p>Settings → Safari → Microphone → Allow this site.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => void handleMicDeniedRetry()}
+                className="w-full bg-gold text-black font-semibold py-3 rounded-lg hover:bg-gold-light transition"
+              >
+                Try Again
+              </button>
+              <button
+                type="button"
+                onClick={() => setMicDeniedOpen(false)}
+                className="w-full text-gold/70 text-sm py-2 hover:text-gold transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-2 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="inline-block text-white text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
+          <h1 className="inline-block text-gold text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
             iSolveUrProblems.ai - beta
           </h1>
-          <p className="mx-auto max-w-[16.5rem] text-white text-[0.72rem] sm:text-[0.78rem] font-medium text-white/85 leading-snug">
+          <p className="mx-auto max-w-[16.5rem] text-gold-light text-[0.72rem] sm:text-[0.78rem] font-medium leading-snug">
             Your Home &amp; Garden Solution Center
           </p>
         </div>
         {microphoneWarning && (
-          <div className="mt-4 bg-yellow-500 text-black px-4 py-2 rounded-md max-w-2xl text-center">
-            <p className="font-semibold">⚠️ Warning: {microphoneWarning}</p>
+          // Ordinary, small, no color — per G 2026-04-25.
+          <div className="mt-2 px-3 py-1 text-xs text-white/70 text-center">
+            {microphoneWarning}
           </div>
         )}
         {/* {isAnalyzingImage && (
@@ -1975,6 +2573,17 @@ const LiveAvatarSessionComponent: React.FC<{
               : "h-full w-full object-contain"
           }`}
         />
+
+        {/* Loading overlay — persists until the avatar's video stream is
+            actually ready (isStreamReady). Before 2026-04-24 the parent
+            hid the Loading... spinner the moment a session token came
+            back, but the HeyGen stream still needed a few seconds to
+            paint, so users briefly saw a black screen. */}
+        {!isStreamReady && !isCameraActive && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black">
+            <div className="text-inset text-xl">Loading...</div>
+          </div>
+        )}
 
         {mode === "FULL" && (
           <>
@@ -2038,7 +2647,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 />
                 <button
                   onClick={() => fallbackImageInputRef.current?.click()}
-                  className="absolute top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-md z-40 hover:bg-blue-700 text-sm"
+                  className="absolute top-4 right-4 bg-gold text-black font-medium px-4 py-2 rounded-md z-40 hover:bg-gold-light text-sm"
                 >
                   Change Image
                 </button>
@@ -2150,9 +2759,9 @@ const LiveAvatarSessionComponent: React.FC<{
           )} */}
 
           {/* Analyzing text for vision recognition in streaming mode - ONLY show when actually processing */}
-          {/* Positioned just above Stop button when four boxes are not visible */}
+          {/* Positioned above Stop button (bottom-16) with breathing room — bumped from bottom-28 to bottom-36 2026-04-25 per G */}
           {visionMode === "streaming" && isProcessingCameraQuestion && (
-            <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30">
+            <div className="fixed bottom-36 left-1/2 -translate-x-1/2 z-30">
               <p className="text-inset text-2xl font-semibold text-center drop-shadow-lg">
                 <span className="inline-flex items-center">
                   Analyzing...
@@ -2167,7 +2776,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 !isAvatarTalking &&
                 isStreamReady && (
                   <div className="mb-4 w-full flex items-center justify-center text-center">
-                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[0.9rem] sm:text-[1rem] font-semibold leading-tight">
+                    <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[1.3rem] sm:text-[1.5rem] font-semibold leading-tight">
                       {!isActive ? (
                         voiceStartAwaitingReady ? (
                           <span className="block">Starting…</span>
@@ -2190,13 +2799,19 @@ const LiveAvatarSessionComponent: React.FC<{
                   <button
                     type="button"
                     className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
-                    disabled={
-                      sessionState !== SessionState.CONNECTED ||
-                      !isStreamReady ||
-                      voiceStartAwaitingReady ||
-                      (isLoading && !isActive)
-                    }
-                    onClick={() => void handleVoiceStartStop()}
+                    onClick={() => {
+                      // Functional guard (no `disabled` attribute) so the browser
+                      // doesn't apply :disabled styling that makes this button
+                      // look different than the other 3 home buttons.
+                      if (
+                        sessionState !== SessionState.CONNECTED ||
+                        !isStreamReady ||
+                        voiceStartAwaitingReady ||
+                        (isLoading && !isActive)
+                      )
+                        return;
+                      void handleVoiceStartStop();
+                    }}
                   >
                     {/* <span className="inline-flex items-center gap-1.5">
                       <span
@@ -2210,15 +2825,33 @@ const LiveAvatarSessionComponent: React.FC<{
                       </span>
                     </span> */}
                     {isActive ? (
-                      <Square
-                        className="mr-1.5 w-4 h-4 shrink-0 text-red-500 fill-current"
+                      <svg
+                        className="mr-1.5 w-3.5 h-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         aria-hidden
-                      />
+                      >
+                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                        <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none" />
+                      </svg>
                     ) : (
-                      <Play
-                        className="mr-1.5 w-4 h-4 shrink-0 text-red-500 fill-current"
+                      <svg
+                        className="mr-1.5 w-4 h-4 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         aria-hidden
-                      />
+                      >
+                        <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
+                        <polygon points="8 10 12 12 8 14" fill="currentColor" stroke="none" />
+                      </svg>
                     )}
                     {isActive ? "Stop" : "Start"}
                   </button>
@@ -2230,7 +2863,7 @@ const LiveAvatarSessionComponent: React.FC<{
                       handleGoLive();
                     }}
                   >
-                    <Radio className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    <Radio className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     Go Live
                   </button>
                 </div>
@@ -2243,7 +2876,7 @@ const LiveAvatarSessionComponent: React.FC<{
                       void handleCameraClick();
                     }}
                   >
-                    <Camera className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    <Camera className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     Camera
                   </button>
                   <button
@@ -2251,7 +2884,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
                     onClick={() => void handleGalleryClick()}
                   >
-                    <Images className="mr-1.5 w-4 h-4 shrink-0" aria-hidden />
+                    <Images className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     Gallery
                   </button>
                 </div>
@@ -2260,7 +2893,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 <Link
                   href="/terms"
                   target="_blank"
-                  className="block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors whitespace-nowrap"
+                  className="block text-center text-[10px] sm:text-[11px] text-gold/60 hover:text-gold transition-colors whitespace-nowrap"
                 >
                   © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
                 </Link>
@@ -2273,7 +2906,7 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Stop: exit Go Live / camera overlay (or end session when already on home) */}
       {(visionMode === "streaming" || isCameraActive) && (
         <>
-          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
+          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl z-20 px-4">
             <div className="flex justify-center">
               <button
                 className="btn-inset py-2.5 px-6 rounded-lg flex items-center justify-center text-lg font-medium whitespace-nowrap"
@@ -2283,8 +2916,20 @@ const LiveAvatarSessionComponent: React.FC<{
                   handleStopSession();
                 }}
               >
-                  <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden className="text-red-500">⏹</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <svg
+                    className="w-3.5 h-3.5 shrink-0 text-gold"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none" />
+                  </svg>
                   <span>Stop</span>
                 </span>
               </button>
@@ -2294,7 +2939,7 @@ const LiveAvatarSessionComponent: React.FC<{
             <Link
               href="/terms"
               target="_blank"
-              className="block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-1"
+              className="block text-center text-[11px] sm:text-xs text-gold/60 hover:text-gold transition-colors py-1"
             >
               Terms
             </Link>

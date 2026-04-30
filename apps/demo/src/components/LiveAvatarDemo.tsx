@@ -295,8 +295,8 @@ export const LiveAvatarDemo = () => {
     return (
       <div className="w-full min-h-screen flex flex-col items-center justify-center gap-4 bg-black px-4">
         {error && (
-          <div className="max-w-xl rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-white/10">
-            <p className="text-center text-white text-lg font-semibold leading-snug">
+          <div className="max-w-xl rounded-xl bg-black/55 px-5 py-4 backdrop-blur-sm border border-gold/20">
+            <p className="text-center text-gold text-lg font-semibold leading-snug">
               {error}
             </p>
             <button
@@ -311,11 +311,11 @@ export const LiveAvatarDemo = () => {
           </div>
         )}
         {!error && (
-          <div className="text-inset text-xl text-white/90">Loading...</div>
+          <div className="text-inset text-xl">Loading...</div>
         )}
         <Link
           href="/terms"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-2"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl block text-center text-[11px] sm:text-xs text-gold/60 hover:text-gold transition-colors py-2"
         >
           © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
         </Link>

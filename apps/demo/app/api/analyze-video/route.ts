@@ -4,14 +4,21 @@ import {
   isReasonableBase64Frame,
 } from "../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../src/lib/rateLimit";
-import { GROKAI_API_KEY } from "../secrets";
+import { GEMINI_API_KEY } from "../secrets";
 
 const HUMOR_STYLE_GUIDE =
-  "You are 6, a witty home-and-garden troubleshooter. Be genuinely funny with light, punchy humor and playful one-liners. Keep answers practical and accurate. Never be mean, offensive, or unsafe. Avoid mentioning policies or that you are an AI. The user has already shared video frames with you—describe only what is visible. Never tell them to point a camera or that you will 'take a look' later; you already have the footage.";
+  "You are the vision system for 6, a home-and-garden troubleshooter. Describe what literally happens across these video frames in 1-2 short sentences. " +
+  "STRICT RULES (added 2026-04-25 after a hallucination — model claimed user 'successfully removed the finial' when frames only showed the user touching it): " +
+  "(1) NEVER claim the user 'successfully' completed an action unless you SEE the result clearly in the final frames. If the finial is still attached in the last frame, say 'I see your hand on the finial, twisting it' — NOT 'you removed it.' " +
+  "(2) If the action's outcome isn't clearly visible (object out of frame, hands obscuring view, motion blur), say 'I can see you trying X, but I can't tell if it came off — show me the lamp again to confirm.' " +
+  "(3) Compare the FIRST frame to the LAST frame. State only differences you actually see. If the lamp looks identical at start and end, say 'I don't see a clear change yet.' " +
+  "(4) Keep answers practical and accurate. Light dry humor is fine but never at the expense of accuracy. Avoid mentioning policies or that you are an AI. " +
+  "(5) Never tell the user to point a camera or that you will 'take a look' later — you already have the footage. " +
+  "(6) Never invent state changes the frames don't show.";
 
-type VisionContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+type GeminiPart =
+  | { text: string }
+  | { inline_data: { mime_type: string; data: string } };
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
@@ -61,9 +68,9 @@ export async function POST(request: Request) {
       frameStrings.push(frame);
     }
 
-    if (!GROKAI_API_KEY) {
+    if (!GEMINI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "GrokAI API key not configured" }),
+        JSON.stringify({ error: "Gemini API key not configured" }),
         {
           status: 500,
           headers: {
@@ -73,49 +80,57 @@ export async function POST(request: Request) {
       );
     }
 
-    // Prepare content array for GrokAI
-    const content: VisionContentPart[] = [
+    // Build Gemini content parts — one text prompt + N frames as inline_data.
+    const parts: GeminiPart[] = [
       {
-        type: "text",
-        text: "Describe what is happening across these video frames in 2-3 short sentences. Make it funny and vivid with one punchy joke, but include at least one practical observation that could help solve a real problem. Do not tell the user to point a camera or offer to look—you already see these frames.",
+        text:
+          "These frames are in time order — first frame to last. Compare the FIRST frame to the LAST frame and describe what CHANGED between them (that's the action the user is showing you). " +
+          "Focus on the outcome: did an object come off, come apart, move, break, get attached, get cleaned, get fixed? " +
+          "If the user was trying to remove or detach something, confirm whether the last frame shows it REMOVED. " +
+          "If the user was trying to attach or fix something, confirm whether the last frame shows it DONE. " +
+          "Do NOT describe the starting state in detail. Focus on what changed and what the user accomplished (or didn't) by the end. " +
+          "Respond in 1-2 short sentences, first person, warm and direct. No stand-up comedy or extended jokes. " +
+          "Do not tell the user to point a camera or offer to look — you already see these frames.",
       },
     ];
 
     for (const frame of frameStrings) {
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:image/jpeg;base64,${frame}`,
+      parts.push({
+        inline_data: {
+          mime_type: "image/jpeg",
+          data: frame,
         },
       });
     }
 
-    // Call GrokAI (xAI) Vision API
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROKAI_API_KEY}`,
+    // Gemini 2.5 Flash Lite — picked 2026-04-24 for max speed. Same family
+    // as Flash, slightly lighter, supports thinkingBudget:0.
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: HUMOR_STYLE_GUIDE }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts,
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 200,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
       },
-      body: JSON.stringify({
-        model: "grok-4-fast-reasoning",
-        messages: [
-          {
-            role: "system",
-            content: HUMOR_STYLE_GUIDE,
-          },
-          {
-            role: "user",
-            content: content,
-          },
-        ],
-        max_tokens: 200,
-      }),
-    });
+    );
 
     if (!res.ok) {
       const errorData = await res.text();
-      console.error("GrokAI Vision API error:", errorData);
+      console.error("Gemini Vision API error:", errorData);
       return new Response(
         JSON.stringify({
           error: "Failed to analyze video",
@@ -130,7 +145,8 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
-    const analysis = data.choices[0].message.content;
+    const analysis =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     return new Response(JSON.stringify({ analysis }), {
       status: 200,

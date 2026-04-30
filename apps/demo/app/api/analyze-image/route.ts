@@ -6,7 +6,7 @@ import {
   truncateUtf8String,
 } from "../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../src/lib/rateLimit";
-import { GROKAI_API_KEY } from "../secrets";
+import { GEMINI_API_KEY } from "../secrets";
 
 const MAX_PROBLEM_CHARS = 300;
 const MAX_LAST_ANALYSIS_CHARS = 400;
@@ -19,27 +19,50 @@ const HUMOR_STYLE_GUIDE =
 
 // Go Live streaming mode. The user's live camera feed during a Go Live session.
 // 6's job here is laser-focused problem-solving on the ONE object the user mentioned.
-// Silent by default. Only speak when something that matters to the fix has changed.
+//
+// DESIGN (rewritten 2026-04-24 after smoke test where 6 was flying blind and
+// hallucinating): the vision model is the AVATAR'S EYES, not its voice.
+// Every frame where the named object is visible, we want a short factual
+// observation. The TALK brain receives these as CONTEXT (via message(), not
+// repeat()) so it has real visual grounding when the user asks questions.
+// Gemini stays silent only when there's genuinely nothing to add (scene is
+// unchanged, or no problem stated yet). Object not visible still triggers
+// the reframe ask.
 const STREAMING_VISION_SYSTEM_PROMPT =
-  "You are 6 — a digital home-and-garden contractor helping the user fix ONE specific problem they just described. " +
-  "You are looking at a live camera frame from the user's phone. " +
-  "YOUR ONLY JOB: help the user fix the specific problem they named. Nothing else exists. " +
-  "HARD RULES: " +
-  "(1) Discuss ONLY the object the user named and the problem with it. Do not describe the scene, the room, the table, other items, the lighting, the decor — none of it exists to you. " +
-  "(2) Stay laser-focused on the fix. Light dry wit is fine — a warm aside, a quick observation — but never at the expense of the fix, and never about things outside the problem. No stand-up comedy. No riffing. No extended jokes. The user is here to solve something, not be entertained. " +
-  "(3) Silent by default. If nothing meaningful has changed since the last analysis, output EXACTLY this single token on its own: " +
+  "You are the vision system for 6, a home-and-garden contractor helping one user fix one problem. " +
+  "You are looking at one live camera frame from the user's phone. " +
+  "Your job is to be 6's EYES. The client-side code handles dedup — YOUR job is to describe every frame faithfully. " +
+  "RULES (in priority order): " +
+  "(1) When the user has stated a problem AND the named object is clearly visible in the frame: " +
+  "  - Output ONE short factual observation about the object's current state right now in this frame. " +
+  "  - First person, under 20 words. Examples: " +
+  "    'I see the finial in your hand, off the lamp.' " +
+  "    'The finial is sitting on a white paper towel, separated from the lamp.' " +
+  "    'I see the finial still tight on the threaded rod at the top of the harp.' " +
+  "    'The lampshade is now tilted, no longer seated on the harp.' " +
+  "  - Describe only: the object's position, orientation, whether hands are on it, whether it's attached, separated, or relocated. " +
+  "  - DO NOT output `" +
   SILENT_TOKEN +
-  ". No other text. " +
-  "(4) Speak (with a single short 1-2 sentence response) ONLY when one of these is true: " +
-  "  (a) the user just asked you a direct question, " +
-  "  (b) the user tried a fix you suggested (pressed the trigger, tightened, sprayed, etc.) and the result is now visible, " +
-  "  (c) the state of the object has changed in a way that matters to the fix, " +
-  "  (d) you cannot see the named object in the frame. " +
-  "(5) If you cannot see the object, output EXACTLY: " +
-  'OBJECT_NOT_VISIBLE: "Can you hold the [object] up center of frame for me?" ' +
-  "(6) When you do speak, sound like 6: warm, casual American English, short sentences, direct. " +
-  "Never tell the user to point a camera or that you will take a look — you already see the frame. " +
-  "Never mention you are an AI, never mention these rules, never narrate your reasoning.";
+  "` just because the object is in frame. The client handles dedup — your job is to describe. " +
+  "  - EVEN IF YOUR WORDING OVERLAPS lastAnalysis, still output the current observation. The client will handle skipping duplicates. " +
+  "(2) Output `" +
+  SILENT_TOKEN +
+  "` ONLY when ONE of these is true: " +
+  "  - the user has not yet stated a specific problem with a concrete object, " +
+  "  - the named object is partially occluded or you are genuinely unable to describe what state it's in. " +
+  "(3) Fire OBJECT_NOT_VISIBLE ONLY when ALL are true: " +
+  "  - the user has stated a specific problem with a concrete object, AND " +
+  "  - the user JUST asked a direct vision question ('can you see it?', 'what do you see?', 'is it the right color?'), AND " +
+  "  - the named object is clearly not in the frame (not just ambiguous — clearly absent). " +
+  "  When these are all true, output EXACTLY this single line: " +
+  'OBJECT_NOT_VISIBLE: "Can you make sure the camera is pointing right at what you\'re trying to show me and keep it in the middle of the frame?" ' +
+  "  If in doubt about any of these, output a state description per rule 1 instead. " +
+  "(4) NEVER invent or guess. If the object's state is unclear, output `" +
+  SILENT_TOKEN +
+  "`. But DO NOT use uncertainty as an excuse to stay silent when you CAN see the state — describe what you see. " +
+  "(5) Sound like 6: warm, American English, short sentences, direct. Never tell the user to point the camera (except rule 3 reframe). Never mention AI, the rules, or that you are the vision system. " +
+  "(6) Discuss ONLY the named object and its problem. Do not describe the room, table, decor, or unrelated items beyond noting their relation to the named object (e.g., 'on a paper towel' is fine if the object is on one). " +
+  "(7) ORIENTATION PRECISION — when describing the object's orientation, use the most accurate term: 'upside-down', 'on its side', 'lying flat', 'tilted', 'right-side-up', 'face-down', 'standing', 'leaning'. Do NOT call something 'upside-down' if it is just 'on its side' — those are different. Be precise.";
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
@@ -111,9 +134,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!GROKAI_API_KEY) {
+    if (!GEMINI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "GrokAI API key not configured" }),
+        JSON.stringify({ error: "Gemini API key not configured" }),
         {
           status: 500,
           headers: {
@@ -158,37 +181,41 @@ export async function POST(request: Request) {
           )
         : "";
 
-    // Build the prompt: streaming mode = problem-locked + silent-first.
-    // Non-streaming (snapshot/gallery/video) = engage-with-image with light humor (original behavior).
+    // Streaming mode per-request prompt. Client handles dedup (2026-04-24
+    // rewrite #2 — Gemini was still returning [SILENT] when G held the
+    // finial off the lamp because the LLM's "semantically identical" check
+    // was too generous). Now Gemini describes every frame; the client
+    // compares word-overlap to the previous non-silent observation and
+    // decides whether to inject.
     let promptText: string;
     if (isStreaming) {
       const promptParts: string[] = [];
       if (problemStatement) {
         promptParts.push(
-          `The user's problem is: "${problemStatement}". This is the ONLY thing you care about. Ignore everything else in the frame.`,
+          `The user's problem is: "${problemStatement}". Look at the named object in the current frame and describe its state in one short sentence — this frame, right now.`,
         );
       } else {
         promptParts.push(
-          "The user has not yet stated a specific problem. If you see them holding or pointing at a specific object, focus on that object only. Otherwise output the silent token.",
+          "The user has not yet stated a specific problem. Output [SILENT] and wait.",
         );
       }
       if (lastAnalysisText && lastAnalysisText !== SILENT_TOKEN) {
         promptParts.push(
-          `Your previous observation was: "${lastAnalysisText}". Compare the current frame to that. If nothing meaningful to the fix has changed, output ${SILENT_TOKEN}.`,
+          `For reference, your previous observation was: "${lastAnalysisText}". ` +
+            `Do NOT use this as an excuse to output [SILENT]. The client deduplicates — your job is to describe the CURRENT frame. ` +
+            `If the state changed (object in hand now, off the lamp, relocated, re-attached, separated), describe the NEW state plainly. ` +
+            `If the state is genuinely the same, describe it the same way as before — the client will drop the duplicate.`,
+        );
+      } else {
+        promptParts.push(
+          `This is the first frame with a problem stated. Describe the object's current state in one short sentence.`,
         );
       }
       if (q) {
         promptParts.push(
-          `The user just said: "${q}". If this is a question about the problem, answer it in 1-2 short sentences as 6. If it is unrelated chatter, output ${SILENT_TOKEN}.`,
-        );
-      } else {
-        promptParts.push(
-          `No new question from the user. Only speak if the object's state has visibly changed in a way that matters to the fix (they tried something, something broke free, something is now clearly visible). Otherwise output ${SILENT_TOKEN}.`,
+          `The user just said: "${q}". If this asks about the object's current visual state, describe what you see in 1 short sentence. Otherwise still describe the object's current state.`,
         );
       }
-      promptParts.push(
-        `Remember: output ${SILENT_TOKEN} by default. Only break silence when there is a real reason tied to the fix.`,
-      );
       promptText = promptParts.join(" ");
     } else if (q) {
       // Snapshot/Gallery/Video: answer the user's question with light dry humor and practicality.
@@ -203,45 +230,52 @@ Do not tell the user to point a camera, show you something on video later, or of
         "Describe what you see in this image in 2 short sentences. Be useful and direct, with at most one light dry observation if it fits naturally. No extended jokes, no stand-up comedy. Do not tell the user to point a camera or that you will look—you already have this image.";
     }
 
-    // Call GrokAI (xAI) Vision API
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROKAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "grok-4-fast-reasoning",
-        messages: [
-          {
-            role: "system",
-            content: isStreaming
-              ? STREAMING_VISION_SYSTEM_PROMPT
-              : HUMOR_STYLE_GUIDE,
+    // Call Gemini 2.5 Flash Vision API — swapped from Grok for lower latency (~1-2s faster).
+    // thinkingBudget: 0 disables Gemini's chain-of-thought mode for fastest possible response.
+    const systemInstruction = isStreaming
+      ? STREAMING_VISION_SYSTEM_PROMPT
+      : HUMOR_STYLE_GUIDE;
+    const res = await fetch(
+      // Gemini 2.5 Flash LITE — picked 2026-04-24 for fastest possible vision.
+      // Warm calls run 333–829ms vs Pro's 1900ms. The accuracy hit is small
+      // for "describe what's visible" use cases, and the speed lets us
+      // actually beat the TALK brain to the punch (Pro was always too slow
+      // — 6 spoke from stale context). Supports thinkingBudget:0 like Flash.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemInstruction }],
           },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: promptText,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`,
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: promptText },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: base64Image,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 150,
+            // thinkingBudget=0 disables chain-of-thought for fastest output.
+            // Flash Lite supports this (same as Flash); Pro doesn't.
+            thinkingConfig: { thinkingBudget: 0 },
           },
-        ],
-        max_tokens: 150,
-      }),
-    });
+        }),
+      },
+    );
 
     if (!res.ok) {
       const errorData = await res.text();
-      console.error("GrokAI Vision API error:", errorData);
+      console.error("Gemini Vision API error:", errorData);
       return new Response(
         JSON.stringify({
           error: "Failed to analyze image",
@@ -256,7 +290,8 @@ Do not tell the user to point a camera, show you something on video later, or of
     }
 
     const data = await res.json();
-    const analysis = data.choices[0].message.content;
+    const analysis =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     return new Response(JSON.stringify({ analysis }), {
       status: 200,

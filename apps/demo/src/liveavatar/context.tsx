@@ -16,6 +16,7 @@ import {
   AgentEventsEnum,
 } from "@heygen/liveavatar-web-sdk";
 import { LiveAvatarSessionMessage } from "./types";
+import { isVideoBusy } from "./videoRecordingState";
 
 type LiveAvatarContextProps = {
   sessionRef: React.RefObject<LiveAvatarSession>;
@@ -205,8 +206,12 @@ export const LiveAvatarContextProvider = ({
   // and avoid 403/CORS when calling LiveAvatar from the browser.
   const apiUrl =
     typeof window !== "undefined" ? `${window.location.origin}/api` : "";
+  // voiceChat: false defers mic permission prompt until user hits Start button.
+  // When user hits Start, handleVoiceStartStop calls voiceChat.start() which will
+  // then prompt for mic permission — that's the user-initiated moment G wants.
+  // (Changed 2026-04-24 to fix "mic permission prompt on page load" bug.)
   const config = {
-    voiceChat: true,
+    voiceChat: false,
     apiUrl,
   };
   const sessionRef = useRef<LiveAvatarSession>(
@@ -259,9 +264,10 @@ export const LiveAvatarContextProvider = ({
   }, [sessionRef]);
 
   // Conversational silence re-engagement:
-  // - after avatar turn ends, wait briefly for user reply
-  // - if still silent, emit synthetic user message to trigger fail-safe
-  // - do this at most twice (4s, then 6s), reset when user speaks
+  // - after avatar turn ends, wait 10s for user reply
+  // - if still silent, 15s for second attempt
+  // - then stop entirely (no third attempt ever — hard cap)
+  // - matches the CW's explicit 10s/15s/no-third rule
   useEffect(() => {
     const session = sessionRef.current;
     if (!session || sessionState !== SessionState.CONNECTED) {
@@ -280,7 +286,7 @@ export const LiveAvatarContextProvider = ({
       if (reengagementAttemptsRef.current >= 2) {
         return;
       }
-      const delaySeconds = reengagementAttemptsRef.current === 0 ? 4 : 6;
+      const delaySeconds = reengagementAttemptsRef.current === 0 ? 10 : 15;
       const delayMs = delaySeconds * 1000;
 
       reengagementTimeoutRef.current = setTimeout(() => {
@@ -295,6 +301,11 @@ export const LiveAvatarContextProvider = ({
         if (sessionRef.current?.state !== SessionState.CONNECTED) {
           return;
         }
+        // Don't inject silence signals while a video is being recorded or
+        // analyzed — user is busy with the capture and 6 should stay quiet.
+        if (isVideoBusy()) {
+          return;
+        }
         const signal = `[USER HAS BEEN SILENT FOR ${delaySeconds} SECONDS]`;
         sessionRef.current.message(signal);
         reengagementAttemptsRef.current += 1;
@@ -304,7 +315,10 @@ export const LiveAvatarContextProvider = ({
     const onUserSpeakStarted = () => {
       isUserSpeakingRef.current = true;
       hasUserSpokenSinceAvatarTurnRef.current = true;
-      reengagementAttemptsRef.current = 0;
+      // Intentionally DO NOT reset reengagementAttemptsRef here. The CW
+      // specifies max 2 silence re-engages PER CONVERSATION, not per gap.
+      // Resetting on every user utterance was making the 4s/6s signal fire
+      // repeatedly through the session (observed 2026-04-23).
       clearReengagementTimeout();
     };
 
@@ -337,8 +351,10 @@ export const LiveAvatarContextProvider = ({
     };
   }, [sessionState, sessionRef]);
 
-  // Terminate session after 1 minute of no activity
-  const INACTIVITY_TIMEOUT_MS = 60 * 1000;
+  // Terminate session after 3 minutes of no activity (was 1 minute — too
+  // aggressive, was timing out active sessions where user paused to look at
+  // something. Extended 2026-04-24 after G reported session timeouts mid-convo).
+  const INACTIVITY_TIMEOUT_MS = 180 * 1000;
   const INACTIVITY_CHECK_MS = 15 * 1000;
   useEffect(() => {
     if (sessionState !== SessionState.CONNECTED) return;
