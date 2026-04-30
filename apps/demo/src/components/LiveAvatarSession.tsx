@@ -13,7 +13,7 @@ import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
 import { captureMedia } from "../lib/captureMedia";
-import { Radio, Camera, Images, Video, Play, Square, MicOff } from "lucide-react";
+import { Radio, Camera, Images, Video, Play, MicOff } from "lucide-react";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -2581,7 +2581,7 @@ const LiveAvatarSessionComponent: React.FC<{
             paint, so users briefly saw a black screen. */}
         {!isStreamReady && !isCameraActive && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black">
-            <div className="text-inset text-xl text-white/90">Loading...</div>
+            <div className="text-inset text-xl">Loading...</div>
           </div>
         )}
 
@@ -2819,7 +2819,19 @@ const LiveAvatarSessionComponent: React.FC<{
                       </span>
                     </span> */}
                     {isActive ? (
-                      <Square className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
+                      <svg
+                        className="mr-1.5 w-4 h-4 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                        <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none" />
+                      </svg>
                     ) : (
                       <Play className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
                     )}
@@ -2887,11 +2899,19 @@ const LiveAvatarSessionComponent: React.FC<{
                 }}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  <Square
+                  <svg
                     className="w-4 h-4 shrink-0 text-gold"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
                     strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     aria-hidden
-                  />
+                  >
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none" />
+                  </svg>
                   <span>Stop</span>
                 </span>
               </button>
