@@ -4,7 +4,15 @@ import {
   isReasonableBase64Frame,
 } from "../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../src/lib/rateLimit";
+import {
+  fetchGeminiWithRetry,
+  isGeminiOverloaded,
+} from "../../../src/lib/geminiFetch";
 import { GEMINI_API_KEY } from "../secrets";
+
+// Edge runtime — ~0ms cold start, no Node deps used here.
+export const runtime = "edge";
+export const preferredRegion = "iad1";
 
 const HUMOR_STYLE_GUIDE =
   "You are the vision system for 6, a home-and-garden troubleshooter. Describe what literally happens across these video frames in 1-2 short sentences. " +
@@ -105,7 +113,9 @@ export async function POST(request: Request) {
 
     // Gemini 2.5 Flash Lite — picked 2026-04-24 for max speed. Same family
     // as Flash, slightly lighter, supports thinkingBudget:0.
-    const res = await fetch(
+    // Retry wrapper added 2026-04-30 to match analyze-image — same Gemini
+    // endpoint, same 503/429 transient risk.
+    const res = await fetchGeminiWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
@@ -133,7 +143,9 @@ export async function POST(request: Request) {
       console.error("Gemini Vision API error:", errorData);
       return new Response(
         JSON.stringify({
-          error: "Failed to analyze video",
+          error: isGeminiOverloaded(res.status)
+            ? "Vision is busy right now — give it a moment and try again."
+            : "Failed to analyze video",
         }),
         {
           status: res.status <= 599 ? res.status : 502,

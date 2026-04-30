@@ -558,15 +558,19 @@ const LiveAvatarSessionComponent: React.FC<{
       img.crossOrigin = "anonymous";
 
       img.onload = () => {
+        // Downscale to longest edge = 768px @ q=0.7. Same rationale as
+        // captureCameraFrame (latency audit fix #2 2026-04-30).
+        const MAX_EDGE = 768;
+        const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           reject(new Error("Failed to get canvas context"));
           return;
         }
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
           (blob) => {
             if (blob) {
@@ -581,7 +585,7 @@ const LiveAvatarSessionComponent: React.FC<{
             }
           },
           "image/jpeg",
-          0.95,
+          0.7,
         );
       };
 
@@ -821,9 +825,17 @@ const LiveAvatarSessionComponent: React.FC<{
         return null;
       }
 
+      // Downscale to longest edge = 768px and compress to JPEG q=0.7.
+      // 2026-04-30 latency audit: full-resolution mobile frames at q=0.95
+      // were 100-500KB, dominating per-poll latency on cellular. Gemini Flash
+      // Lite descriptions are unaffected at 768px. ~4-8x payload shrink.
+      const MAX_EDGE = 768;
+      const sourceW = video.videoWidth;
+      const sourceH = video.videoHeight;
+      const scale = Math.min(1, MAX_EDGE / Math.max(sourceW, sourceH));
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = Math.round(sourceW * scale);
+      canvas.height = Math.round(sourceH * scale);
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         console.error("Failed to get canvas context");
@@ -851,7 +863,7 @@ const LiveAvatarSessionComponent: React.FC<{
             }
           },
           "image/jpeg",
-          0.95,
+          0.7,
         );
       });
     } catch (error) {
@@ -1568,43 +1580,48 @@ const LiveAvatarSessionComponent: React.FC<{
         return;
       }
 
-      // Persist transcript and drive contact info collection prompts (email/phone/name)
+      // Lead-capture / transcript persistence — fire-and-forget so the
+      // vision pipeline doesn't have to wait on Supabase round-trips.
+      // 2026-04-30 latency audit fix #3: was awaiting ~400-800ms on every
+      // user utterance; now runs in parallel with vision. Tradeoff: any
+      // assistantPrompt (e.g., "What's your email?") plays AFTER the
+      // vision response instead of replacing it — acceptable UX hit for
+      // the latency win. shouldSkipVision is no longer honored in this
+      // path (vision has already started); lead-capture flow still works
+      // because contact-question prompts queue naturally on the avatar.
       const captureSessionId = dbSessionIdRef.current;
-      try {
-        const captureResponse =
-          captureSessionId != null
-            ? await fetch("/api/transcription/capture", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  sessionId: captureSessionId,
-                  text: userText,
-                }),
-              })
-            : null;
-
-        if (captureResponse?.ok) {
-          const captureData = await captureResponse.json();
-          if (
-            captureData?.assistantPrompt &&
-            typeof captureData.assistantPrompt === "string"
-          ) {
-            await repeat(captureData.assistantPrompt);
-            lastAvatarResponseRef.current = captureData.assistantPrompt;
-            lastVisionResponseTimeRef.current = Date.now();
+      if (captureSessionId != null) {
+        void (async () => {
+          try {
+            const captureResponse = await fetch("/api/transcription/capture", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId: captureSessionId,
+                text: userText,
+              }),
+            });
+            if (captureResponse.ok) {
+              const captureData = await captureResponse.json();
+              if (
+                captureData?.assistantPrompt &&
+                typeof captureData.assistantPrompt === "string"
+              ) {
+                await repeat(captureData.assistantPrompt);
+                lastAvatarResponseRef.current = captureData.assistantPrompt;
+                lastVisionResponseTimeRef.current = Date.now();
+              }
+            } else {
+              const captureError = await captureResponse.text();
+              console.error("Failed to capture transcription:", captureError);
+            }
+          } catch (captureError) {
+            console.error(
+              "Error calling transcription capture route:",
+              captureError,
+            );
           }
-
-          if (captureData?.shouldSkipVision) {
-            return;
-          }
-        } else if (captureResponse) {
-          const captureError = await captureResponse.text();
-          console.error("Failed to capture transcription:", captureError);
-        }
-      } catch (captureError) {
-        console.error("Error calling transcription capture route:", captureError);
+        })();
       }
 
       // Removed: prior code re-injected a long video-context prompt into the avatar

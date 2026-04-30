@@ -7,6 +7,10 @@ import {
 import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { ELEVENLABS_API_KEY } from "../secrets";
 
+// Edge runtime — ~0ms cold start. Pure fetch, no Node deps.
+export const runtime = "edge";
+export const preferredRegion = "iad1";
+
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 export async function POST(request: Request) {

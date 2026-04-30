@@ -7,6 +7,10 @@ import {
 import { checkRateLimit } from "../../../src/lib/rateLimit";
 import { OPENAI_API_KEY } from "../secrets";
 
+// Edge runtime — ~0ms cold start. Pure fetch, no Node deps.
+export const runtime = "edge";
+export const preferredRegion = "iad1";
+
 const SYSTEM_PROMPT =
   "You are a helpful assistant. You are being used in a demo. Please act courteously and helpfully.";
 
