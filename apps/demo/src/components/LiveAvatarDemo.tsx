@@ -315,7 +315,7 @@ export const LiveAvatarDemo = () => {
         )}
         <Link
           href="/terms"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-2"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl block text-center text-[11px] sm:text-xs text-gold/60 hover:text-gold transition-colors py-2"
         >
           © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
         </Link>

@@ -2519,7 +2519,7 @@ const LiveAvatarSessionComponent: React.FC<{
               <button
                 type="button"
                 onClick={() => setMicDeniedOpen(false)}
-                className="w-full text-white/60 text-sm py-2 hover:text-white/80 transition"
+                className="w-full text-gold/70 text-sm py-2 hover:text-gold transition"
               >
                 Close
               </button>
@@ -2821,13 +2821,13 @@ const LiveAvatarSessionComponent: React.FC<{
                     {isActive ? (
                       // Hollow (no fill-current) + slightly smaller. 2026-04-25 per G.
                       <Square
-                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-white"
+                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-gold"
                         strokeWidth={2.5}
                         aria-hidden
                       />
                     ) : (
                       <Play
-                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-white"
+                        className="mr-1.5 w-3.5 h-3.5 shrink-0 text-gold"
                         strokeWidth={2.5}
                         aria-hidden
                       />
@@ -2872,7 +2872,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 <Link
                   href="/terms"
                   target="_blank"
-                  className="block text-center text-[10px] sm:text-[11px] text-white/55 hover:text-white/80 transition-colors whitespace-nowrap"
+                  className="block text-center text-[10px] sm:text-[11px] text-gold/60 hover:text-gold transition-colors whitespace-nowrap"
                 >
                   © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
                 </Link>
@@ -2897,7 +2897,7 @@ const LiveAvatarSessionComponent: React.FC<{
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Square
-                    className="w-4 h-4 shrink-0 text-white fill-current"
+                    className="w-4 h-4 shrink-0 text-gold fill-current"
                     aria-hidden
                   />
                   <span>Stop</span>
@@ -2909,7 +2909,7 @@ const LiveAvatarSessionComponent: React.FC<{
             <Link
               href="/terms"
               target="_blank"
-              className="block text-center text-[11px] sm:text-xs text-white/55 hover:text-white/80 transition-colors py-1"
+              className="block text-center text-[11px] sm:text-xs text-gold/60 hover:text-gold transition-colors py-1"
             >
               Terms
             </Link>
