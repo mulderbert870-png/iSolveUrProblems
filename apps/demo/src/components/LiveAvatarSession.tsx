@@ -2799,13 +2799,19 @@ const LiveAvatarSessionComponent: React.FC<{
                   <button
                     type="button"
                     className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
-                    disabled={
-                      sessionState !== SessionState.CONNECTED ||
-                      !isStreamReady ||
-                      voiceStartAwaitingReady ||
-                      (isLoading && !isActive)
-                    }
-                    onClick={() => void handleVoiceStartStop()}
+                    onClick={() => {
+                      // Functional guard (no `disabled` attribute) so the browser
+                      // doesn't apply :disabled styling that makes this button
+                      // look different than the other 3 home buttons.
+                      if (
+                        sessionState !== SessionState.CONNECTED ||
+                        !isStreamReady ||
+                        voiceStartAwaitingReady ||
+                        (isLoading && !isActive)
+                      )
+                        return;
+                      void handleVoiceStartStop();
+                    }}
                   >
                     {/* <span className="inline-flex items-center gap-1.5">
                       <span
@@ -2843,8 +2849,8 @@ const LiveAvatarSessionComponent: React.FC<{
                         strokeLinejoin="round"
                         aria-hidden
                       >
-                        <polygon points="6 3 20 12 6 21" />
-                        <polygon points="9 10 13 12 9 14" fill="currentColor" stroke="none" />
+                        <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
+                        <polygon points="8 10 12 12 8 14" fill="currentColor" stroke="none" />
                       </svg>
                     )}
                     {isActive ? "Stop" : "Start"}
