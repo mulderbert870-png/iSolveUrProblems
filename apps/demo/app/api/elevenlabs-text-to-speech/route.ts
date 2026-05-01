@@ -11,7 +11,8 @@ import { ELEVENLABS_API_KEY } from "../secrets";
 export const runtime = "edge";
 export const preferredRegion = "iad1";
 
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+const DEFAULT_VOICE_ID =
+  process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);

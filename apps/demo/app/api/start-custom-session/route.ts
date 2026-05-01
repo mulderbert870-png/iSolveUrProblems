@@ -1,4 +1,4 @@
-import { API_KEY, API_URL, AVATAR_ID } from "../secrets";
+import { API_KEY, API_URL, AVATAR_ID, LANGUAGE } from "../secrets";
 import { assertCanMintSessionToken } from "../../../src/lib/liveavatarCredits";
 
 export async function POST() {
@@ -23,6 +23,13 @@ export async function POST() {
         mode: "CUSTOM",
         avatar_id: AVATAR_ID,
         max_session_duration: 20 * 60, // 20 minutes (LiveAvatar API: seconds)
+        // 2026-05-01: language is required at token mint for LiveAvatar STT
+        // to activate. Without it, USER_TRANSCRIPTION events never fire and
+        // our CUSTOM pipeline (gpt-4o-mini -> ElevenLabs -> repeatAudio)
+        // never receives user speech.
+        avatar_persona: {
+          language: LANGUAGE,
+        },
       }),
     });
     if (!res.ok) {
