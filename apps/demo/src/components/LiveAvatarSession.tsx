@@ -419,9 +419,9 @@ const LiveAvatarSessionComponent: React.FC<{
       void interrupt();
       stop();
       setHasUserPressedVoiceStart(false);
-      if (mode === "FULL") {
-        stopListening();
-      }
+      // 2026-04-30: stopListening() is needed in BOTH modes — LiveAvatar's
+      // STT must be torn down regardless of who's running the brain.
+      stopListening();
       return;
     }
     if (sessionState !== SessionState.CONNECTED || !isStreamReady) {
@@ -435,9 +435,12 @@ const LiveAvatarSessionComponent: React.FC<{
       }
       await start();
       await repeat(VOICE_START_GREETING);
-      if (mode === "FULL") {
-        startListening();
-      }
+      // 2026-04-30: startListening() is needed in BOTH modes. CUSTOM still
+      // relies on LiveAvatar STT to transcribe the user voice and emit
+      // USER_TRANSCRIPTION events; we just route the response through our
+      // own brain instead of LiveAvatar's. Without this, no transcripts
+      // fire and the avatar stays silent forever.
+      startListening();
       setHasUserPressedVoiceStart(true);
     } finally {
       setVoiceStartAwaitingReady(false);
