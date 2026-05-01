@@ -2657,7 +2657,9 @@ const LiveAvatarSessionComponent: React.FC<{
           </div>
         )}
 
-        {mode === "FULL" && (
+        {/* Hidden file inputs for Camera/Gallery click handlers.
+            2026-04-30: gate removed so CUSTOM mode can also use them. */}
+        {(mode === "FULL" || mode === "CUSTOM") && (
           <>
             <input
               ref={cameraInputRef}
@@ -2785,8 +2787,10 @@ const LiveAvatarSessionComponent: React.FC<{
         )}
       </div>
 
-      {/* Fixed buttons at bottom - positioned relative to viewport */}
-      {mode === "FULL" && (
+      {/* Fixed buttons at bottom - positioned relative to viewport.
+          2026-04-30: gate removed so CUSTOM mode shows the same button bar
+          as FULL. (Was hiding Start/Stop, Go Live, Camera, Gallery in CUSTOM.) */}
+      {(mode === "FULL" || mode === "CUSTOM") && (
         <>
           {/* <button
             className="fixed bottom-20 left-1/4 bg-white text-black px-6 py-3 rounded-md z-20 transform -translate-x-1/2 flex items-center justify-center gap-2"
