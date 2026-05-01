@@ -13,12 +13,32 @@ export const useAvatarActions = (mode: "FULL" | "CUSTOM") => {
       if (mode === "FULL") {
         return sessionRef.current.repeat(message);
       } else if (mode === "CUSTOM") {
-        const res = await fetch("/api/elevenlabs-text-to-speech", {
-          method: "POST",
-          body: JSON.stringify({ text: message }),
-        });
-        const { audio } = await res.json();
-        return sessionRef.current.repeatAudio(audio);
+        // 2026-05-01: added Content-Type header (some Edge runtimes
+        // 400 on missing header) + audio guard so we don't call
+        // repeatAudio(undefined) when ElevenLabs errors silently.
+        try {
+          const res = await fetch("/api/elevenlabs-text-to-speech", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: message }),
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error(
+              `repeat (CUSTOM) elevenlabs ${res.status}: ${errText.slice(0, 200)}`,
+            );
+            return;
+          }
+          const data = await res.json();
+          const audio = data?.audio;
+          if (!audio || typeof audio !== "string") {
+            console.error("repeat (CUSTOM): empty audio in response", data);
+            return;
+          }
+          return sessionRef.current.repeatAudio(audio);
+        } catch (err) {
+          console.error("repeat (CUSTOM) failed:", err);
+        }
       }
     },
     [sessionRef, mode],
