@@ -5,7 +5,10 @@ export const AVATAR_ID = process.env.LIVEAVATAR_AVATAR_ID || "";
 // FULL MODE Customizations
 // Wayne's avatar voice and context
 export const VOICE_ID = process.env.LIVEAVATAR_VOICE_ID || "";
-export const CONTEXT_ID = process.env.LIVEAVATAR_CONTEXT_ID || "";
+export const CONTEXT_ID =
+  process.env.LIVEAVATAR_CONTEXT_ID_OVERRIDE ||
+  process.env.LIVEAVATAR_CONTEXT_ID ||
+  "";
 export const LANGUAGE = process.env.LIVEAVATAR_LANGUAGE || "";
 
 // CUSTOM MODE Customizations
