@@ -1491,9 +1491,13 @@ const LiveAvatarSessionComponent: React.FC<{
         return;
       }
 
-      // Only process in streaming mode (Go Live)
-      if (visionMode !== "streaming") {
-        console.log("Not in streaming mode, skipping transcription processing");
+      // FULL mode: only process in streaming mode (LiveAvatar's brain handles
+      // all other utterances itself). CUSTOM mode: we own the brain — we must
+      // respond to every utterance, with or without an active camera.
+      if (mode === "FULL" && visionMode !== "streaming") {
+        console.log(
+          "FULL: not in streaming mode, leaving response to LiveAvatar brain",
+        );
         return;
       }
 
@@ -1629,6 +1633,44 @@ const LiveAvatarSessionComponent: React.FC<{
       // overwhelming the TALK brain. Follow-up questions about the video are now
       // handled by the normal streaming flow via processCameraQuestion below.
 
+      // CUSTOM mode (2026-04-30): user text + (optional) live frame go DIRECTLY
+      // to gpt-4o-mini via sendMessage -> /api/openai-chat-complete -> ElevenLabs
+      // -> avatar.repeatAudio. Single-pass — no Gemini middleman, no [VISION
+      // CONTEXT] injection, no LiveAvatar TALK brain.
+      if (mode === "CUSTOM") {
+        let vision: { base64: string; mime: string } | null = null;
+        if (visionMode === "streaming" && isCameraActive) {
+          try {
+            const frame = await captureCameraFrame();
+            if (frame) {
+              const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const result = reader.result as string;
+                  // Strip the "data:<mime>;base64," prefix
+                  const idx = result.indexOf(",");
+                  resolve(idx >= 0 ? result.slice(idx + 1) : result);
+                };
+                reader.onerror = () =>
+                  reject(reader.error || new Error("FileReader error"));
+                reader.readAsDataURL(frame);
+              });
+              vision = { base64, mime: frame.type || "image/jpeg" };
+            }
+          } catch (frameErr) {
+            console.warn("CUSTOM: failed to capture vision frame", frameErr);
+          }
+        }
+        try {
+          await sendMessage(userText, null, vision);
+          lastAvatarResponseRef.current = "";
+          lastVisionResponseTimeRef.current = Date.now();
+        } catch (chatErr) {
+          console.error("CUSTOM-mode sendMessage error:", chatErr);
+        }
+        return;
+      }
+
       // Process the question using the reusable function (only in streaming mode)
       await processCameraQuestion(userText, false);
     };
@@ -1673,6 +1715,10 @@ const LiveAvatarSessionComponent: React.FC<{
     mode,
     repeat,
     isProcessingCameraQuestion,
+    // CUSTOM-mode additions:
+    sendMessage,
+    captureCameraFrame,
+    isCameraActive,
   ]);
 
   // Track if initial analysis has been triggered to prevent repeated automatic analysis
@@ -1680,7 +1726,9 @@ const LiveAvatarSessionComponent: React.FC<{
 
   // Automatically trigger vision recognition when Go Live streaming mode is activated
   // BUT only once - prevent repeated automatic analysis that causes excessive talking
+  // CUSTOM mode: skip — vision is reactive (only on user utterance).
   useEffect(() => {
+    if (mode === "CUSTOM") return;
     if (
       visionMode === "streaming" &&
       isCameraActive &&
@@ -2221,7 +2269,10 @@ const LiveAvatarSessionComponent: React.FC<{
   // Continuous vision polling during Go Live.
   // Fires every 1.5s; Grok's [SILENT] token keeps the avatar quiet when nothing meaningful has changed.
   // Hard 2-minute cap: at the 2-minute mark, speak the timeout line and auto-deactivate Go Live.
+  // CUSTOM mode (2026-04-30): vision is REACTIVE — frame is captured + sent
+  // only on user utterance via /api/openai-chat-complete. No polling needed.
   useEffect(() => {
+    if (mode === "CUSTOM") return;
     if (visionMode !== "streaming" || !isCameraActive) return;
 
     const POLLING_INTERVAL_MS = 1500; // back to 1.5s 2026-04-25 — Vercel 75% credit warning, drop poll rate to save function invocations. Combined with black-frame skip, ~50% reduction in vision API calls.

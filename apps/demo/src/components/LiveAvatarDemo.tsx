@@ -325,7 +325,11 @@ export const LiveAvatarDemo = () => {
 
   return (
     <LiveAvatarSession
-      mode="FULL"
+      // 2026-04-30: switched FULL -> CUSTOM. CUSTOM means our app owns the
+      // brain (gpt-4o-mini via /api/openai-chat-complete) and TTS (ElevenLabs
+      // direct). LiveAvatar still handles avatar visuals, mouth sync, STT.
+      // Single-pass vision — image bytes go straight to gpt-4o-mini.
+      mode="CUSTOM"
       sessionAccessToken={sessionToken}
       onSessionStopped={onSessionStopped}
       onExit={handleExit}
