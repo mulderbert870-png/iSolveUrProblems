@@ -15,7 +15,7 @@ export const LiveAvatarDemo = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const res = await fetch("/api/start-session", {
+      const res = await fetch("/api/start-custom-session", {
         method: "POST",
       });
       if (!res.ok) {
