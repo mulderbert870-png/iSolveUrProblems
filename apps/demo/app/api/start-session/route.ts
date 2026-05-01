@@ -27,11 +27,13 @@ export async function POST() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        // LITE silences LiveAvatar's TALK brain. We own the brain in CUSTOM
-        // mode (gpt-4o-mini via /api/openai-chat-complete) and were getting
-        // dual-brain races where LiveAvatar's FULL brain pre-empted our
-        // gpt-4o-mini responses. Switched to LITE 2026-05-01 per G GO.
-        mode: "LITE",
+        // 2026-05-01: tried LITE for dual-brain silence, SDK didn't fully
+        // initialize bidirectional flow with LITE tokens (avatar visual OK
+        // but no listening/audio interaction). Reverted to FULL while
+        // researching a "silent persona" approach (point context_id at a
+        // prompt that instructs the LiveAvatar brain to stay silent so
+        // gpt-4o-mini wins by default).
+        mode: "FULL",
         avatar_id: AVATAR_ID,
         max_session_duration: 20 * 60, // 20 minutes (LiveAvatar API: seconds)
         avatar_persona: {
