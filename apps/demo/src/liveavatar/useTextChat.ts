@@ -28,32 +28,39 @@ export const useTextChat = (mode: "FULL" | "CUSTOM") => {
       if (mode === "FULL") {
         return sessionRef.current.message(message);
       } else if (mode === "CUSTOM") {
-        const response = await fetch("/api/openai-chat-complete", {
+        const chatResp = await fetch("/api/openai-chat-complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message,
-            // Only one of these will be honored on the server, but we send
-            // both for diagnostic / fallback resilience. Native vision
-            // (image_base64 + image_mime) takes precedence.
             image_analysis: imageAnalysis || undefined,
             image_base64: vision?.base64 || undefined,
             image_mime: vision?.mime || undefined,
           }),
         });
-        const { response: chatResponseText } = await response.json();
-        if (!chatResponseText || typeof chatResponseText !== "string") {
-          // Don't try to TTS empty/non-string responses.
+        const chatBody = await chatResp.json().catch(() => null);
+        const chatResponseText = chatBody?.response;
+        if (!chatResp.ok || !chatResponseText || typeof chatResponseText !== "string") {
+          console.error("[CUSTOM] openai-chat-complete failed", {
+            status: chatResp.status,
+            body: chatBody,
+          });
           return;
         }
-        const res = await fetch("/api/elevenlabs-text-to-speech", {
+        const ttsResp = await fetch("/api/elevenlabs-text-to-speech", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: chatResponseText }),
         });
-        const { audio } = await res.json();
-        if (!audio) return;
-        // Have the avatar repeat the audio
+        const ttsBody = await ttsResp.json().catch(() => null);
+        const audio = ttsBody?.audio;
+        if (!ttsResp.ok || !audio) {
+          console.error("[CUSTOM] elevenlabs-text-to-speech failed", {
+            status: ttsResp.status,
+            body: ttsBody,
+          });
+          return;
+        }
         return sessionRef.current.repeatAudio(audio);
       }
     },
