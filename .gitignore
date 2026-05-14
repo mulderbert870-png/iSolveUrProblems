@@ -28,7 +28,6 @@ build
 dist
 # Exception: apps/demo/lib contains source code, not build output
 !apps/demo/lib/
-docs
 
 
 # Debug
