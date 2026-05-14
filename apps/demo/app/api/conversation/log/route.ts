@@ -6,6 +6,7 @@ import {
 } from "../../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../../src/lib/rateLimit";
 import { getSupabaseAdminConfig } from "../../../../src/lib/supabaseAdmin";
+import { getUserId } from "../../../../src/lib/auth/getUser";
 
 type SpeakerRole = "user" | "assistant";
 
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
     const sessionId = rawSessionId.trim();
     const text = truncateUtf8String(rawText.trim(), MAX_TRANSCRIPTION_TEXT_CHARS);
     const { url, serviceRoleKey } = getSupabaseAdminConfig();
+    const userId = await getUserId();
 
     const res = await fetch(`${url}/rest/v1/conversation_messages`, {
       method: "POST",
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
         session_id: sessionId,
         role,
         message: text,
+        ...(userId ? { user_id: userId } : {}),
       }),
     });
 

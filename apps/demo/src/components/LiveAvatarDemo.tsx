@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 // import Image from "next/image";
 import { LiveAvatarSession } from "./LiveAvatarSession";
 import Link from "next/link";
+import { rememberAnonymousSessionId } from "../lib/auth/AuthProvider";
 export const LiveAvatarDemo = () => {
   const [sessionToken, setSessionToken] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +25,11 @@ export const LiveAvatarDemo = () => {
         setIsLoading(false);
         return;
       }
-      const { session_token } = await res.json();
+      const { session_token, session_id } = await res.json();
       setSessionToken(session_token);
+      // Stash the anonymous session_id so /api/auth/link-session can re-key
+      // its rows to the user when they sign in (M1.1 anonymous → authed).
+      if (session_id) rememberAnonymousSessionId(session_id);
       setIsLoading(false);
     } catch (err: unknown) {
       setError((err as Error).message);
