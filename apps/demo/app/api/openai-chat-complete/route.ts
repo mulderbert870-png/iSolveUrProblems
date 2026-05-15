@@ -13,6 +13,8 @@ import {
   extractFactsFromTurn,
   storeFacts,
 } from "../../../src/lib/memory";
+import { resolveLocaleForRequest } from "../../../src/lib/i18n/resolveLocale";
+import { localeLanguageName } from "../../../src/lib/i18n/avatarLanguage";
 
 const SYSTEM_PROMPT =
   "You are a helpful assistant. You are being used in a demo. Please act courteously and helpfully.";
@@ -71,8 +73,21 @@ export async function POST(request: Request) {
         : [];
     const memoryBlock = formatRecalledFactsForPrompt(recalled);
 
-    // Assemble system prompt: base + (optional image context) + (optional memory).
-    const systemSections: string[] = [SYSTEM_PROMPT];
+    // M1.6b — resolve the user's locale and tell the model to reply in
+    // their language. Per vision ¶26 ("6 speaks as many languages as
+    // ai speaks"). Anonymous users fall back to Accept-Language.
+    const locale = await resolveLocaleForRequest({
+      userId,
+      acceptLanguage: request.headers.get("accept-language"),
+    });
+    const languageName = localeLanguageName(locale);
+
+    // Assemble system prompt: base + language directive + (optional
+    // image context) + (optional memory).
+    const systemSections: string[] = [
+      SYSTEM_PROMPT,
+      `Respond to the user in ${languageName}. Match their tone and any technical level they use.`,
+    ];
     if (image_analysis) {
       systemSections.push(
         `IMPORTANT CONTEXT: The user has shared an image with you. You can see this image clearly, and here's what you observe: ${image_analysis}\n\nWhen the user asks questions about what they're seeing or asks questions about the image, respond as if you're directly viewing it. Describe what you see naturally and confidently - you have full visibility of the image. Never say you can't see the image or that you're relying on someone else's analysis. You are directly viewing this image.`,

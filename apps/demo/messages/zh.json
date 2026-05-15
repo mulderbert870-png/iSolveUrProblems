@@ -1,98 +1,99 @@
 {
+  "_note": "Machine-translated by Claude for M1.6b. Per Q1.6b2 these strings need native-speaker review before launch.",
   "auth": {
     "signIn": {
-      "title": "Sign in to iSolveUrProblems",
-      "blurb": "6 can keep talking to you anonymously — sign in only when you want your fix-it reports delivered or 6 to remember you next time.",
-      "google": "Continue with Google",
-      "or": "OR",
-      "emailLabel": "Email address",
+      "title": "登录 iSolveUrProblems",
+      "blurb": "您可以继续匿名与 6 对话——只有当您希望接收维修报告,或希望 6 下次记住您时,才需要登录。",
+      "google": "使用 Google 继续",
+      "or": "或",
+      "emailLabel": "电子邮箱",
       "emailPlaceholder": "you@example.com",
-      "sendMagicLink": "Send magic link",
-      "sending": "Sending…",
-      "checkEmail": "Check your email for the sign-in link.",
-      "backTo6": "← Back to 6"
+      "sendMagicLink": "发送魔法链接",
+      "sending": "正在发送…",
+      "checkEmail": "请查看您的电子邮箱以获取登录链接。",
+      "backTo6": "← 返回 6"
     },
     "corner": {
-      "signIn": "Sign in",
-      "signOut": "Sign out"
+      "signIn": "登录",
+      "signOut": "登出"
     },
     "errors": {
-      "callbackFailed": "Sign-in callback failed. Please try again."
+      "callbackFailed": "登录回调失败,请重试。"
     }
   },
   "account": {
     "memory": {
-      "title": "What 6 remembers about you",
-      "blurb": "6 keeps short notes between conversations so it doesn't make you repeat yourself. You're in control — you can forget any single note, or wipe everything.",
-      "backTo6": "← Back to 6",
-      "signInRequired": "Sign in to see what 6 remembers about you.",
-      "signInCta": "Sign in",
-      "loading": "Loading…",
-      "loadError": "Couldn't load your notes. Please try again.",
-      "empty": "6 hasn't remembered anything about you yet.",
-      "countLabel": "{count, plural, =0 {No notes} =1 {1 note} other {# notes}}",
-      "forget": "Forget",
-      "forgetAll": "Forget everything",
-      "forgettingAll": "Forgetting…",
-      "forgetAllConfirm": "Forget everything 6 remembers about you? This can't be undone.",
+      "title": "6 对您的记忆",
+      "blurb": "6 会在对话之间记录简短的笔记,这样您就不用重复说明同样的事情。您拥有完全的控制权——可以删除单条笔记或全部清除。",
+      "backTo6": "← 返回 6",
+      "signInRequired": "请登录以查看 6 对您的记忆。",
+      "signInCta": "登录",
+      "loading": "加载中…",
+      "loadError": "无法加载您的笔记。请重试。",
+      "empty": "6 还没有记录任何关于您的内容。",
+      "countLabel": "{count, plural, =0 {无笔记} =1 {1 条笔记} other {# 条笔记}}",
+      "forget": "忘记",
+      "forgetAll": "全部忘记",
+      "forgettingAll": "正在忘记…",
+      "forgetAllConfirm": "确定要忘记 6 关于您的所有记忆吗?此操作无法撤销。",
       "kind": {
-        "name": "Name",
-        "address": "Address",
-        "property": "Property",
-        "preference": "Preferences",
-        "prior_issue": "Prior issues",
-        "contact": "Contact",
-        "other": "Other"
+        "name": "姓名",
+        "address": "地址",
+        "property": "房产",
+        "preference": "偏好",
+        "prior_issue": "以前的问题",
+        "contact": "联系方式",
+        "other": "其他"
       }
     }
   },
   "reports": {
-    "kicker": "iSolveUrProblems · Fix-it Report",
-    "untitled": "Fix-it report",
-    "statusLabel": "Status",
-    "generating": "6 is putting your report together. This usually takes 10–30 seconds — refresh in a moment.",
-    "failed": "Something went wrong while generating this report",
-    "downloadPdf": "Download PDF",
-    "backTo6": "← Back to 6",
+    "kicker": "iSolveUrProblems · 维修报告",
+    "untitled": "维修报告",
+    "statusLabel": "状态",
+    "generating": "6 正在整理您的报告。通常需要 10-30 秒——请稍后刷新。",
+    "failed": "生成此报告时出错",
+    "downloadPdf": "下载 PDF",
+    "backTo6": "← 返回 6",
     "deliver": {
-      "title": "Send this report to yourself",
-      "blurb": "Pick how you'd like to receive it. You can change this any time on your account.",
-      "channelLabel": "Channel",
+      "title": "将此报告发送给您自己",
+      "blurb": "选择您希望接收的方式。您可以随时在账户中更改。",
+      "channelLabel": "渠道",
       "channel": {
-        "email": "Email",
-        "emailMissing": "(add an email to your account first)",
-        "sms": "SMS",
-        "smsSub": "We'll text the link.",
+        "email": "电子邮件",
+        "emailMissing": "(请先为您的账户添加电子邮箱)",
+        "sms": "短信",
+        "smsSub": "我们将通过短信发送链接。",
         "whatsapp": "WhatsApp",
-        "whatsappSub": "We'll send the link via WhatsApp.",
-        "whatsappDisabled": "WhatsApp is not available yet — coming soon."
+        "whatsappSub": "我们将通过 WhatsApp 发送链接。",
+        "whatsappDisabled": "WhatsApp 暂不可用——即将推出。"
       },
-      "phoneLabel": "Phone number (include country code)",
-      "consentSms": "I agree to receive an SMS at this number from iSolveUrProblems with my report link. Message and data rates may apply. Reply STOP to opt out.",
-      "consentWhatsapp": "I agree to receive a WhatsApp message at this number with my report link.",
-      "send": "Send report",
-      "sending": "Sending…",
-      "needsSmsConsent": "Tick the consent box to send by SMS.",
-      "needsWaConsent": "Tick the consent box to send by WhatsApp.",
-      "sentVia": "Sent via {channel}.",
-      "fallbackUsed": "fallback",
-      "sendFailed": "Send failed",
-      "signInRequired": "Sign in to deliver this report."
+      "phoneLabel": "电话号码(请包含国家代码)",
+      "consentSms": "我同意从 iSolveUrProblems 通过此号码接收包含报告链接的短信。可能产生短信和数据费用。回复 STOP 退订。",
+      "consentWhatsapp": "我同意通过此号码接收包含报告链接的 WhatsApp 消息。",
+      "send": "发送报告",
+      "sending": "正在发送…",
+      "needsSmsConsent": "请勾选同意框以通过短信发送。",
+      "needsWaConsent": "请勾选同意框以通过 WhatsApp 发送。",
+      "sentVia": "已通过 {channel} 发送。",
+      "fallbackUsed": "备用",
+      "sendFailed": "发送失败",
+      "signInRequired": "请登录以发送此报告。"
     }
   },
   "errors": {
     "general": {
-      "title": "Something went wrong.",
-      "blurb": "6 hit a snag. The error has been reported.",
-      "retry": "Try again"
+      "title": "出了点问题。",
+      "blurb": "6 遇到了一个小问题。错误已上报。",
+      "retry": "重试"
     },
     "global": {
-      "title": "Something went very wrong.",
-      "blurb": "The page could not load. We've been notified."
+      "title": "出了大问题。",
+      "blurb": "页面无法加载。我们已收到通知。"
     }
   },
   "locale": {
-    "label": "Language",
+    "label": "语言",
     "name": {
       "en": "English",
       "es": "Español",

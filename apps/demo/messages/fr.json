@@ -1,98 +1,98 @@
 {
   "auth": {
     "signIn": {
-      "title": "Sign in to iSolveUrProblems",
-      "blurb": "6 can keep talking to you anonymously — sign in only when you want your fix-it reports delivered or 6 to remember you next time.",
-      "google": "Continue with Google",
-      "or": "OR",
-      "emailLabel": "Email address",
-      "emailPlaceholder": "you@example.com",
-      "sendMagicLink": "Send magic link",
-      "sending": "Sending…",
-      "checkEmail": "Check your email for the sign-in link.",
-      "backTo6": "← Back to 6"
+      "title": "Connectez-vous à iSolveUrProblems",
+      "blurb": "6 peut continuer à vous parler de façon anonyme — connectez-vous uniquement lorsque vous voulez recevoir vos rapports ou que 6 se souvienne de vous la prochaine fois.",
+      "google": "Continuer avec Google",
+      "or": "OU",
+      "emailLabel": "Adresse e-mail",
+      "emailPlaceholder": "vous@exemple.com",
+      "sendMagicLink": "Envoyer le lien magique",
+      "sending": "Envoi…",
+      "checkEmail": "Consultez votre e-mail pour trouver le lien de connexion.",
+      "backTo6": "← Retour à 6"
     },
     "corner": {
-      "signIn": "Sign in",
-      "signOut": "Sign out"
+      "signIn": "Se connecter",
+      "signOut": "Se déconnecter"
     },
     "errors": {
-      "callbackFailed": "Sign-in callback failed. Please try again."
+      "callbackFailed": "Le retour de connexion a échoué. Veuillez réessayer."
     }
   },
   "account": {
     "memory": {
-      "title": "What 6 remembers about you",
-      "blurb": "6 keeps short notes between conversations so it doesn't make you repeat yourself. You're in control — you can forget any single note, or wipe everything.",
-      "backTo6": "← Back to 6",
-      "signInRequired": "Sign in to see what 6 remembers about you.",
-      "signInCta": "Sign in",
-      "loading": "Loading…",
-      "loadError": "Couldn't load your notes. Please try again.",
-      "empty": "6 hasn't remembered anything about you yet.",
-      "countLabel": "{count, plural, =0 {No notes} =1 {1 note} other {# notes}}",
-      "forget": "Forget",
-      "forgetAll": "Forget everything",
-      "forgettingAll": "Forgetting…",
-      "forgetAllConfirm": "Forget everything 6 remembers about you? This can't be undone.",
+      "title": "Ce que 6 retient de vous",
+      "blurb": "6 garde de courtes notes entre les conversations pour ne pas vous faire vous répéter. Vous gardez le contrôle — vous pouvez oublier n'importe quelle note ou tout effacer.",
+      "backTo6": "← Retour à 6",
+      "signInRequired": "Connectez-vous pour voir ce que 6 retient de vous.",
+      "signInCta": "Se connecter",
+      "loading": "Chargement…",
+      "loadError": "Impossible de charger vos notes. Veuillez réessayer.",
+      "empty": "6 n'a encore rien retenu de vous.",
+      "countLabel": "{count, plural, =0 {Aucune note} =1 {1 note} other {# notes}}",
+      "forget": "Oublier",
+      "forgetAll": "Tout oublier",
+      "forgettingAll": "Effacement…",
+      "forgetAllConfirm": "Oublier tout ce que 6 retient de vous ? Cela ne peut pas être annulé.",
       "kind": {
-        "name": "Name",
-        "address": "Address",
-        "property": "Property",
-        "preference": "Preferences",
-        "prior_issue": "Prior issues",
+        "name": "Nom",
+        "address": "Adresse",
+        "property": "Bien",
+        "preference": "Préférences",
+        "prior_issue": "Problèmes précédents",
         "contact": "Contact",
-        "other": "Other"
+        "other": "Autre"
       }
     }
   },
   "reports": {
-    "kicker": "iSolveUrProblems · Fix-it Report",
-    "untitled": "Fix-it report",
-    "statusLabel": "Status",
-    "generating": "6 is putting your report together. This usually takes 10–30 seconds — refresh in a moment.",
-    "failed": "Something went wrong while generating this report",
-    "downloadPdf": "Download PDF",
-    "backTo6": "← Back to 6",
+    "kicker": "iSolveUrProblems · Rapport de réparation",
+    "untitled": "Rapport de réparation",
+    "statusLabel": "Statut",
+    "generating": "6 prépare votre rapport. Cela prend généralement 10 à 30 secondes — actualisez dans un instant.",
+    "failed": "Une erreur s'est produite lors de la génération de ce rapport",
+    "downloadPdf": "Télécharger le PDF",
+    "backTo6": "← Retour à 6",
     "deliver": {
-      "title": "Send this report to yourself",
-      "blurb": "Pick how you'd like to receive it. You can change this any time on your account.",
-      "channelLabel": "Channel",
+      "title": "Envoyez-vous ce rapport",
+      "blurb": "Choisissez comment vous voulez le recevoir. Vous pouvez le modifier à tout moment dans votre compte.",
+      "channelLabel": "Canal",
       "channel": {
-        "email": "Email",
-        "emailMissing": "(add an email to your account first)",
+        "email": "E-mail",
+        "emailMissing": "(ajoutez d'abord un e-mail à votre compte)",
         "sms": "SMS",
-        "smsSub": "We'll text the link.",
+        "smsSub": "Nous enverrons le lien par SMS.",
         "whatsapp": "WhatsApp",
-        "whatsappSub": "We'll send the link via WhatsApp.",
-        "whatsappDisabled": "WhatsApp is not available yet — coming soon."
+        "whatsappSub": "Nous enverrons le lien par WhatsApp.",
+        "whatsappDisabled": "WhatsApp n'est pas encore disponible — bientôt."
       },
-      "phoneLabel": "Phone number (include country code)",
-      "consentSms": "I agree to receive an SMS at this number from iSolveUrProblems with my report link. Message and data rates may apply. Reply STOP to opt out.",
-      "consentWhatsapp": "I agree to receive a WhatsApp message at this number with my report link.",
-      "send": "Send report",
-      "sending": "Sending…",
-      "needsSmsConsent": "Tick the consent box to send by SMS.",
-      "needsWaConsent": "Tick the consent box to send by WhatsApp.",
-      "sentVia": "Sent via {channel}.",
-      "fallbackUsed": "fallback",
-      "sendFailed": "Send failed",
-      "signInRequired": "Sign in to deliver this report."
+      "phoneLabel": "Numéro de téléphone (indicatif inclus)",
+      "consentSms": "J'accepte de recevoir un SMS à ce numéro d'iSolveUrProblems avec le lien de mon rapport. Des frais de message et de données peuvent s'appliquer. Répondez STOP pour vous désabonner.",
+      "consentWhatsapp": "J'accepte de recevoir un message WhatsApp à ce numéro avec le lien de mon rapport.",
+      "send": "Envoyer le rapport",
+      "sending": "Envoi…",
+      "needsSmsConsent": "Cochez la case de consentement pour envoyer par SMS.",
+      "needsWaConsent": "Cochez la case de consentement pour envoyer par WhatsApp.",
+      "sentVia": "Envoyé par {channel}.",
+      "fallbackUsed": "alternative",
+      "sendFailed": "Échec de l'envoi",
+      "signInRequired": "Connectez-vous pour livrer ce rapport."
     }
   },
   "errors": {
     "general": {
-      "title": "Something went wrong.",
-      "blurb": "6 hit a snag. The error has been reported.",
-      "retry": "Try again"
+      "title": "Une erreur s'est produite.",
+      "blurb": "6 a rencontré un problème. L'erreur a été signalée.",
+      "retry": "Réessayer"
     },
     "global": {
-      "title": "Something went very wrong.",
-      "blurb": "The page could not load. We've been notified."
+      "title": "Une grave erreur s'est produite.",
+      "blurb": "La page n'a pas pu être chargée. Nous avons été informés."
     }
   },
   "locale": {
-    "label": "Language",
+    "label": "Langue",
     "name": {
       "en": "English",
       "es": "Español",

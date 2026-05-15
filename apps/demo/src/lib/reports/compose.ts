@@ -35,13 +35,18 @@ function languageDirective(locale: Locale): string {
 }
 
 function defaultDisclaimer(locale: Locale): string {
-  const en =
-    "This report reflects 6's best understanding from your conversation and the photos / video you shared. Always exercise judgment, follow local codes, and call a licensed professional if any step feels unsafe.";
-  if (locale === "en") return en;
-  // For M1.5 scaffold the disclaimer is English in non-EN locales too —
-  // M1.6b will translate. Keeping English ensures legal text stays intact
-  // until reviewed.
-  return en;
+  // M1.6b — localized legal disclaimer per locale. Machine-translated
+  // for the EN-adjacent locales (Q1.6b2); ZH needs native-speaker
+  // review before being relied on for legal cover.
+  const map: Record<Locale, string> = {
+    en: "This report reflects 6's best understanding from your conversation and the photos / video you shared. Always exercise judgment, follow local codes, and call a licensed professional if any step feels unsafe.",
+    es: "Este informe refleja el mejor entendimiento de 6 a partir de tu conversación y de las fotos / videos que compartiste. Usa siempre tu criterio, respeta las normas locales y llama a un profesional con licencia si algún paso te parece inseguro.",
+    fr: "Ce rapport reflète la meilleure compréhension de 6 à partir de votre conversation et des photos / vidéos que vous avez partagées. Faites toujours preuve de jugement, respectez les normes locales et appelez un professionnel agréé si une étape vous semble dangereuse.",
+    pt: "Este relatório reflete o melhor entendimento do 6 com base na sua conversa e nas fotos / vídeos que você compartilhou. Use sempre o bom senso, siga as normas locais e chame um profissional licenciado se qualquer etapa parecer insegura.",
+    de: "Dieser Bericht spiegelt das beste Verständnis von 6 aus deinem Gespräch und den geteilten Fotos / Videos wider. Setze immer dein eigenes Urteilsvermögen ein, beachte örtliche Vorschriften und rufe einen lizenzierten Fachmann, wenn dir ein Schritt unsicher erscheint.",
+    zh: "本报告反映了 6 根据您的对话以及您分享的照片/视频所做的最佳理解。请始终运用您自己的判断,遵守当地规范,如果任何步骤让您觉得不安全,请联系持证专业人员。",
+  };
+  return map[locale] ?? map.en;
 }
 
 async function fetchSessionTranscript(

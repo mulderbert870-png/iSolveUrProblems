@@ -7,8 +7,11 @@ import {
   LANGUAGE,
 } from "../secrets";
 import { assertCanMintSessionToken } from "../../../src/lib/liveavatarCredits";
+import { getUserId } from "../../../src/lib/auth/getUser";
+import { resolveLocaleForRequest } from "../../../src/lib/i18n/resolveLocale";
+import { mapLocaleToAvatarLanguage } from "../../../src/lib/i18n/avatarLanguage";
 
-export async function POST() {
+export async function POST(request: Request) {
   const gate = await assertCanMintSessionToken();
   if (!gate.ok) {
     return new Response(JSON.stringify({ error: gate.message }), {
@@ -16,6 +19,16 @@ export async function POST() {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  // M1.6b — vision ¶26: avatar speaks in the user's language.
+  // Falls back to LIVEAVATAR_LANGUAGE env for anonymous callers whose
+  // Accept-Language doesn't match a supported locale.
+  const userId = await getUserId();
+  const locale = await resolveLocaleForRequest({
+    userId,
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+  const avatarLanguage = mapLocaleToAvatarLanguage(locale, LANGUAGE);
 
   let session_token = "";
   let session_id = "";
@@ -33,7 +46,7 @@ export async function POST() {
         avatar_persona: {
           voice_id: VOICE_ID,
           context_id: CONTEXT_ID,
-          language: LANGUAGE,
+          language: avatarLanguage,
         },
       }),
     });
@@ -80,10 +93,13 @@ export async function POST() {
       },
     );
   }
-  return new Response(JSON.stringify({ session_token, session_id }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
+  return new Response(
+    JSON.stringify({ session_token, session_id, locale, language: avatarLanguage }),
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
 }
