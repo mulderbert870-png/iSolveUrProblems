@@ -53,7 +53,32 @@
     "generating": "6 is putting your report together. This usually takes 10–30 seconds — refresh in a moment.",
     "failed": "Something went wrong while generating this report",
     "downloadPdf": "Download PDF",
-    "backTo6": "← Back to 6"
+    "backTo6": "← Back to 6",
+    "deliver": {
+      "title": "Send this report to yourself",
+      "blurb": "Pick how you'd like to receive it. You can change this any time on your account.",
+      "channelLabel": "Channel",
+      "channel": {
+        "email": "Email",
+        "emailMissing": "(add an email to your account first)",
+        "sms": "SMS",
+        "smsSub": "We'll text the link.",
+        "whatsapp": "WhatsApp",
+        "whatsappSub": "We'll send the link via WhatsApp.",
+        "whatsappDisabled": "WhatsApp is not available yet — coming soon."
+      },
+      "phoneLabel": "Phone number (include country code)",
+      "consentSms": "I agree to receive an SMS at this number from iSolveUrProblems with my report link. Message and data rates may apply. Reply STOP to opt out.",
+      "consentWhatsapp": "I agree to receive a WhatsApp message at this number with my report link.",
+      "send": "Send report",
+      "sending": "Sending…",
+      "needsSmsConsent": "Tick the consent box to send by SMS.",
+      "needsWaConsent": "Tick the consent box to send by WhatsApp.",
+      "sentVia": "Sent via {channel}.",
+      "fallbackUsed": "fallback",
+      "sendFailed": "Send failed",
+      "signInRequired": "Sign in to deliver this report."
+    }
   },
   "errors": {
     "general": {

@@ -3,6 +3,8 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getUserId } from "../../../../src/lib/auth/getUser";
 import { getReportRow, signReportAssetUrl } from "../../../../src/lib/reports";
 import { Link } from "../../../../src/i18n/routing";
+import { FEATURE_WHATSAPP } from "../../../api/secrets";
+import DeliveryPanel from "./DeliveryPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,13 @@ export default async function ReportViewerPage({
 
       {row.status === "ready" && (
         <ReportBody report={row.payload} />
+      )}
+
+      {row.status === "ready" && (
+        <DeliveryPanel
+          reportId={row.id}
+          whatsappEnabled={FEATURE_WHATSAPP}
+        />
       )}
 
       <div className="flex gap-3 mt-6">

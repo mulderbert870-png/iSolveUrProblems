@@ -1,5 +1,6 @@
 import type { NotificationTemplate } from "../types";
 import welcomeTemplate from "./welcome";
+import reportDeliveryTemplate from "./report-delivery";
 
 /**
  * Local-in-code template registry (Q1.7a).
@@ -14,6 +15,7 @@ import welcomeTemplate from "./welcome";
  */
 const REGISTRY: Record<string, NotificationTemplate<never>> = {
   "welcome.v1": welcomeTemplate as NotificationTemplate<never>,
+  "report.delivery.v1": reportDeliveryTemplate as NotificationTemplate<never>,
 };
 
 export function getTemplate(id: string): NotificationTemplate<never> | null {
