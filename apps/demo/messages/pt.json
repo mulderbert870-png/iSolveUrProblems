@@ -20,6 +20,32 @@
       "callbackFailed": "Sign-in callback failed. Please try again."
     }
   },
+  "account": {
+    "memory": {
+      "title": "What 6 remembers about you",
+      "blurb": "6 keeps short notes between conversations so it doesn't make you repeat yourself. You're in control — you can forget any single note, or wipe everything.",
+      "backTo6": "← Back to 6",
+      "signInRequired": "Sign in to see what 6 remembers about you.",
+      "signInCta": "Sign in",
+      "loading": "Loading…",
+      "loadError": "Couldn't load your notes. Please try again.",
+      "empty": "6 hasn't remembered anything about you yet.",
+      "countLabel": "{count, plural, =0 {No notes} =1 {1 note} other {# notes}}",
+      "forget": "Forget",
+      "forgetAll": "Forget everything",
+      "forgettingAll": "Forgetting…",
+      "forgetAllConfirm": "Forget everything 6 remembers about you? This can't be undone.",
+      "kind": {
+        "name": "Name",
+        "address": "Address",
+        "property": "Property",
+        "preference": "Preferences",
+        "prior_issue": "Prior issues",
+        "contact": "Contact",
+        "other": "Other"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Something went wrong.",

@@ -200,12 +200,18 @@ M1.7 Notifications ├──→ M1.4 Multi-channel delivery
 2. Translate the **prompt corpus** — 6's system prompt, fallback responses, error messages — same flow
 3. STT — confirm Whisper / Gemini multilingual auto-detect works in [transcription/capture](../apps/demo/app/api/transcription/capture/route.ts); no per-locale config likely needed
 4. TTS — ElevenLabs voice strategy (see **Q1.6b1**): either one multilingual voice or per-locale clones of SG Dietz
-5. Report generator produces output in user's locale (already plumbed; verify)
-6. End-to-end smoke test per locale
+5. **Avatar-locale bridge** — read `users.preferred_locale` (or URL locale for anonymous) inside [start-session](../apps/demo/app/api/start-session/route.ts) and [start-custom-session](../apps/demo/app/api/start-custom-session/route.ts); map to HeyGen language code; pass to `avatar_persona.language` instead of the hard-coded `LIVEAVATAR_LANGUAGE` env. **This is what actually delivers vision ¶26** ("6 speaks as many languages as ai speaks") — M1.6a only localized the UI shell, not the avatar's voice.
+6. Report generator produces output in user's locale (already plumbed; verify)
+7. End-to-end smoke test per locale
 
 ### Files touched
-- **New:** filled `messages/*.json`, possibly `apps/demo/src/lib/i18n/promptTranslations.ts`
-- **Modified:** [elevenlabs-text-to-speech](../apps/demo/app/api/elevenlabs-text-to-speech/route.ts) (voice routing), chat-complete prompts
+- **New:** filled `messages/*.json`, possibly `apps/demo/src/lib/i18n/promptTranslations.ts`, `apps/demo/src/lib/i18n/avatarLanguage.ts` (locale → HeyGen mapping)
+- **Modified:** [elevenlabs-text-to-speech](../apps/demo/app/api/elevenlabs-text-to-speech/route.ts) (voice routing), [start-session](../apps/demo/app/api/start-session/route.ts), [start-custom-session](../apps/demo/app/api/start-custom-session/route.ts), chat-complete prompts
+
+### Known gap until M1.6b lands (today's state)
+- UI: localized ✓
+- Avatar speech: still hard-coded `LIVEAVATAR_LANGUAGE` ✗ — switching the UI to Spanish gives you a Spanish page with an English-speaking 6
+- This is a partial delivery against vision ¶26. M1.6b closes it.
 
 ---
 
