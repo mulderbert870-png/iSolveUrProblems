@@ -14,6 +14,8 @@ import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
 import { captureMedia } from "../lib/captureMedia";
 import { Radio, Camera, Images, Video, MicOff } from "lucide-react";
+import { useGoLiveStreamer } from "../lib/vision/useGoLiveStreamer";
+import { GoLivePrivacyBanner } from "./GoLivePrivacyBanner";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -2454,8 +2456,33 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   };
 
+  // M1.3 — adaptive-fps Go Live frame streamer.
+  // Runs only while visionMode === "streaming" and the camera is active.
+  // Server-side narration gate + client-side suppression ensure 6 only
+  // speaks when (a) scene actually changed and (b) avatar/user aren't
+  // already talking and (c) ≥10s since the last narration.
+  useGoLiveStreamer({
+    active: isCameraActive && visionMode === "streaming",
+    videoRef: cameraPreviewRef,
+    sessionId: sessionRef.current?.sessionId ?? null,
+    isAvatarTalking,
+    isUserTalking,
+    onNarrate: (caption) => {
+      try {
+        if (sessionRef.current && caption) {
+          sessionRef.current.repeat(caption);
+        }
+      } catch (err) {
+        console.error("Go Live narrate failed:", err);
+      }
+    },
+  });
+
   return (
     <div className="fixed inset-0 w-screen h-screen bg-black flex flex-col">
+      <GoLivePrivacyBanner
+        active={isCameraActive && visionMode === "streaming"}
+      />
       {/* Session start error (e.g. no credits) - show message and do not auto-restart */}
       {sessionStartError && (
         <div className="absolute inset-x-0 top-0 z-50 bg-red-900/95 text-white px-4 py-4 text-center shadow-lg">
