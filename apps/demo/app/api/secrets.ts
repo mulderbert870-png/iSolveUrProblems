@@ -24,3 +24,20 @@ export const NEXT_PUBLIC_SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
 export const NEXT_PUBLIC_SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+
+// Notifications fabric (M1.7)
+// Email — Resend (already used in leadAlert.ts; reusing the same key).
+export const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+export const RESEND_FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL || "6 from iSolveUrProblems <onboarding@resend.dev>";
+export const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || "";
+
+// SMS + WhatsApp — Twilio.
+export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
+export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
+export const TWILIO_FROM_PHONE = process.env.TWILIO_FROM_PHONE || "";
+export const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM || "";
+
+// Feature flag — WhatsApp stays scaffolded but disabled until Meta BSP
+// approval lands. Set FEATURE_WHATSAPP=1 to enable.
+export const FEATURE_WHATSAPP = process.env.FEATURE_WHATSAPP === "1";
