@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { getSupabaseBrowser } from "../../../src/lib/auth/supabaseBrowser";
-import { useUser } from "../../../src/lib/auth/AuthProvider";
+import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "../../../../src/i18n/routing";
+import { getSupabaseBrowser } from "../../../../src/lib/auth/supabaseBrowser";
+import { useUser } from "../../../../src/lib/auth/AuthProvider";
 
 export default function SignInClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useUser();
+  const t = useTranslations("auth.signIn");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -42,13 +44,13 @@ export default function SignInClient() {
         if (err) {
           setError(err.message);
         } else {
-          setInfo("Check your email for the sign-in link.");
+          setInfo(t("checkEmail"));
         }
       } finally {
         setBusy(false);
       }
     },
-    [email, busy, searchParams],
+    [email, busy, searchParams, t],
   );
 
   const signInWithGoogle = useCallback(async () => {
@@ -71,11 +73,8 @@ export default function SignInClient() {
 
   return (
     <main className="w-full max-w-sm flex flex-col items-center gap-6 px-6 py-12">
-      <h1 className="text-2xl font-semibold">Sign in to iSolveUrProblems</h1>
-      <p className="text-sm text-zinc-400 text-center">
-        6 can keep talking to you anonymously — sign in only when you want
-        your fix-it reports delivered or 6 to remember you next time.
-      </p>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <p className="text-sm text-zinc-400 text-center">{t("blurb")}</p>
 
       <button
         type="button"
@@ -83,18 +82,18 @@ export default function SignInClient() {
         disabled={busy}
         className="w-full rounded-md bg-white text-zinc-900 px-4 py-2 font-medium disabled:opacity-50"
       >
-        Continue with Google
+        {t("google")}
       </button>
 
       <div className="w-full flex items-center gap-3 text-zinc-500 text-xs">
         <span className="flex-1 h-px bg-zinc-700" />
-        OR
+        {t("or")}
         <span className="flex-1 h-px bg-zinc-700" />
       </div>
 
       <form onSubmit={sendMagicLink} className="w-full flex flex-col gap-3">
         <label className="text-sm text-zinc-300" htmlFor="email">
-          Email address
+          {t("emailLabel")}
         </label>
         <input
           id="email"
@@ -104,7 +103,7 @@ export default function SignInClient() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={busy}
-          placeholder="you@example.com"
+          placeholder={t("emailPlaceholder")}
           className="rounded-md bg-zinc-800 border border-zinc-700 px-3 py-2 text-white outline-none focus:border-zinc-500 disabled:opacity-50"
         />
         <button
@@ -112,7 +111,7 @@ export default function SignInClient() {
           disabled={busy || !email.trim()}
           className="rounded-md bg-amber-400 text-zinc-900 px-4 py-2 font-medium disabled:opacity-50"
         >
-          {busy ? "Sending…" : "Send magic link"}
+          {busy ? t("sending") : t("sendMagicLink")}
         </button>
       </form>
 
@@ -123,7 +122,7 @@ export default function SignInClient() {
         href="/"
         className="mt-2 text-xs text-zinc-400 hover:text-white underline"
       >
-        ← Back to 6
+        {t("backTo6")}
       </Link>
     </main>
   );

@@ -1,21 +1,35 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "./src/i18n/routing";
 
 /**
- * Supabase Auth session refresh.
+ * Composed middleware: next-intl locale routing first (rewrites /es/...
+ * paths or redirects when needed), then Supabase auth-cookie refresh on
+ * top of the result.
  *
- * Runs on every request and writes refreshed auth cookies back onto the
- * response. Without this, expired access tokens leak into Server
- * Components and API routes call `getUser()` against a stale session.
- *
- * Skips static assets, /api/webhooks/* (3rd-party callers don't carry our
- * cookies), and Next.js internals.
+ * The intl middleware is skipped for:
+ *  - /api/*               (route handlers stay unlocalized)
+ *  - /auth/callback        (OAuth redirect target is a fixed URL)
+ *  - /_next, /favicon, etc (already excluded by matcher)
  */
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
-    request: { headers: request.headers },
-  });
+const intlMiddleware = createIntlMiddleware(routing);
 
+function shouldSkipIntl(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api/") ||
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/auth/callback/")
+  );
+}
+
+export async function middleware(request: NextRequest) {
+  // 1. Run intl middleware unless this path opts out (API, OAuth callback).
+  const response = shouldSkipIntl(request.nextUrl.pathname)
+    ? NextResponse.next({ request: { headers: request.headers } })
+    : intlMiddleware(request);
+
+  // 2. Layer Supabase auth-cookie refresh on top of whatever intl produced.
   const url =
     process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey =
@@ -48,7 +62,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all paths except Next.js internals and webhooks.
+    // Run on all paths except Next.js internals, static assets, and webhooks.
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$|api/webhooks/).*)",
   ],
 };

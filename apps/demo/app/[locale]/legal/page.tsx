@@ -1,4 +1,4 @@
-import { BackToPreviousButton } from "../../src/components/BackToPreviousButton";
+import { BackToPreviousButton } from "../../../src/components/BackToPreviousButton";
 
 const sections: Array<{
   title: string;

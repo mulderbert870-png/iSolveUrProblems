@@ -1,0 +1,45 @@
+{
+  "auth": {
+    "signIn": {
+      "title": "Sign in to iSolveUrProblems",
+      "blurb": "6 can keep talking to you anonymously — sign in only when you want your fix-it reports delivered or 6 to remember you next time.",
+      "google": "Continue with Google",
+      "or": "OR",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "sendMagicLink": "Send magic link",
+      "sending": "Sending…",
+      "checkEmail": "Check your email for the sign-in link.",
+      "backTo6": "← Back to 6"
+    },
+    "corner": {
+      "signIn": "Sign in",
+      "signOut": "Sign out"
+    },
+    "errors": {
+      "callbackFailed": "Sign-in callback failed. Please try again."
+    }
+  },
+  "errors": {
+    "general": {
+      "title": "Something went wrong.",
+      "blurb": "6 hit a snag. The error has been reported.",
+      "retry": "Try again"
+    },
+    "global": {
+      "title": "Something went very wrong.",
+      "blurb": "The page could not load. We've been notified."
+    }
+  },
+  "locale": {
+    "label": "Language",
+    "name": {
+      "en": "English",
+      "es": "Español",
+      "fr": "Français",
+      "pt": "Português",
+      "de": "Deutsch",
+      "zh": "中文"
+    }
+  }
+}

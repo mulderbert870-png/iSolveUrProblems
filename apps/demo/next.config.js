@@ -1,4 +1,7 @@
+import createNextIntlPlugin from "next-intl/plugin";
 import { withSentryConfig } from "@sentry/nextjs";
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -15,7 +18,7 @@ const nextConfig = {
 
 // withSentryConfig adds source-map upload + auto-instrumentation. It's a
 // no-op at runtime when SENTRY_DSN is unset; source-map upload skips when
-// SENTRY_AUTH_TOKEN is unset (build still succeeds).
+// SENTRY_AUTH_TOKEN is unset (build stays green).
 const sentryWebpackPluginOptions = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
@@ -25,4 +28,6 @@ const sentryWebpackPluginOptions = {
   disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
 };
 
-export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+// Plugin composition: next-intl plugin first (transforms i18n imports),
+// then Sentry wraps the result for instrumentation + source maps.
+export default withSentryConfig(withNextIntl(nextConfig), sentryWebpackPluginOptions);
