@@ -46,6 +46,15 @@
       }
     }
   },
+  "reports": {
+    "kicker": "iSolveUrProblems · Fix-it Report",
+    "untitled": "Fix-it report",
+    "statusLabel": "Status",
+    "generating": "6 is putting your report together. This usually takes 10–30 seconds — refresh in a moment.",
+    "failed": "Something went wrong while generating this report",
+    "downloadPdf": "Download PDF",
+    "backTo6": "← Back to 6"
+  },
   "errors": {
     "general": {
       "title": "Something went wrong.",
