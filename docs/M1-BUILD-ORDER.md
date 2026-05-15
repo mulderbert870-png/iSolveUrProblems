@@ -14,7 +14,7 @@ The order below respects dependencies (each step can land only after its prerequ
 | Step | Feature | Why this position |
 |---|---|---|
 | **1** | M1.1 Auth (Supabase Auth) | Foundation. Every later feature needs `user_id`. |
-| **2a** | M1.8a Observability — Sentry boot | Cheap to install; want crash visibility before we build the rest. |
+| **2a** | M1.8a Observability — Supabase-native error logs | Cheap to install; want crash visibility before we build the rest. Data stays in Supabase (no external vendor). |
 | **2b** | M1.6a i18n framework scaffold | Land early so we don't accumulate hard-coded English in M1.2–M1.5. |
 | **3** | M1.2 Per-user persistent memory | Needs M1.1 (`user_id`). Touches the LLM chat route — best to do before adding more callers. |
 | **4** | M1.7 Notifications fabric | Channel abstraction. Must exist before M1.4 uses it. |
@@ -33,9 +33,9 @@ M1.1 Auth ───────────────┬─→ M1.2 Memory
                          ├─→ M1.6a i18n scaffold (locale on user profile)
                          ├─→ M1.7 Notifications (preferred_channels on user)
                          ├─→ M1.3 Go Live (user_id tagging)
-                         └─→ M1.8a Sentry user context
+                         └─→ M1.8a logger user context
 
-M1.8a Sentry boot ──────→ (passive — wraps everything)
+M1.8a Supabase logger ──→ (passive — wraps every call site)
 
 M1.6a i18n scaffold ────→ M1.5 Report locale
                           M1.6b Translation sweep
@@ -69,18 +69,19 @@ M1.7 Notifications ├──→ M1.4 Multi-channel delivery
 
 ---
 
-## M1.8a — Sentry Boot
+## M1.8a — Supabase-native error logs
 
 ### Sub-tasks
-1. Install `@sentry/nextjs`; run `npx @sentry/wizard@latest -i nextjs`
-2. `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
-3. Source-map upload in build
-4. Custom error boundaries in `app/error.tsx`, `app/global-error.tsx`
-5. After M1.1 lands: `Sentry.setUser({ id: user.id })` on auth state change
+1. Migration: `public.error_logs` (level / runtime / user_id / session_id / message / stack / route / context jsonb) + RLS locked to service role
+2. `src/lib/observability/serverLogger.ts` — direct service-role REST insert; never throws
+3. `src/lib/observability/clientLogger.ts` — installs window error handlers + posts to `/api/observability/log`
+4. `app/api/observability/log/route.ts` — validates payload, attaches `user_id` from cookies, rate-limited
+5. Custom error boundaries in `app/error.tsx`, `app/global-error.tsx` — call `captureClientError`
+6. AuthProvider calls `setClientLoggerUser(id)` on sign-in / sign-out so all subsequent logs carry the user id
 
 ### Files touched
-- **New:** 3 Sentry config files, `apps/demo/app/error.tsx`, `apps/demo/app/global-error.tsx`
-- **Modified:** [next.config.js](../apps/demo/next.config.ts) (or `.ts` equivalent), [package.json](../apps/demo/package.json)
+- **New:** migration, `src/lib/observability/{types,serverLogger,clientLogger}.ts`, `app/api/observability/log/route.ts`, `apps/demo/app/error.tsx`, `apps/demo/app/global-error.tsx`
+- **Modified:** [AuthProvider.tsx](../apps/demo/src/lib/auth/AuthProvider.tsx), [package.json](../apps/demo/package.json)
 
 ---
 
@@ -303,7 +304,7 @@ Concretely:
 - [ ] 6 asks how to deliver report → user picks email/SMS → report arrives in Spanish, branded, with photos
 - [ ] User signs up (magic link) mid-flow → previous anonymous session links to their account
 - [ ] User returns days later → 6 references prior facts ("how did that toilet repair turn out?")
-- [ ] All LLM calls are logged with cost; all errors hit Sentry; admin can see the trail
+- [ ] All LLM calls are logged with cost; all errors land in `error_logs`; admin can see the trail (M2.9)
 
 ---
 

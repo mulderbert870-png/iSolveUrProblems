@@ -51,7 +51,7 @@ Roughly paragraphs 3–7 of the vision doc are partially live. Everything from p
 | M1.5 | PDF/HTML structured report generator | Photos + step-by-step + materials list |
 | M1.6 | Multi-language support (UI + STT + TTS + LLM) | Initial set: EN, ES, FR, PT, DE, ZH |
 | M1.7 | Notifications fabric (single service abstraction) | Reused by every later milestone |
-| M1.8 | Observability baseline (Sentry + LLM call logs) | Required before scaling |
+| M1.8 | Observability baseline (Supabase-native `error_logs` + `llm_calls`) | Required before scaling — kept in-Supabase, no external vendor |
 
 **Exit criteria:** A non-technical Spanish-speaking user can solve a real home problem with 6, get a PDF report by WhatsApp, and come back next week and have 6 remember them.
 

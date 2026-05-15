@@ -10,8 +10,8 @@ import {
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import * as Sentry from "@sentry/nextjs";
 import { getSupabaseBrowser } from "./supabaseBrowser";
+import { installClientLogger, setClientLoggerUser } from "../observability/clientLogger";
 
 type AuthContextValue = {
   user: User | null;
@@ -36,6 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastLinkedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // Install global error handlers exactly once for the app's lifetime.
+    installClientLogger();
+
     const supabase = getSupabaseBrowser();
 
     // Initial fetch
@@ -43,9 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setLoading(false);
-      if (data.session?.user) {
-        Sentry.setUser({ id: data.session.user.id });
-      }
+      setClientLoggerUser(data.session?.user?.id ?? null);
     });
 
     // Subscribe to changes
@@ -61,12 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastLinkedRef.current !== next.user.id
       ) {
         lastLinkedRef.current = next.user.id;
-        Sentry.setUser({ id: next.user.id });
+        setClientLoggerUser(next.user.id);
         void linkAnonymousSessions();
       }
       if (event === "SIGNED_OUT") {
         lastLinkedRef.current = null;
-        Sentry.setUser(null);
+        setClientLoggerUser(null);
       }
     });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
+import { captureClientError } from "../src/lib/observability/clientLogger";
 
 /**
  * App-level error boundary. Caught client-side errors inside any
@@ -15,7 +15,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    void captureClientError(error, { boundary: "app/error.tsx" });
   }, [error]);
 
   return (

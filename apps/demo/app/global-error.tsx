@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
+import { captureClientError } from "../src/lib/observability/clientLogger";
 
 /**
  * Root error boundary. Catches errors thrown in the root layout itself.
@@ -13,7 +13,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    void captureClientError(error, { boundary: "app/global-error.tsx" });
   }, [error]);
 
   return (
