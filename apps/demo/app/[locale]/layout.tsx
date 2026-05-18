@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { setRequestLocale, getMessages } from "next-intl/server";
 import { routing } from "../../src/i18n/routing";
-import { AuthCorner } from "../../src/components/AuthCorner";
 
 /**
  * Locale layout — wraps every page under /[locale]/ in NextIntlClientProvider.
@@ -32,7 +31,6 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <AuthCorner />
       {children}
     </NextIntlClientProvider>
   );

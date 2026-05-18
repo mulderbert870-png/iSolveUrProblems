@@ -1,5 +1,32 @@
 {
   "_note": "Machine-translated by Claude for M1.6b. Per Q1.6b2 these strings need native-speaker review before launch.",
+  "home": {
+    "title": "iSolveUrProblems.ai - beta",
+    "subtitle": "您的家居与花园解决方案中心",
+    "loading": "加载中...",
+    "sessionEnded": "会话已结束",
+    "thankYou": "感谢您使用 iSolveUrProblems.ai",
+    "restartPrompt": "想再用一次?点击下方按钮 👇",
+    "restart": "重新开始",
+    "retry": "重试",
+    "failedToStart": "无法启动会话",
+    "footer": "© 2026 iSolveUrProblems.ai 保留所有权利 · 条款",
+    "tapStartToBegin": "点击开始即可开始",
+    "tell6": "告诉 6 怎么了",
+    "or": "或",
+    "showHim": "给他看",
+    "starting": "正在启动…",
+    "start": "开始",
+    "stop": "停止",
+    "stopRecording": "停止录制",
+    "goLive": "实时",
+    "camera": "相机",
+    "gallery": "图库",
+    "video": "视频",
+    "analyzing": "分析中...",
+    "analyzingPhoto": "正在分析照片....",
+    "analyzingVideo": "正在分析视频...."
+  },
   "auth": {
     "signIn": {
       "title": "登录 iSolveUrProblems",

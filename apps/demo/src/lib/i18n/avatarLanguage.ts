@@ -1,24 +1,26 @@
 import { defaultLocale, locales, type Locale } from "../../i18n/routing";
 
 /**
- * Maps our app Locale codes (en, es, fr, pt, de, zh) to the IETF
- * language tags HeyGen / LiveAvatar expects for `avatar_persona.language`.
+ * Maps our app Locale codes (en, es, fr, pt, de, zh) to the language
+ * codes HeyGen / LiveAvatar expects for `avatar_persona.language`.
  *
  * Bridges M1.6a (UI localized) with vision ¶26 ("6 speaks as many
  * languages as ai speaks") — the avatar now speaks in the same language
  * the UI is in, instead of the hard-coded LIVEAVATAR_LANGUAGE env.
  *
- * Replace these tags if your HeyGen plan expects different codes. Some
- * deployments use just the primary subtag ("en") while others use full
- * region tags ("en-US"). Adjust to match what your avatar accepts.
+ * HeyGen on this plan rejected IETF region tags like "en-US" with
+ * `{code: 4000, message: "Language not supported", params: {language: "en-US"}}`.
+ * It accepts primary subtags ("en", "es", ...), which matches the
+ * historical value of LIVEAVATAR_LANGUAGE env. If your HeyGen plan
+ * later supports region tags or full names ("English"), swap these.
  */
 const LOCALE_TO_HEYGEN: Record<Locale, string> = {
-  en: "en-US",
-  es: "es-ES",
-  fr: "fr-FR",
-  pt: "pt-BR",
-  de: "de-DE",
-  zh: "zh-CN",
+  en: "en",
+  es: "es",
+  fr: "fr",
+  pt: "pt",
+  de: "de",
+  zh: "zh",
 };
 
 /**

@@ -1,4 +1,31 @@
 {
+  "home": {
+    "title": "iSolveUrProblems.ai - beta",
+    "subtitle": "Seu centro de soluções para casa e jardim",
+    "loading": "Carregando...",
+    "sessionEnded": "Sessão encerrada",
+    "thankYou": "Obrigado por usar o iSolveUrProblems.ai",
+    "restartPrompt": "Quer usar de novo? Pressione o botão abaixo 👇",
+    "restart": "Reiniciar",
+    "retry": "Tentar novamente",
+    "failedToStart": "Falha ao iniciar a sessão",
+    "footer": "© 2026 iSolveUrProblems.ai Todos os direitos reservados · Termos",
+    "tapStartToBegin": "Toque em Iniciar para começar",
+    "tell6": "Conte ao 6 o que está acontecendo",
+    "or": "ou",
+    "showHim": "Mostre a ele",
+    "starting": "Iniciando…",
+    "start": "Iniciar",
+    "stop": "Parar",
+    "stopRecording": "Parar gravação",
+    "goLive": "Ao vivo",
+    "camera": "Câmera",
+    "gallery": "Galeria",
+    "video": "Vídeo",
+    "analyzing": "Analisando...",
+    "analyzingPhoto": "Analisando foto....",
+    "analyzingVideo": "Analisando vídeo...."
+  },
   "auth": {
     "signIn": {
       "title": "Entre no iSolveUrProblems",

@@ -1,4 +1,31 @@
 {
+  "home": {
+    "title": "iSolveUrProblems.ai - beta",
+    "subtitle": "Your Home & Garden Solution Center",
+    "loading": "Loading...",
+    "sessionEnded": "Session Ended",
+    "thankYou": "Thank you for using iSolveUrProblems.ai",
+    "restartPrompt": "Wanna use again? Press the button below 👇",
+    "restart": "Restart",
+    "retry": "Retry",
+    "failedToStart": "Failed to start session",
+    "footer": "© 2026 iSolveUrProblems.ai All Rights Reserved · Terms",
+    "tapStartToBegin": "Tap Start to Begin",
+    "tell6": "Tell 6 What's Wrong",
+    "or": "or",
+    "showHim": "Show Him",
+    "starting": "Starting…",
+    "start": "Start",
+    "stop": "Stop",
+    "stopRecording": "Stop Recording",
+    "goLive": "Go Live",
+    "camera": "Camera",
+    "gallery": "Gallery",
+    "video": "Video",
+    "analyzing": "Analyzing...",
+    "analyzingPhoto": "Analyzing Photo....",
+    "analyzingVideo": "Analyzing Video...."
+  },
   "auth": {
     "signIn": {
       "title": "Sign in to iSolveUrProblems",
