@@ -10,7 +10,7 @@ This document tells you exactly what shipped in Milestone 1, where each piece is
 
 ## TL;DR
 
-Everything required for **"6 solves problems for free, polished end-to-end"** is built, committed to `main`, and quality-checked (typecheck + production build green). A user can:
+**8 modules shipped on `main`** for M1 — 4 vision-anchored features + 4 infrastructure modules that power them. Everything is committed and quality-checked (typecheck + production build green). A user can:
 
 - Open the app in 6 languages (EN, ES, FR, PT, DE, ZH)
 - Talk to 6, show their problem on camera, get a diagnosis
@@ -25,9 +25,31 @@ Details below.
 
 ---
 
-## What shipped — feature by feature
+## What shipped — 8 modules
 
-Each row links back to the vision-doc paragraph that mandates it.
+The 8 modules below are everything that landed on `main` for M1, in numerical order. Each notes its vision-doc anchor (where applicable) or its role as shipped infrastructure that powers the vision-anchored features.
+
+### M1.1 — User accounts & auth
+
+**Shipped infrastructure** — powers M1.4 (who do we send the report to?) + M1.5 (who owns the report?)
+
+What's there:
+- Supabase Auth with magic-link email + Google OAuth
+- Anonymous → signed-in upgrade flow: existing `session_id`, `transcript_events`, `media_events`, `lead_sessions`, `contact_entities` all get re-keyed to the new `user_id` on sign-in
+- Server-side `getUser()` helper for API routes; cookie-based session refresh middleware (Supabase SSR)
+- RLS policies on every user-scoped table (owner reads own; service role bypasses)
+- Tiny `AuthCorner` / `HeaderControls` UI under the page title
+
+### M1.2 — Per-user persistent memory
+
+**Shipped infrastructure** — delivers "6 remembers you across sessions"
+
+What's there:
+- `pgvector` extension storing 1536-dim embeddings (`text-embedding-3-small`)
+- After each user turn, an LLM-driven fact extractor distills durable facts (name, address, property, preferences, prior issues) and persists them with embeddings
+- Cosine-similarity recall at the start of each turn → top-5 relevant facts injected into 6's system prompt
+- `/<locale>/account/memory` panel — user can view what 6 knows and forget individual facts or wipe everything (GDPR view + delete)
+- Adds ~$0.0002 per chat turn (extractor + embed + recall)
 
 ### M1.3 — Real-time "Go Live" camera streaming
 
@@ -81,18 +103,29 @@ What's there:
 
 **Known polish item:** Chinese (ZH) translations are machine-translated and flagged for native-speaker review before public ZH launch.
 
----
+### M1.7 — Notifications fabric
 
-## Infrastructure built alongside the vision features
+**Shipped infrastructure** — powers M1.4 delivery + future M3 contractor messaging
 
-These pieces are not enumerated in the vision doc but are required infrastructure for the features above to actually function. They're all committed and live in the codebase.
+What's there:
+- Channel-agnostic `send(channel, recipient, templateId, data)` function
+- Implementations: Email (Resend), SMS (Twilio), WhatsApp (Twilio WA Business — feature-flagged behind `FEATURE_WHATSAPP=1`)
+- Versioned local template registry (Q1.7a — code-versioned, not vendor-managed)
+- Channel resolver reads `users.preferred_channels`; fail-open posture (Q1.7b — silent fallback with audit log)
+- Audit trail in `notifications_sent` with delivery-status webhooks (queued → sent → delivered → opened, etc.)
+- Webhook signature verification: Svix-style for Resend, HMAC-SHA1 for Twilio
 
-| Module | What it does |
-|---|---|
-| **Supabase Auth** | Magic-link email + Google OAuth sign-in. Anonymous sessions can promote to signed-in without losing prior conversation history. Required so M1.4 can know **who** to email the report to and M1.5 reports can be ownership-scoped. |
-| **Per-user persistent memory (pgvector)** | After each chat turn, 6 distills durable facts (name, address, property, preferences, prior issues) into a vector store. Next session, 6 recalls the relevant facts via cosine similarity and weaves them into the system prompt. User can view + forget any fact (GDPR view/delete) at `/<locale>/account/memory`. |
-| **Notifications fabric** | Single `send()` function abstracts Email (Resend) / SMS (Twilio) / WhatsApp (Twilio WA Business, feature-flagged). Auditable via the `notifications_sent` table. Powers M1.4 delivery. |
-| **Supabase-native error logging** | Every server / client / edge error lands in a private `error_logs` table with user_id, route, stack, and runtime context. No external vendor (Sentry was evaluated and dropped in favor of this Supabase-native approach to keep data inside your project). |
+### M1.8 — Observability baseline
+
+**Shipped infrastructure** — no external vendor; data stays in your Supabase project
+
+What's there:
+- `error_logs` table — every server / client / edge error captured with `user_id`, route, stack, runtime context
+- Server-side `captureServerError()` writes via service-role REST; never throws into caller
+- Client-side `installClientLogger()` hooks `window.onerror` + `unhandledrejection` and posts to `/api/observability/log`
+- App-level + global-level React error boundaries call `captureClientError`
+- AuthProvider attaches `user_id` to every subsequent error report
+- Replaces an early Sentry boot — kept data in Supabase to avoid an external vendor / billing surface
 
 ---
 
@@ -187,12 +220,6 @@ The Client ID + Secret are pasted into Supabase Dashboard → Authentication →
 
 Magic-link email sign-in works without Google config — that's the always-available fallback.
 
-### LiveAvatar / HeyGen language config
-
-For 6 to speak the user's chosen language correctly, the HeyGen avatar's voice must support all 6 launch languages. Easiest setup: a single multilingual voice on the avatar's persona. If the existing voice is English-only, signed-in users with `preferred_locale=es` (etc.) will see Spanish UI but hear an English-accented 6 — which is a bug to fix on the HeyGen side, not in our code.
-
-The avatar-locale bridge passes the primary language subtag (`en`, `es`, `fr`, `pt`, `de`, `zh`) to HeyGen's session-token endpoint. This matched HeyGen's allowlist after we hit a `4000 "Language not supported"` error on full IETF tags like `en-US`.
-
 ---
 
 ## How to verify the build works (smoke test)
@@ -233,27 +260,6 @@ This is when **revenue starts flowing** (¶21: *"iSolve makes a cut of every con
 
 See [ROADMAP.md](ROADMAP.md) for the full M1–M5 plan.
 
----
-
-## Reference: what's in `main` for Milestone 1
-
-Commits that constitute M1 (most recent first):
-
-```
-59b9c70  feat: enhance localization (HeaderControls + button labels)
-1e3578b  refactor: M1 goal + feature list cleanup in ROADMAP.md
-fd4baae  M1.6b: locale resolution, avatar-language bridge, ES/FR/PT/DE/ZH translations, localized disclaimers
-73397f5  M1.4: delivery panel for report sharing via email/SMS/WhatsApp
-d5f120c  refactor: code structure (report generator + auxiliary)
-1e7e2ed  M1.3: Go Live adaptive frame streaming + privacy banner
-12b86e6  M1.7: notifications fabric (Resend + Twilio + webhooks)
-8b21a6f  M1.2: per-user persistent memory (pgvector + GDPR panel)
-d0d0e6f  M1.8a: Supabase-native error_logs (replaces evaluated-and-dropped Sentry)
-9493b36  M1.6a: next-intl scaffold (EN/ES/FR/PT/DE/ZH)
-b2dacb8  M1.1: Supabase Auth (magic-link + Google OAuth)
-```
-
----
 
 ## Summary for SG Dietz
 
@@ -261,7 +267,7 @@ b2dacb8  M1.1: Supabase Auth (magic-link + Google OAuth)
 
 | Item | Status | Blocking launch? |
 |---|---|---|
-| All M1 features per vision doc | ✅ Done | — |
+| All 8 M1 modules (4 vision-anchored features + 4 infrastructure) | ✅ Done | — |
 | Google OAuth redirect URI | ⚠️ Operational task | No (magic-link works) |
 | Resend domain verification | ⚠️ Operational task | Yes for email delivery |
 | Twilio number + A2P 10DLC | ⚠️ Operational task | Yes for SMS delivery |
