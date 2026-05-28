@@ -121,6 +121,7 @@ async function upsertMergedContactEntity(
     phone: string | null;
     source_text: string;
   },
+  userId: string | null = null,
 ) {
   const listRes = await fetch(
     `${url}/rest/v1/contact_entities?session_id=eq.${encodeURIComponent(sessionId)}&select=id,full_name,email,phone,source_text,created_at&order=created_at.asc`,
@@ -168,6 +169,7 @@ async function upsertMergedContactEntity(
         email,
         phone,
         source_text: sourceText || null,
+        ...(userId ? { user_id: userId } : {}),
       }),
     });
     if (!res.ok) {
@@ -187,6 +189,7 @@ async function upsertMergedContactEntity(
         email,
         phone,
         source_text: sourceText || null,
+        ...(userId ? { user_id: userId } : {}),
       }),
     },
   );
@@ -329,6 +332,7 @@ function chooseNextPrompt(
 export async function persistUserUtteranceLeadCapture(
   sessionId: string,
   rawText: string,
+  userId: string | null = null,
 ): Promise<LeadCaptureResult> {
   const text = truncateUtf8String(rawText.trim(), MAX_TRANSCRIPTION_TEXT_CHARS);
   const { email, phone, fullName } = extractContactDetails(text);
@@ -419,15 +423,22 @@ export async function persistUserUtteranceLeadCapture(
       : intent.declined
         ? "declined"
         : "neutral",
+    ...(userId ? { user_id: userId } : {}),
   });
 
   if (email || phone || fullName) {
-    await upsertMergedContactEntity(url, serviceRoleKey, sessionId, {
-      email,
-      phone,
-      full_name: fullName,
-      source_text: text,
-    });
+    await upsertMergedContactEntity(
+      url,
+      serviceRoleKey,
+      sessionId,
+      {
+        email,
+        phone,
+        full_name: fullName,
+        source_text: text,
+      },
+      userId,
+    );
   }
 
   await upsertLeadSession(url, serviceRoleKey, {
@@ -439,6 +450,7 @@ export async function persistUserUtteranceLeadCapture(
     last_prompted_field: mergedLead.last_prompted_field,
     last_prompted_at: mergedLead.last_prompted_at,
     updated_at: nowIso,
+    ...(userId ? { user_id: userId } : {}),
   });
 
   // Fire lead alert (Telegram + email) when this utterance crossed the

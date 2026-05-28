@@ -1,0 +1,132 @@
+{
+  "home": {
+    "title": "iSolveUrProblems.ai - beta",
+    "subtitle": "Seu centro de soluções para casa e jardim",
+    "loading": "Carregando...",
+    "sessionEnded": "Sessão encerrada",
+    "thankYou": "Obrigado por usar o iSolveUrProblems.ai",
+    "restartPrompt": "Quer usar de novo? Pressione o botão abaixo 👇",
+    "restart": "Reiniciar",
+    "retry": "Tentar novamente",
+    "failedToStart": "Falha ao iniciar a sessão",
+    "footer": "© 2026 iSolveUrProblems.ai Todos os direitos reservados · Termos",
+    "tapStartToBegin": "Toque em Iniciar para começar",
+    "tell6": "Conte ao 6 o que está acontecendo",
+    "or": "ou",
+    "showHim": "Mostre a ele",
+    "starting": "Iniciando…",
+    "start": "Iniciar",
+    "stop": "Parar",
+    "stopRecording": "Parar gravação",
+    "goLive": "Ao vivo",
+    "camera": "Câmera",
+    "gallery": "Galeria",
+    "video": "Vídeo",
+    "analyzing": "Analisando...",
+    "analyzingPhoto": "Analisando foto....",
+    "analyzingVideo": "Analisando vídeo...."
+  },
+  "auth": {
+    "signIn": {
+      "title": "Entre no iSolveUrProblems",
+      "blurb": "O 6 pode continuar conversando com você anonimamente — entre apenas quando quiser receber seus relatórios ou que o 6 se lembre de você na próxima vez.",
+      "google": "Continuar com o Google",
+      "or": "OU",
+      "emailLabel": "Endereço de e-mail",
+      "emailPlaceholder": "voce@exemplo.com",
+      "sendMagicLink": "Enviar link mágico",
+      "sending": "Enviando…",
+      "checkEmail": "Verifique seu e-mail para encontrar o link de acesso.",
+      "backTo6": "← Voltar ao 6"
+    },
+    "corner": {
+      "signIn": "Entrar",
+      "signOut": "Sair"
+    },
+    "errors": {
+      "callbackFailed": "Falha no retorno de login. Tente novamente."
+    }
+  },
+  "account": {
+    "memory": {
+      "title": "O que o 6 lembra sobre você",
+      "blurb": "O 6 mantém pequenas anotações entre as conversas para que você não precise se repetir. Você está no controle — pode esquecer qualquer anotação ou apagar tudo.",
+      "backTo6": "← Voltar ao 6",
+      "signInRequired": "Entre para ver o que o 6 lembra sobre você.",
+      "signInCta": "Entrar",
+      "loading": "Carregando…",
+      "loadError": "Não foi possível carregar suas anotações. Tente novamente.",
+      "empty": "O 6 ainda não lembrou nada sobre você.",
+      "countLabel": "{count, plural, =0 {Sem anotações} =1 {1 anotação} other {# anotações}}",
+      "forget": "Esquecer",
+      "forgetAll": "Esquecer tudo",
+      "forgettingAll": "Esquecendo…",
+      "forgetAllConfirm": "Esquecer tudo o que o 6 lembra sobre você? Isso não pode ser desfeito.",
+      "kind": {
+        "name": "Nome",
+        "address": "Endereço",
+        "property": "Imóvel",
+        "preference": "Preferências",
+        "prior_issue": "Problemas anteriores",
+        "contact": "Contato",
+        "other": "Outros"
+      }
+    }
+  },
+  "reports": {
+    "kicker": "iSolveUrProblems · Relatório de solução",
+    "untitled": "Relatório de solução",
+    "statusLabel": "Status",
+    "generating": "O 6 está preparando seu relatório. Isso geralmente leva de 10 a 30 segundos — atualize daqui a pouco.",
+    "failed": "Algo deu errado ao gerar este relatório",
+    "downloadPdf": "Baixar PDF",
+    "backTo6": "← Voltar ao 6",
+    "deliver": {
+      "title": "Envie este relatório para você",
+      "blurb": "Escolha como deseja recebê-lo. Você pode mudar isso a qualquer momento na sua conta.",
+      "channelLabel": "Canal",
+      "channel": {
+        "email": "E-mail",
+        "emailMissing": "(adicione um e-mail à sua conta primeiro)",
+        "sms": "SMS",
+        "smsSub": "Enviaremos o link por mensagem de texto.",
+        "whatsapp": "WhatsApp",
+        "whatsappSub": "Enviaremos o link por WhatsApp.",
+        "whatsappDisabled": "O WhatsApp ainda não está disponível — em breve."
+      },
+      "phoneLabel": "Número de telefone (incluindo o código do país)",
+      "consentSms": "Concordo em receber um SMS neste número do iSolveUrProblems com o link do meu relatório. Podem aplicar-se tarifas de mensagens e dados. Responda STOP para cancelar.",
+      "consentWhatsapp": "Concordo em receber uma mensagem do WhatsApp neste número com o link do meu relatório.",
+      "send": "Enviar relatório",
+      "sending": "Enviando…",
+      "needsSmsConsent": "Marque a caixa de consentimento para enviar por SMS.",
+      "needsWaConsent": "Marque a caixa de consentimento para enviar por WhatsApp.",
+      "sentVia": "Enviado por {channel}.",
+      "fallbackUsed": "alternativa",
+      "sendFailed": "Falha no envio",
+      "signInRequired": "Entre para enviar este relatório."
+    }
+  },
+  "errors": {
+    "general": {
+      "title": "Algo deu errado.",
+      "blurb": "O 6 teve um problema. O erro foi reportado.",
+      "retry": "Tentar de novo"
+    },
+    "global": {
+      "title": "Algo deu muito errado.",
+      "blurb": "A página não pôde ser carregada. Fomos notificados."
+    }
+  },
+  "locale": {
+    "label": "Idioma",
+    "name": {
+      "en": "English",
+      "es": "Español",
+      "fr": "Français",
+      "pt": "Português",
+      "de": "Deutsch",
+      "zh": "中文"
+    }
+  }
+}

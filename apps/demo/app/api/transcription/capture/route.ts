@@ -4,6 +4,7 @@ import {
 } from "../../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../../src/lib/rateLimit";
 import { persistUserUtteranceLeadCapture } from "../../../../src/lib/leadCaptureFromUserText";
+import { getUserId } from "../../../../src/lib/auth/getUser";
 
 export async function POST(request: Request) {
   const originErr = assertAllowedOrigin(request);
@@ -30,7 +31,12 @@ export async function POST(request: Request) {
     }
 
     const sessionId = rawSessionId.trim();
-    const result = await persistUserUtteranceLeadCapture(sessionId, rawText);
+    const userId = await getUserId();
+    const result = await persistUserUtteranceLeadCapture(
+      sessionId,
+      rawText,
+      userId,
+    );
 
     return new Response(
       JSON.stringify({

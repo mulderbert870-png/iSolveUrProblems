@@ -1,0 +1,132 @@
+{
+  "home": {
+    "title": "iSolveUrProblems.ai - beta",
+    "subtitle": "Votre centre de solutions maison & jardin",
+    "loading": "Chargement...",
+    "sessionEnded": "Session terminée",
+    "thankYou": "Merci d'avoir utilisé iSolveUrProblems.ai",
+    "restartPrompt": "Envie de recommencer ? Appuyez sur le bouton ci-dessous 👇",
+    "restart": "Recommencer",
+    "retry": "Réessayer",
+    "failedToStart": "Impossible de démarrer la session",
+    "footer": "© 2026 iSolveUrProblems.ai Tous droits réservés · Conditions",
+    "tapStartToBegin": "Appuyez sur Démarrer pour commencer",
+    "tell6": "Dites à 6 ce qui ne va pas",
+    "or": "ou",
+    "showHim": "Montrez-lui",
+    "starting": "Démarrage…",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "stopRecording": "Arrêter l'enregistrement",
+    "goLive": "En direct",
+    "camera": "Caméra",
+    "gallery": "Galerie",
+    "video": "Vidéo",
+    "analyzing": "Analyse en cours...",
+    "analyzingPhoto": "Analyse de la photo....",
+    "analyzingVideo": "Analyse de la vidéo...."
+  },
+  "auth": {
+    "signIn": {
+      "title": "Connectez-vous à iSolveUrProblems",
+      "blurb": "6 peut continuer à vous parler de façon anonyme — connectez-vous uniquement lorsque vous voulez recevoir vos rapports ou que 6 se souvienne de vous la prochaine fois.",
+      "google": "Continuer avec Google",
+      "or": "OU",
+      "emailLabel": "Adresse e-mail",
+      "emailPlaceholder": "vous@exemple.com",
+      "sendMagicLink": "Envoyer le lien magique",
+      "sending": "Envoi…",
+      "checkEmail": "Consultez votre e-mail pour trouver le lien de connexion.",
+      "backTo6": "← Retour à 6"
+    },
+    "corner": {
+      "signIn": "Se connecter",
+      "signOut": "Se déconnecter"
+    },
+    "errors": {
+      "callbackFailed": "Le retour de connexion a échoué. Veuillez réessayer."
+    }
+  },
+  "account": {
+    "memory": {
+      "title": "Ce que 6 retient de vous",
+      "blurb": "6 garde de courtes notes entre les conversations pour ne pas vous faire vous répéter. Vous gardez le contrôle — vous pouvez oublier n'importe quelle note ou tout effacer.",
+      "backTo6": "← Retour à 6",
+      "signInRequired": "Connectez-vous pour voir ce que 6 retient de vous.",
+      "signInCta": "Se connecter",
+      "loading": "Chargement…",
+      "loadError": "Impossible de charger vos notes. Veuillez réessayer.",
+      "empty": "6 n'a encore rien retenu de vous.",
+      "countLabel": "{count, plural, =0 {Aucune note} =1 {1 note} other {# notes}}",
+      "forget": "Oublier",
+      "forgetAll": "Tout oublier",
+      "forgettingAll": "Effacement…",
+      "forgetAllConfirm": "Oublier tout ce que 6 retient de vous ? Cela ne peut pas être annulé.",
+      "kind": {
+        "name": "Nom",
+        "address": "Adresse",
+        "property": "Bien",
+        "preference": "Préférences",
+        "prior_issue": "Problèmes précédents",
+        "contact": "Contact",
+        "other": "Autre"
+      }
+    }
+  },
+  "reports": {
+    "kicker": "iSolveUrProblems · Rapport de réparation",
+    "untitled": "Rapport de réparation",
+    "statusLabel": "Statut",
+    "generating": "6 prépare votre rapport. Cela prend généralement 10 à 30 secondes — actualisez dans un instant.",
+    "failed": "Une erreur s'est produite lors de la génération de ce rapport",
+    "downloadPdf": "Télécharger le PDF",
+    "backTo6": "← Retour à 6",
+    "deliver": {
+      "title": "Envoyez-vous ce rapport",
+      "blurb": "Choisissez comment vous voulez le recevoir. Vous pouvez le modifier à tout moment dans votre compte.",
+      "channelLabel": "Canal",
+      "channel": {
+        "email": "E-mail",
+        "emailMissing": "(ajoutez d'abord un e-mail à votre compte)",
+        "sms": "SMS",
+        "smsSub": "Nous enverrons le lien par SMS.",
+        "whatsapp": "WhatsApp",
+        "whatsappSub": "Nous enverrons le lien par WhatsApp.",
+        "whatsappDisabled": "WhatsApp n'est pas encore disponible — bientôt."
+      },
+      "phoneLabel": "Numéro de téléphone (indicatif inclus)",
+      "consentSms": "J'accepte de recevoir un SMS à ce numéro d'iSolveUrProblems avec le lien de mon rapport. Des frais de message et de données peuvent s'appliquer. Répondez STOP pour vous désabonner.",
+      "consentWhatsapp": "J'accepte de recevoir un message WhatsApp à ce numéro avec le lien de mon rapport.",
+      "send": "Envoyer le rapport",
+      "sending": "Envoi…",
+      "needsSmsConsent": "Cochez la case de consentement pour envoyer par SMS.",
+      "needsWaConsent": "Cochez la case de consentement pour envoyer par WhatsApp.",
+      "sentVia": "Envoyé par {channel}.",
+      "fallbackUsed": "alternative",
+      "sendFailed": "Échec de l'envoi",
+      "signInRequired": "Connectez-vous pour livrer ce rapport."
+    }
+  },
+  "errors": {
+    "general": {
+      "title": "Une erreur s'est produite.",
+      "blurb": "6 a rencontré un problème. L'erreur a été signalée.",
+      "retry": "Réessayer"
+    },
+    "global": {
+      "title": "Une grave erreur s'est produite.",
+      "blurb": "La page n'a pas pu être chargée. Nous avons été informés."
+    }
+  },
+  "locale": {
+    "label": "Langue",
+    "name": {
+      "en": "English",
+      "es": "Español",
+      "fr": "Français",
+      "pt": "Português",
+      "de": "Deutsch",
+      "zh": "中文"
+    }
+  }
+}

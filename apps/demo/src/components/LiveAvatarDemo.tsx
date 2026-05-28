@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 // import Image from "next/image";
 import { LiveAvatarSession } from "./LiveAvatarSession";
-import Link from "next/link";
+import { Link } from "../i18n/routing";
+import { rememberAnonymousSessionId } from "../lib/auth/AuthProvider";
 export const LiveAvatarDemo = () => {
+  const t = useTranslations("home");
   const [sessionToken, setSessionToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,18 +23,21 @@ export const LiveAvatarDemo = () => {
       });
       if (!res.ok) {
         const err = await res.json();
-        setError(err.error ?? "Failed to start session");
+        setError(err.error ?? t("failedToStart"));
         setIsLoading(false);
         return;
       }
-      const { session_token } = await res.json();
+      const { session_token, session_id } = await res.json();
       setSessionToken(session_token);
+      // Stash the anonymous session_id so /api/auth/link-session can re-key
+      // its rows to the user when they sign in (M1.1 anonymous → authed).
+      if (session_id) rememberAnonymousSessionId(session_id);
       setIsLoading(false);
     } catch (err: unknown) {
       setError((err as Error).message);
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (isExited || sessionToken) {
@@ -203,12 +209,12 @@ export const LiveAvatarDemo = () => {
   if (isExited) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-        <div className="text-inset text-2xl font-semibold">Session Ended</div>
+        <div className="text-inset text-2xl font-semibold">{t("sessionEnded")}</div>
         <div className="text-inset text-center text-lg opacity-90">
-          Thank you for using iSolveUrProblems.ai
+          {t("thankYou")}
         </div>
         <div className="text-inset text-center text-base opacity-90">
-          Wanna use again? Press the button below 👇
+          {t("restartPrompt")}
         </div>
         <button
           type="button"
@@ -219,7 +225,7 @@ export const LiveAvatarDemo = () => {
           }}
           className="btn-inset py-2.5 px-6 rounded-lg text-base font-medium"
         >
-          Restart
+          {t("restart")}
         </button>
       </div>
     );
@@ -306,18 +312,18 @@ export const LiveAvatarDemo = () => {
               }}
               className="mt-4 w-full btn-inset py-2 rounded-md text-sm font-medium"
             >
-              Retry
+              {t("retry")}
             </button>
           </div>
         )}
         {!error && (
-          <div className="text-inset text-xl">Loading...</div>
+          <div className="text-inset text-xl">{t("loading")}</div>
         )}
         <Link
           href="/terms"
           className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-7xl block text-center text-[11px] sm:text-xs text-gold/60 hover:text-gold transition-colors py-2"
         >
-          © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
+          {t("footer")}
         </Link>
       </div>
     );

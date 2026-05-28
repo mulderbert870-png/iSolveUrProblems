@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   LiveAvatarContextProvider,
   useSession,
@@ -8,12 +9,15 @@ import {
   useVoiceChat,
   useLiveAvatarContext,
 } from "../liveavatar";
-import Link from "next/link";
+import { Link } from "../i18n/routing";
 import { SessionState, AgentEventsEnum } from "@heygen/liveavatar-web-sdk";
 import { useAvatarActions } from "../liveavatar/useAvatarActions";
 import { setVideoBusy, isVideoBusy } from "../liveavatar/videoRecordingState";
 import { captureMedia } from "../lib/captureMedia";
 import { Radio, Camera, Images, Video, MicOff } from "lucide-react";
+import { useGoLiveStreamer } from "../lib/vision/useGoLiveStreamer";
+import { GoLivePrivacyBanner } from "./GoLivePrivacyBanner";
+import { HeaderControls } from "./HeaderControls";
 
 export type SessionStoppedReason = { reason?: "inactivity" };
 
@@ -25,6 +29,7 @@ const LiveAvatarSessionComponent: React.FC<{
   onSessionStopped: (opts?: SessionStoppedReason) => void;
   onExit?: (completeExit?: boolean) => void;
 }> = ({ mode, onSessionStopped, onExit }) => {
+  const t = useTranslations("home");
   const [message, setMessage] = useState("");
   const {
     sessionState,
@@ -2454,8 +2459,33 @@ const LiveAvatarSessionComponent: React.FC<{
     }
   };
 
+  // M1.3 — adaptive-fps Go Live frame streamer.
+  // Runs only while visionMode === "streaming" and the camera is active.
+  // Server-side narration gate + client-side suppression ensure 6 only
+  // speaks when (a) scene actually changed and (b) avatar/user aren't
+  // already talking and (c) ≥10s since the last narration.
+  useGoLiveStreamer({
+    active: isCameraActive && visionMode === "streaming",
+    videoRef: cameraPreviewRef,
+    sessionId: sessionRef.current?.sessionId ?? null,
+    isAvatarTalking,
+    isUserTalking,
+    onNarrate: (caption) => {
+      try {
+        if (sessionRef.current && caption) {
+          sessionRef.current.repeat(caption);
+        }
+      } catch (err) {
+        console.error("Go Live narrate failed:", err);
+      }
+    },
+  });
+
   return (
     <div className="fixed inset-0 w-screen h-screen bg-black flex flex-col">
+      <GoLivePrivacyBanner
+        active={isCameraActive && visionMode === "streaming"}
+      />
       {/* Session start error (e.g. no credits) - show message and do not auto-restart */}
       {sessionStartError && (
         <div className="absolute inset-x-0 top-0 z-50 bg-red-900/95 text-white px-4 py-4 text-center shadow-lg">
@@ -2480,7 +2510,7 @@ const LiveAvatarSessionComponent: React.FC<{
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
           <div className="bg-gray-800/90 text-white px-8 py-6 rounded-lg shadow-2xl">
             <p className="text-inset text-xl font-semibold text-center">
-              {isAnalyzingImage ? "Analyzing Photo...." : "Analyzing Video...."}
+              {isAnalyzingImage ? t("analyzingPhoto") : t("analyzingVideo")}
             </p>
           </div>
         </div>
@@ -2532,11 +2562,12 @@ const LiveAvatarSessionComponent: React.FC<{
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-2 pb-2">
         <div className="text-center px-4 mb-2">
           <h1 className="inline-block text-gold text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
-            iSolveUrProblems.ai - beta
+            {t("title")}
           </h1>
           <p className="mx-auto max-w-[16.5rem] text-gold-light text-[0.72rem] sm:text-[0.78rem] font-medium leading-snug">
-            Your Home &amp; Garden Solution Center
+            {t("subtitle")}
           </p>
+          <HeaderControls />
         </div>
         {microphoneWarning && (
           // Ordinary, small, no color — per G 2026-04-25.
@@ -2581,7 +2612,7 @@ const LiveAvatarSessionComponent: React.FC<{
             paint, so users briefly saw a black screen. */}
         {!isStreamReady && !isCameraActive && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black">
-            <div className="text-inset text-xl">Loading...</div>
+            <div className="text-inset text-xl">{t("loading")}</div>
           </div>
         )}
 
@@ -2634,7 +2665,7 @@ const LiveAvatarSessionComponent: React.FC<{
               // Loading fallback image
               <div className="flex flex-col items-center justify-center w-full h-full max-w-4xl max-h-[calc(100vh-8rem)] bg-gray-900 rounded-lg p-8">
                 <div className="text-center">
-                  <p className="text-inset text-lg">Loading...</p>
+                  <p className="text-inset text-lg">{t("loading")}</p>
                 </div>
               </div>
             ) : fallbackImagePreview ? (
@@ -2687,7 +2718,7 @@ const LiveAvatarSessionComponent: React.FC<{
               aria-label="Capture photo"
             >
               <Camera className="w-4.5 h-4.5" />
-              Camera
+              {t("camera")}
             </button>
             {!isRecording ? (
               <button
@@ -2698,7 +2729,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 aria-label="Record video"
               >
                 <Video className="w-4.5 h-4.5" />
-                Video
+                {t("video")}
               </button>
             ) : (
               <button
@@ -2706,7 +2737,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 onClick={() => handleStopRecording()}
                 className="btn-inset rounded-lg px-6 py-3 flex items-center justify-center text-sm font-semibold"
               >
-                Stop Recording
+                {t("stopRecording")}
               </button>
             )}
           </div>
@@ -2764,7 +2795,7 @@ const LiveAvatarSessionComponent: React.FC<{
             <div className="fixed bottom-36 left-1/2 -translate-x-1/2 z-30">
               <p className="text-inset text-2xl font-semibold text-center drop-shadow-lg">
                 <span className="inline-flex items-center">
-                  Analyzing...
+                  {t("analyzing")}
                 </span>
               </p>
             </div>
@@ -2779,15 +2810,15 @@ const LiveAvatarSessionComponent: React.FC<{
                     <p className="text-inset drop-shadow-lg px-1 w-full max-w-none text-[1.3rem] sm:text-[1.5rem] font-semibold leading-tight">
                       {!isActive ? (
                         voiceStartAwaitingReady ? (
-                          <span className="block">Starting…</span>
+                          <span className="block">{t("starting")}</span>
                         ) : (
-                          <span className="block text-[1rem] sm:text-[1.1rem]">Tap Start to Begin</span>
+                          <span className="block text-[1rem] sm:text-[1.1rem]">{t("tapStartToBegin")}</span>
                         )
                       ) : (
                         <>
-                          <span className="block">Tell 6 What&apos;s Wrong</span>
+                          <span className="block">{t("tell6")}</span>
                           <span className="block">
-                            or <em>Show Him</em>
+                            {t("or")} <em>{t("showHim")}</em>
                           </span>
                         </>
                       )}
@@ -2853,7 +2884,7 @@ const LiveAvatarSessionComponent: React.FC<{
                         <polygon points="10 10 14 12 10 14" fill="currentColor" stroke="none" />
                       </svg>
                     )}
-                    {isActive ? "Stop" : "Start"}
+                    {isActive ? t("stop") : t("start")}
                   </button>
                   <button
                     type="button"
@@ -2864,7 +2895,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     }}
                   >
                     <Radio className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
-                    Go Live
+                    {t("goLive")}
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-2.5">
@@ -2877,7 +2908,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     }}
                   >
                     <Camera className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
-                    Camera
+                    {t("camera")}
                   </button>
                   <button
                     type="button"
@@ -2885,7 +2916,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     onClick={() => void handleGalleryClick()}
                   >
                     <Images className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
-                    Gallery
+                    {t("gallery")}
                   </button>
                 </div>
               </div>
@@ -2895,7 +2926,7 @@ const LiveAvatarSessionComponent: React.FC<{
                   target="_blank"
                   className="block text-center text-[10px] sm:text-[11px] text-gold/60 hover:text-gold transition-colors whitespace-nowrap"
                 >
-                  © 2026 iSolveUrProblems.ai All Rights Reserved · Terms
+                  {t("footer")}
                 </Link>
               </div>
             </div>
@@ -2930,7 +2961,7 @@ const LiveAvatarSessionComponent: React.FC<{
                     <rect width="18" height="18" x="3" y="3" rx="2" />
                     <rect x="10" y="10" width="4" height="4" fill="currentColor" stroke="none" />
                   </svg>
-                  <span>Stop</span>
+                  <span>{t("stop")}</span>
                 </span>
               </button>
             </div>

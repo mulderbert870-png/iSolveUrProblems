@@ -1,7 +1,9 @@
 import { API_KEY, API_URL, AVATAR_ID } from "../secrets";
 import { assertCanMintSessionToken } from "../../../src/lib/liveavatarCredits";
+import { getUserId } from "../../../src/lib/auth/getUser";
+import { resolveLocaleForRequest } from "../../../src/lib/i18n/resolveLocale";
 
-export async function POST() {
+export async function POST(request: Request) {
   const gate = await assertCanMintSessionToken();
   if (!gate.ok) {
     return new Response(JSON.stringify({ error: gate.message }), {
@@ -67,7 +69,18 @@ export async function POST() {
       },
     );
   }
-  return new Response(JSON.stringify({ session_token, session_id }), {
+
+  // M1.6b — return resolved locale so the client knows which language
+  // to use for downstream ElevenLabs TTS / chat calls. CUSTOM mode
+  // doesn't pass `language` to HeyGen (TTS happens client-side via
+  // ElevenLabs), so the locale flows through the response instead.
+  const userId = await getUserId();
+  const locale = await resolveLocaleForRequest({
+    userId,
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+
+  return new Response(JSON.stringify({ session_token, session_id, locale }), {
     status: 200,
     headers: {
       "Content-Type": "application/json",

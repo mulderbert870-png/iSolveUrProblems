@@ -1,0 +1,133 @@
+{
+  "_note": "Machine-translated by Claude for M1.6b. Per Q1.6b2 these strings need native-speaker review before launch.",
+  "home": {
+    "title": "iSolveUrProblems.ai - beta",
+    "subtitle": "您的家居与花园解决方案中心",
+    "loading": "加载中...",
+    "sessionEnded": "会话已结束",
+    "thankYou": "感谢您使用 iSolveUrProblems.ai",
+    "restartPrompt": "想再用一次?点击下方按钮 👇",
+    "restart": "重新开始",
+    "retry": "重试",
+    "failedToStart": "无法启动会话",
+    "footer": "© 2026 iSolveUrProblems.ai 保留所有权利 · 条款",
+    "tapStartToBegin": "点击开始即可开始",
+    "tell6": "告诉 6 怎么了",
+    "or": "或",
+    "showHim": "给他看",
+    "starting": "正在启动…",
+    "start": "开始",
+    "stop": "停止",
+    "stopRecording": "停止录制",
+    "goLive": "实时",
+    "camera": "相机",
+    "gallery": "图库",
+    "video": "视频",
+    "analyzing": "分析中...",
+    "analyzingPhoto": "正在分析照片....",
+    "analyzingVideo": "正在分析视频...."
+  },
+  "auth": {
+    "signIn": {
+      "title": "登录 iSolveUrProblems",
+      "blurb": "您可以继续匿名与 6 对话——只有当您希望接收维修报告,或希望 6 下次记住您时,才需要登录。",
+      "google": "使用 Google 继续",
+      "or": "或",
+      "emailLabel": "电子邮箱",
+      "emailPlaceholder": "you@example.com",
+      "sendMagicLink": "发送魔法链接",
+      "sending": "正在发送…",
+      "checkEmail": "请查看您的电子邮箱以获取登录链接。",
+      "backTo6": "← 返回 6"
+    },
+    "corner": {
+      "signIn": "登录",
+      "signOut": "登出"
+    },
+    "errors": {
+      "callbackFailed": "登录回调失败,请重试。"
+    }
+  },
+  "account": {
+    "memory": {
+      "title": "6 对您的记忆",
+      "blurb": "6 会在对话之间记录简短的笔记,这样您就不用重复说明同样的事情。您拥有完全的控制权——可以删除单条笔记或全部清除。",
+      "backTo6": "← 返回 6",
+      "signInRequired": "请登录以查看 6 对您的记忆。",
+      "signInCta": "登录",
+      "loading": "加载中…",
+      "loadError": "无法加载您的笔记。请重试。",
+      "empty": "6 还没有记录任何关于您的内容。",
+      "countLabel": "{count, plural, =0 {无笔记} =1 {1 条笔记} other {# 条笔记}}",
+      "forget": "忘记",
+      "forgetAll": "全部忘记",
+      "forgettingAll": "正在忘记…",
+      "forgetAllConfirm": "确定要忘记 6 关于您的所有记忆吗?此操作无法撤销。",
+      "kind": {
+        "name": "姓名",
+        "address": "地址",
+        "property": "房产",
+        "preference": "偏好",
+        "prior_issue": "以前的问题",
+        "contact": "联系方式",
+        "other": "其他"
+      }
+    }
+  },
+  "reports": {
+    "kicker": "iSolveUrProblems · 维修报告",
+    "untitled": "维修报告",
+    "statusLabel": "状态",
+    "generating": "6 正在整理您的报告。通常需要 10-30 秒——请稍后刷新。",
+    "failed": "生成此报告时出错",
+    "downloadPdf": "下载 PDF",
+    "backTo6": "← 返回 6",
+    "deliver": {
+      "title": "将此报告发送给您自己",
+      "blurb": "选择您希望接收的方式。您可以随时在账户中更改。",
+      "channelLabel": "渠道",
+      "channel": {
+        "email": "电子邮件",
+        "emailMissing": "(请先为您的账户添加电子邮箱)",
+        "sms": "短信",
+        "smsSub": "我们将通过短信发送链接。",
+        "whatsapp": "WhatsApp",
+        "whatsappSub": "我们将通过 WhatsApp 发送链接。",
+        "whatsappDisabled": "WhatsApp 暂不可用——即将推出。"
+      },
+      "phoneLabel": "电话号码(请包含国家代码)",
+      "consentSms": "我同意从 iSolveUrProblems 通过此号码接收包含报告链接的短信。可能产生短信和数据费用。回复 STOP 退订。",
+      "consentWhatsapp": "我同意通过此号码接收包含报告链接的 WhatsApp 消息。",
+      "send": "发送报告",
+      "sending": "正在发送…",
+      "needsSmsConsent": "请勾选同意框以通过短信发送。",
+      "needsWaConsent": "请勾选同意框以通过 WhatsApp 发送。",
+      "sentVia": "已通过 {channel} 发送。",
+      "fallbackUsed": "备用",
+      "sendFailed": "发送失败",
+      "signInRequired": "请登录以发送此报告。"
+    }
+  },
+  "errors": {
+    "general": {
+      "title": "出了点问题。",
+      "blurb": "6 遇到了一个小问题。错误已上报。",
+      "retry": "重试"
+    },
+    "global": {
+      "title": "出了大问题。",
+      "blurb": "页面无法加载。我们已收到通知。"
+    }
+  },
+  "locale": {
+    "label": "语言",
+    "name": {
+      "en": "English",
+      "es": "Español",
+      "fr": "Français",
+      "pt": "Português",
+      "de": "Deutsch",
+      "zh": "中文"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import {
 } from "../../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../../src/lib/rateLimit";
 import { getSupabaseAdminConfig } from "../../../../src/lib/supabaseAdmin";
+import { getUserId } from "../../../../src/lib/auth/getUser";
 
 const BUCKET = "isolve-media";
 const MAX_MEDIA_BYTES = 50 * 1024 * 1024; // 50 MB (matches bucket file_size_limit)
@@ -139,6 +140,7 @@ export async function POST(request: Request) {
   const problem = truncateUtf8String(problemRaw.trim(), MAX_TEXT_FIELD);
   const errText = truncateUtf8String(errorRaw.trim(), MAX_TEXT_FIELD);
 
+  const userId = await getUserId();
   const insertRes = await fetch(`${url}/rest/v1/media_events`, {
     method: "POST",
     headers: {
@@ -156,6 +158,7 @@ export async function POST(request: Request) {
       gemini_analysis: geminiAnalysis || null,
       problem_at_time: problem || null,
       error: errText || null,
+      ...(userId ? { user_id: userId } : {}),
     }),
   });
   if (!insertRes.ok) {
