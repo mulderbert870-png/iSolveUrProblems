@@ -107,6 +107,113 @@
       "signInRequired": "Connectez-vous pour livrer ce rapport."
     }
   },
+  "contractors": {
+    "kicker": "iSolveUrProblems · Artisans",
+    "title": "Trouver un artisan",
+    "blurb": "Dites-nous ce dont vous avez besoin et où — 6 classera les candidats vérifiés selon la note, la distance et vos filtres.",
+    "backTo6": "← Retour à 6",
+    "search": "Rechercher",
+    "searching": "Recherche…",
+    "noResults": "Aucun artisan ne correspond à ces filtres. Élargissez le rayon ou abaissez la note minimale.",
+    "resultsCount": "Affichage de {shown} sur {considered} considérés.",
+    "openWebsite": "Site web",
+    "noGeolocation": "Votre navigateur ne prend pas en charge la géolocalisation. Saisissez lat/lng manuellement.",
+    "geolocationDenied": "Impossible de lire votre position. Saisissez lat/lng manuellement.",
+    "locationRequired": "Latitude et longitude requises.",
+    "filters": {
+      "category": "Catégorie",
+      "radius": "Rayon (km)",
+      "lat": "Latitude",
+      "lng": "Longitude",
+      "useMyLocation": "Utiliser ma position",
+      "minRating": "Note minimale",
+      "maxPriceTier": "Prix maximum",
+      "priceAny": "Tous les prix",
+      "locallyOwned": "Entreprises locales uniquement",
+      "sameDay": "Service le jour même uniquement"
+    },
+    "categoryName": {
+      "plumber": "Plombier",
+      "electrician": "Électricien",
+      "hvac": "CVC / climatisation",
+      "roofer": "Couvreur",
+      "landscaper": "Paysagiste",
+      "painter": "Peintre",
+      "handyman": "Bricoleur",
+      "general": "Entrepreneur général",
+      "carpenter": "Menuisier",
+      "flooring": "Revêtement de sol",
+      "appliance": "Réparation d'électroménager",
+      "cleaning": "Ménage",
+      "pest": "Lutte antiparasitaire",
+      "garage_door": "Porte de garage",
+      "window": "Fenêtres / bardage"
+    },
+    "badge": {
+      "licensed": "Agréé",
+      "sameDay": "Jour même",
+      "locallyOwned": "Local",
+      "score": "Match {score}"
+    },
+    "summary": {
+      "tellMeMore": "En savoir plus",
+      "hide": "Masquer les détails",
+      "loading": "6 synthétise les avis…",
+      "error": "Impossible de synthétiser les avis",
+      "cached": "Cache",
+      "fresh": "Nouveau",
+      "strengths": "Points forts",
+      "weaknesses": "Points de vigilance",
+      "sampleQuotes": "Ce que disent les clients"
+    },
+    "recommend": {
+      "getPicks": "Choix de 6",
+      "thinking": "6 réfléchit…",
+      "loading": "6 pèse la note, la distance et vos préférences…",
+      "error": "Impossible de générer les recommandations",
+      "empty": "6 n'a trouvé personne à recommander. Élargissez les filtres et réessayez.",
+      "title": "Les choix de 6",
+      "subtitle": "{count, plural, =1 {1 choix} other {# choix}}",
+      "basedOn": "Ajusté selon ce dont 6 se souvient :"
+    },
+    "picker": {
+      "pickThis": "Choisir celui-ci",
+      "notifying": "Notification…",
+      "confirm": "En choisissant cet artisan, 6 lui enverra une notification de victoire et aux autres candidats un mot amical avec des conseils. Continuer ?",
+      "signInRequired": "Connectez-vous pour choisir un artisan.",
+      "error": "Impossible d'envoyer les notifications",
+      "title": "6 a notifié les candidats",
+      "summary": "{sent} envoyés · {failed} échoués",
+      "winnerLabel": "Gagnant",
+      "losersLabel": "{count, plural, =1 {Autre candidat notifié} other {# autres candidats notifiés}}",
+      "delivered": "livré",
+      "failed": "échec"
+    },
+    "payment": {
+      "hireAndPay": "Engager et payer",
+      "starting": "Démarrage…",
+      "amountPrompt": "Saisissez le montant convenu en dollars (par ex. 500) :",
+      "amountInvalid": "Le montant doit être un nombre positif en dollars.",
+      "notConfigured": "Les paiements ne sont pas encore configurés. 6 pourra encaisser dès que les clés Stripe seront en place.",
+      "contractorNotOnboarded": "Cet artisan n'a pas encore configuré les paiements — choisissez-en un autre ou réessayez plus tard.",
+      "error": "Impossible de démarrer le paiement",
+      "return": {
+        "kicker": "iSolveUrProblems · Paiement",
+        "titleSuccess": "Paiement reçu",
+        "titleCanceled": "Paiement annulé",
+        "subtitlePaid": "6 a confirmé le paiement. L'artisan a été notifié et nous vous mettrons en relation.",
+        "subtitleProcessing": "Merci — Stripe finalise le paiement. 6 notifiera l'artisan dès confirmation.",
+        "subtitleCanceled": "Aucun débit n'a été effectué. Vous pouvez choisir un autre artisan ou revenir plus tard.",
+        "contractId": "Contrat",
+        "category": "Catégorie",
+        "amount": "Montant",
+        "platformFee": "Commission de la plateforme",
+        "status": "Statut",
+        "backToContractors": "Retour aux artisans",
+        "backTo6": "Retour à 6"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Une erreur s'est produite.",

@@ -107,6 +107,113 @@
       "signInRequired": "Entre para enviar este relatório."
     }
   },
+  "contractors": {
+    "kicker": "iSolveUrProblems · Profissionais",
+    "title": "Encontre um profissional",
+    "blurb": "Diga o que precisa e onde — o 6 classificará candidatos verificados por avaliação, distância e seus filtros.",
+    "backTo6": "← Voltar ao 6",
+    "search": "Buscar",
+    "searching": "Buscando…",
+    "noResults": "Nenhum profissional corresponde a esses filtros. Aumente o raio ou diminua a avaliação mínima.",
+    "resultsCount": "Mostrando {shown} de {considered} considerados.",
+    "openWebsite": "Site",
+    "noGeolocation": "Seu navegador não suporta geolocalização. Digite lat/lng manualmente.",
+    "geolocationDenied": "Não foi possível ler sua localização. Digite lat/lng manualmente.",
+    "locationRequired": "Latitude e longitude são obrigatórias.",
+    "filters": {
+      "category": "Categoria",
+      "radius": "Raio (km)",
+      "lat": "Latitude",
+      "lng": "Longitude",
+      "useMyLocation": "Usar minha localização",
+      "minRating": "Avaliação mínima",
+      "maxPriceTier": "Preço máximo",
+      "priceAny": "Qualquer preço",
+      "locallyOwned": "Apenas locais",
+      "sameDay": "Apenas serviço no mesmo dia"
+    },
+    "categoryName": {
+      "plumber": "Encanador",
+      "electrician": "Eletricista",
+      "hvac": "Ar-condicionado",
+      "roofer": "Telhadista",
+      "landscaper": "Paisagista",
+      "painter": "Pintor",
+      "handyman": "Faz-tudo",
+      "general": "Empreiteiro geral",
+      "carpenter": "Carpinteiro",
+      "flooring": "Pisos",
+      "appliance": "Conserto de eletrodomésticos",
+      "cleaning": "Limpeza doméstica",
+      "pest": "Dedetização",
+      "garage_door": "Porta de garagem",
+      "window": "Janelas / fachada"
+    },
+    "badge": {
+      "licensed": "Licenciado",
+      "sameDay": "Mesmo dia",
+      "locallyOwned": "Local",
+      "score": "Match {score}"
+    },
+    "summary": {
+      "tellMeMore": "Saber mais",
+      "hide": "Ocultar detalhes",
+      "loading": "O 6 está resumindo as avaliações…",
+      "error": "Não foi possível resumir as avaliações",
+      "cached": "Em cache",
+      "fresh": "Novo",
+      "strengths": "Pontos fortes",
+      "weaknesses": "Atenção",
+      "sampleQuotes": "O que dizem os clientes"
+    },
+    "recommend": {
+      "getPicks": "Escolhas do 6",
+      "thinking": "O 6 está escolhendo…",
+      "loading": "O 6 está pesando avaliação, distância e suas preferências…",
+      "error": "Não foi possível gerar recomendações",
+      "empty": "O 6 não encontrou candidatos para recomendar. Amplie os filtros e tente novamente.",
+      "title": "As escolhas do 6",
+      "subtitle": "{count, plural, =1 {1 escolha} other {# escolhas}}",
+      "basedOn": "Ajustado pelo que o 6 lembra:"
+    },
+    "picker": {
+      "pickThis": "Escolher este",
+      "notifying": "Notificando…",
+      "confirm": "Ao escolher este profissional, o 6 enviará uma notificação de vitória e aos outros candidatos uma nota amigável com dicas. Continuar?",
+      "signInRequired": "Entre para escolher um profissional.",
+      "error": "Não foi possível enviar as notificações",
+      "title": "O 6 notificou os candidatos",
+      "summary": "{sent} enviadas · {failed} falharam",
+      "winnerLabel": "Vencedor",
+      "losersLabel": "{count, plural, =1 {Outro candidato notificado} other {# outros candidatos notificados}}",
+      "delivered": "entregue",
+      "failed": "falhou"
+    },
+    "payment": {
+      "hireAndPay": "Contratar e pagar",
+      "starting": "Iniciando…",
+      "amountPrompt": "Digite o valor combinado em dólares (ex.: 500):",
+      "amountInvalid": "O valor deve ser um número positivo em dólares.",
+      "notConfigured": "Os pagamentos ainda não foram configurados. O 6 poderá cobrar quando as chaves do Stripe forem adicionadas.",
+      "contractorNotOnboarded": "Este profissional ainda não configurou os pagamentos — escolha outro ou tente mais tarde.",
+      "error": "Não foi possível iniciar o pagamento",
+      "return": {
+        "kicker": "iSolveUrProblems · Pagamento",
+        "titleSuccess": "Pagamento recebido",
+        "titleCanceled": "Pagamento cancelado",
+        "subtitlePaid": "O 6 confirmou o pagamento. O profissional foi notificado e vamos colocar vocês em contato.",
+        "subtitleProcessing": "Obrigado — o Stripe está finalizando a cobrança. O 6 vai notificar o profissional assim que for confirmada.",
+        "subtitleCanceled": "Nenhuma cobrança foi feita. Você pode escolher outro profissional ou voltar depois.",
+        "contractId": "Contrato",
+        "category": "Categoria",
+        "amount": "Valor",
+        "platformFee": "Taxa da plataforma",
+        "status": "Status",
+        "backToContractors": "Voltar aos profissionais",
+        "backTo6": "Voltar ao 6"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Algo deu errado.",

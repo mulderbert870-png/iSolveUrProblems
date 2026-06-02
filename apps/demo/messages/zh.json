@@ -108,6 +108,113 @@
       "signInRequired": "请登录以发送此报告。"
     }
   },
+  "contractors": {
+    "kicker": "iSolveUrProblems · 承包商",
+    "title": "查找承包商",
+    "blurb": "告诉我们你的需求和位置——6 会根据评分、距离和你的筛选条件，对经过审核的候选人进行排名。",
+    "backTo6": "← 返回 6",
+    "search": "搜索",
+    "searching": "搜索中…",
+    "noResults": "没有承包商匹配这些筛选条件。请扩大半径或降低最低评分。",
+    "resultsCount": "在 {considered} 个候选中显示 {shown} 个。",
+    "openWebsite": "网站",
+    "noGeolocation": "你的浏览器不支持地理定位。请手动输入经纬度。",
+    "geolocationDenied": "无法读取你的位置。请手动输入经纬度。",
+    "locationRequired": "经度和纬度为必填项。",
+    "filters": {
+      "category": "类别",
+      "radius": "半径（公里）",
+      "lat": "纬度",
+      "lng": "经度",
+      "useMyLocation": "使用我的位置",
+      "minRating": "最低评分",
+      "maxPriceTier": "最高价位",
+      "priceAny": "任意价位",
+      "locallyOwned": "仅本地经营",
+      "sameDay": "仅当日上门"
+    },
+    "categoryName": {
+      "plumber": "水管工",
+      "electrician": "电工",
+      "hvac": "暖通空调",
+      "roofer": "屋顶工",
+      "landscaper": "园艺",
+      "painter": "油漆工",
+      "handyman": "万能工",
+      "general": "总承包",
+      "carpenter": "木工",
+      "flooring": "地板安装",
+      "appliance": "家电维修",
+      "cleaning": "家政清洁",
+      "pest": "虫害防治",
+      "garage_door": "车库门",
+      "window": "门窗 / 外墙"
+    },
+    "badge": {
+      "licensed": "持证",
+      "sameDay": "当日",
+      "locallyOwned": "本地",
+      "score": "匹配 {score}"
+    },
+    "summary": {
+      "tellMeMore": "了解更多",
+      "hide": "收起详情",
+      "loading": "6 正在总结评论…",
+      "error": "无法总结评论",
+      "cached": "已缓存",
+      "fresh": "最新",
+      "strengths": "优势",
+      "weaknesses": "需注意",
+      "sampleQuotes": "客户评价"
+    },
+    "recommend": {
+      "getPicks": "让 6 推荐",
+      "thinking": "6 正在挑选…",
+      "loading": "6 正在权衡评分、距离和你的偏好…",
+      "error": "无法生成推荐",
+      "empty": "6 没有找到值得推荐的人。请放宽筛选条件再试一次。",
+      "title": "6 的首选",
+      "subtitle": "{count, plural, other {# 个推荐}}",
+      "basedOn": "根据 6 记得的偏好微调："
+    },
+    "picker": {
+      "pickThis": "就选这位",
+      "notifying": "正在通知…",
+      "confirm": "选择此承包商后，6 会向其发送中标通知，并向其他候选人发送友好的反馈与改进建议。继续吗？",
+      "signInRequired": "请登录后再选择承包商。",
+      "error": "通知发送失败",
+      "title": "6 已通知候选人",
+      "summary": "{sent} 已发 · {failed} 失败",
+      "winnerLabel": "中标",
+      "losersLabel": "{count, plural, other {另 # 位候选人已通知}}",
+      "delivered": "已送达",
+      "failed": "失败"
+    },
+    "payment": {
+      "hireAndPay": "雇佣并支付",
+      "starting": "启动中…",
+      "amountPrompt": "请输入约定的金额（美元，例如 500）：",
+      "amountInvalid": "金额必须是大于零的美元数值。",
+      "notConfigured": "支付功能尚未配置。配置 Stripe 密钥后 6 即可收款。",
+      "contractorNotOnboarded": "该承包商尚未完成收款设置，请另选或稍后再试。",
+      "error": "无法开始支付",
+      "return": {
+        "kicker": "iSolveUrProblems · 结账",
+        "titleSuccess": "已收款",
+        "titleCanceled": "支付已取消",
+        "subtitlePaid": "6 已确认收款。承包商已收到通知，我们会安排你们对接。",
+        "subtitleProcessing": "感谢——Stripe 正在完成扣款，确认后 6 会立即通知承包商。",
+        "subtitleCanceled": "未发生扣款。你可以另选承包商或稍后再来。",
+        "contractId": "合同",
+        "category": "类别",
+        "amount": "金额",
+        "platformFee": "平台费",
+        "status": "状态",
+        "backToContractors": "返回承包商列表",
+        "backTo6": "返回 6"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "出了点问题。",

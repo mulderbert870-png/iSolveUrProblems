@@ -15,6 +15,15 @@ import {
 } from "../../../src/lib/memory";
 import { resolveLocaleForRequest } from "../../../src/lib/i18n/resolveLocale";
 import { localeLanguageName } from "../../../src/lib/i18n/avatarLanguage";
+import {
+  SEARCH_CONTRACTORS_TOOL,
+  RECOMMEND_CONTRACTORS_TOOL,
+  runSearchContractorsTool,
+  runRecommendContractorsTool,
+  type ContractorChatResult,
+  type ContractorChatRecommendResult,
+  type SearchContractorsArgs,
+} from "../../../src/lib/contractors/chatTool";
 
 const SYSTEM_PROMPT =
   "You are a helpful assistant. You are being used in a demo. Please act courteously and helpfully.";
@@ -97,42 +106,119 @@ export async function POST(request: Request) {
       systemSections.push(memoryBlock);
     }
 
-    const messages: Array<{ role: string; content: string }> = [
+    // Chat-completions messages are a tagged union; using `any` here so
+    // tool-result messages with the `tool_call_id` field also fit.
+    const messages: Array<Record<string, unknown>> = [
       { role: "system", content: systemSections.join("\n\n") },
       { role: "user", content: message },
     ];
 
-    // Call OpenAI API
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages,
-      }),
-    });
+    const tools = [SEARCH_CONTRACTORS_TOOL, RECOMMEND_CONTRACTORS_TOOL];
 
-    if (!res.ok) {
-      const errorData = await res.text();
-      console.error("OpenAI API error:", errorData);
-      return new Response(
-        JSON.stringify({
-          error: "Failed to generate response",
-        }),
-        {
-          status: res.status <= 599 ? res.status : 502,
-          headers: {
-            "Content-Type": "application/json",
-          },
+    async function callOpenAI(
+      withTools: boolean,
+    ): Promise<Response | { data: any }> {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
         },
-      );
+        body: JSON.stringify({
+          model: OPENAI_MODEL,
+          messages,
+          ...(withTools ? { tools, tool_choice: "auto" } : {}),
+        }),
+      });
+      if (!r.ok) {
+        const errorData = await r.text();
+        console.error("OpenAI API error:", errorData);
+        return new Response(
+          JSON.stringify({ error: "Failed to generate response" }),
+          {
+            status: r.status <= 599 ? r.status : 502,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return { data: await r.json() };
     }
 
-    const data = await res.json();
-    const response = data.choices[0].message.content;
+    // First pass — model may decide to call the contractor search tool.
+    let firstPass = await callOpenAI(true);
+    if (firstPass instanceof Response) return firstPass;
+
+    let assistantMsg = firstPass.data.choices[0].message;
+    let contractorPayload: ContractorChatResult | null = null;
+    let recommendPayload: ContractorChatRecommendResult | null = null;
+
+    // Tool-use loop — handle at most one round of contractor tools.
+    if (
+      Array.isArray(assistantMsg.tool_calls) &&
+      assistantMsg.tool_calls.length > 0
+    ) {
+      // Append the assistant turn that contains the tool_calls (required
+      // by OpenAI before tool messages).
+      messages.push(assistantMsg);
+
+      for (const call of assistantMsg.tool_calls) {
+        const toolName = call.function?.name;
+        if (
+          toolName !== "search_contractors" &&
+          toolName !== "recommend_contractors"
+        ) {
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({ ok: false, error: "unknown tool" }),
+          });
+          continue;
+        }
+        let parsed: SearchContractorsArgs;
+        try {
+          parsed = JSON.parse(call.function.arguments ?? "{}");
+        } catch {
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              ok: false,
+              error: "invalid tool arguments",
+            }),
+          });
+          continue;
+        }
+
+        if (toolName === "search_contractors") {
+          const result = await runSearchContractorsTool(parsed, locale);
+          if (result.ok && !contractorPayload) contractorPayload = result;
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify(result),
+          });
+        } else {
+          const result = await runRecommendContractorsTool({
+            toolArgs: parsed,
+            userId,
+            locale,
+          });
+          if (result.ok && !recommendPayload) recommendPayload = result;
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify(result),
+          });
+        }
+      }
+
+      // Second pass — let the model summarize the tool results in prose.
+      const secondPass = await callOpenAI(false);
+      if (secondPass instanceof Response) return secondPass;
+      assistantMsg = secondPass.data.choices[0].message;
+    }
+
+    const response: string = assistantMsg.content ?? "";
 
     // M1.2 — Memory writer pass. Extract durable facts from this turn
     // and persist them. Fire-and-forget — never block the reply on
@@ -149,12 +235,19 @@ export async function POST(request: Request) {
       })();
     }
 
-    return new Response(JSON.stringify({ response }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
+    return new Response(
+      JSON.stringify({
+        response,
+        ...(contractorPayload ? { contractors: contractorPayload } : {}),
+        ...(recommendPayload ? { recommend: recommendPayload } : {}),
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
   } catch (error) {
     console.error("Error generating response:", error);
     return new Response(
