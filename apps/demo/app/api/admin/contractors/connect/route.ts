@@ -5,6 +5,7 @@ import {
   retrieveAccount,
   setContractorStripeConnect,
 } from "../../../../../src/lib/payments";
+import { verifyAdminBearer } from "../../../../../src/lib/apiRouteSecurity";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -37,16 +38,11 @@ function bad(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status });
 }
 
-function isAuthorized(request: NextRequest): boolean {
-  if (!ADMIN_SECRET) return false;
-  const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return false;
-  return header.slice(7).trim() === ADMIN_SECRET;
-}
-
 export async function POST(request: NextRequest) {
   if (!ADMIN_SECRET) return bad("ADMIN_SECRET not configured", 503);
-  if (!isAuthorized(request)) return bad("unauthorized", 401);
+  if (!verifyAdminBearer(request.headers.get("authorization"), ADMIN_SECRET).ok) {
+    return bad("unauthorized", 401);
+  }
   if (!isStripeConfigured()) return bad("Payments not yet configured", 503);
 
   let body: { contractor_id?: unknown; stripe_connect_account_id?: unknown };

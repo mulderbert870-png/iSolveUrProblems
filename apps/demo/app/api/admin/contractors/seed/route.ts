@@ -5,6 +5,7 @@ import {
   type RefreshResult,
 } from "../../../../../src/lib/contractors";
 import type { ContractorCategorySlug } from "../../../../../src/lib/contractors/types";
+import { verifyAdminBearer } from "../../../../../src/lib/apiRouteSecurity";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -53,20 +54,6 @@ const DEFAULT_CENTER = { lat: 30.2672, lng: -97.7431 }; // Austin, TX
 const DEFAULT_RADIUS_KM = 25;
 const DEFAULT_PER_CATEGORY = 50;
 
-function isAuthorized(request: NextRequest): boolean {
-  if (!ADMIN_SECRET) return false;
-  const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return false;
-  const token = header.slice(7).trim();
-  // Constant-time-ish compare. Token sizes are short — micro-bias is fine for an admin route.
-  if (token.length !== ADMIN_SECRET.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < token.length; i++) {
-    mismatch |= token.charCodeAt(i) ^ ADMIN_SECRET.charCodeAt(i);
-  }
-  return mismatch === 0;
-}
-
 export async function POST(request: NextRequest) {
   if (!ADMIN_SECRET) {
     return NextResponse.json(
@@ -74,7 +61,7 @@ export async function POST(request: NextRequest) {
       { status: 503 },
     );
   }
-  if (!isAuthorized(request)) {
+  if (!verifyAdminBearer(request.headers.get("authorization"), ADMIN_SECRET).ok) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

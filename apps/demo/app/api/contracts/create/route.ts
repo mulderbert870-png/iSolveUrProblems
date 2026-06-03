@@ -44,6 +44,27 @@ export const maxDuration = 30;
  *
  * If Stripe is not configured, returns 503 with a clear message — the
  * UI surfaces this to the homeowner.
+ *
+ * ── Money-safety model ──────────────────────────────────────────────
+ * The platform does NOT store a per-contractor base rate (today's
+ * `contractors.price_tier` is a 1–4 band signal, not a dollar amount).
+ * A contract's `amount_cents` is the homeowner+contractor's negotiated
+ * value, so it MUST come from the client — there is no server-stored
+ * price to derive from. We bound the abuse surface in 3 ways:
+ *
+ *   1. amount_cents is required to be a positive integer between
+ *      MIN_AMOUNT_CENTS ($1) and MAX_AMOUNT_CENTS ($50k). Anything
+ *      outside is rejected before any Stripe call.
+ *   2. platform_fee_cents is ALWAYS computed server-side from
+ *      `amountCents * PLATFORM_FEE_PERCENT`. It is never read from the
+ *      request body.
+ *   3. currency is ALWAYS the server-side PLATFORM_CURRENCY env. It is
+ *      never read from the request body, and createCheckoutSession()
+ *      separately whitelists it inside the lib.
+ *
+ * When the platform adds stored estimates (post-M2 feature), the
+ * amount path moves from "trust-but-bound client input" to "lookup".
+ * Until then the bounds are the contract.
  */
 
 const UUID_RE =
@@ -97,15 +118,15 @@ export async function POST(request: NextRequest) {
   }
   if (
     typeof body.amount_cents !== "number" ||
-    !Number.isFinite(body.amount_cents) ||
+    !Number.isInteger(body.amount_cents) ||
     body.amount_cents < MIN_AMOUNT_CENTS ||
     body.amount_cents > MAX_AMOUNT_CENTS
   ) {
     return bad(
-      `amount_cents must be between ${MIN_AMOUNT_CENTS} and ${MAX_AMOUNT_CENTS}`,
+      `amount_cents must be an integer between ${MIN_AMOUNT_CENTS} and ${MAX_AMOUNT_CENTS}`,
     );
   }
-  const amountCents = Math.floor(body.amount_cents);
+  const amountCents = body.amount_cents;
 
   // 1. Resolve the candidate set
   let candidateIds: string[];

@@ -177,6 +177,68 @@ export type StripeCheckoutSession = {
   payment_intent: string | null;
 };
 
+/**
+ * Whitelist of currencies the platform will accept. Stripe supports
+ * many more — we limit at this layer so a bad env value or a future
+ * caller can't push an unsupported / suspicious currency to Stripe.
+ * Expand explicitly when a new currency is approved by the business.
+ */
+const ALLOWED_CURRENCIES: ReadonlySet<string> = new Set(["usd"]);
+
+/**
+ * Belt-and-suspenders input guards for createCheckoutSession. The
+ * /api/contracts/create route already validates each field before it
+ * gets here, but enforcing them inside the helper means any future
+ * caller is held to the same money-safety contract:
+ *   - amount must be strictly positive
+ *   - application fee must be non-negative and strictly less than the
+ *     amount (an equal/larger fee would zero out or invert the
+ *     contractor payout)
+ *   - currency must be in our explicit allowlist
+ *   - destination account id must look like a real Connect account
+ *
+ * Returns ok:false with a clear error rather than throwing — keeps the
+ * StripeResult shape consistent with the rest of this module.
+ */
+function validateCheckoutInputs(args: {
+  amountCents: number;
+  applicationFeeCents: number;
+  currency: string;
+  destinationAccountId: string;
+}): { ok: true } | { ok: false; error: string } {
+  if (
+    !Number.isInteger(args.amountCents) ||
+    args.amountCents <= 0
+  ) {
+    return { ok: false, error: "amountCents must be a positive integer" };
+  }
+  if (
+    !Number.isInteger(args.applicationFeeCents) ||
+    args.applicationFeeCents < 0
+  ) {
+    return {
+      ok: false,
+      error: "applicationFeeCents must be a non-negative integer",
+    };
+  }
+  if (args.applicationFeeCents >= args.amountCents) {
+    return {
+      ok: false,
+      error: "applicationFeeCents must be strictly less than amountCents",
+    };
+  }
+  if (!ALLOWED_CURRENCIES.has(args.currency.toLowerCase())) {
+    return { ok: false, error: `currency '${args.currency}' is not allowed` };
+  }
+  if (!/^acct_[A-Za-z0-9]+$/.test(args.destinationAccountId)) {
+    return {
+      ok: false,
+      error: "destinationAccountId must look like 'acct_...'",
+    };
+  }
+  return { ok: true };
+}
+
 export async function createCheckoutSession(args: {
   amountCents: number;
   applicationFeeCents: number;
@@ -188,6 +250,8 @@ export async function createCheckoutSession(args: {
   metadata: Record<string, string>;
   customerEmail?: string | null;
 }): Promise<StripeResult<StripeCheckoutSession>> {
+  const guard = validateCheckoutInputs(args);
+  if (!guard.ok) return { ok: false, status: 400, error: guard.error };
   return stripeCall<StripeCheckoutSession>("/checkout/sessions", {
     body: {
       mode: "payment",
@@ -198,7 +262,7 @@ export async function createCheckoutSession(args: {
         {
           quantity: 1,
           price_data: {
-            currency: args.currency,
+            currency: args.currency.toLowerCase(),
             unit_amount: args.amountCents,
             product_data: {
               name: args.productName,
