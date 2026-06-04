@@ -107,6 +107,113 @@
       "signInRequired": "Melde dich an, um diesen Bericht zu versenden."
     }
   },
+  "contractors": {
+    "kicker": "iSolveUrProblems · Handwerker",
+    "title": "Handwerker finden",
+    "blurb": "Sag uns, was du brauchst und wo — 6 sortiert geprüfte Kandidaten nach Bewertung, Entfernung und deinen Filtern.",
+    "backTo6": "← Zurück zu 6",
+    "search": "Suchen",
+    "searching": "Suche läuft…",
+    "noResults": "Kein Handwerker passt zu diesen Filtern. Erweitere den Radius oder senke die Mindestbewertung.",
+    "resultsCount": "{shown} von {considered} betrachteten werden angezeigt.",
+    "openWebsite": "Website",
+    "noGeolocation": "Dein Browser unterstützt keine Geolokalisierung. Gib lat/lng manuell ein.",
+    "geolocationDenied": "Standort konnte nicht gelesen werden. Gib lat/lng manuell ein.",
+    "locationRequired": "Breiten- und Längengrad sind erforderlich.",
+    "filters": {
+      "category": "Kategorie",
+      "radius": "Radius (km)",
+      "lat": "Breitengrad",
+      "lng": "Längengrad",
+      "useMyLocation": "Meinen Standort nutzen",
+      "minRating": "Mindestbewertung",
+      "maxPriceTier": "Max. Preis",
+      "priceAny": "Beliebiger Preis",
+      "locallyOwned": "Nur lokale Betriebe",
+      "sameDay": "Nur Sofortservice"
+    },
+    "categoryName": {
+      "plumber": "Klempner",
+      "electrician": "Elektriker",
+      "hvac": "HLK / Klima",
+      "roofer": "Dachdecker",
+      "landscaper": "Gartenbau",
+      "painter": "Maler",
+      "handyman": "Hausmeister",
+      "general": "Generalunternehmer",
+      "carpenter": "Tischler",
+      "flooring": "Bodenleger",
+      "appliance": "Geräte-Reparatur",
+      "cleaning": "Reinigung",
+      "pest": "Schädlingsbekämpfung",
+      "garage_door": "Garagentor",
+      "window": "Fenster / Fassade"
+    },
+    "badge": {
+      "licensed": "Lizenziert",
+      "sameDay": "Same-day",
+      "locallyOwned": "Lokal",
+      "score": "Match {score}"
+    },
+    "summary": {
+      "tellMeMore": "Mehr erfahren",
+      "hide": "Details ausblenden",
+      "loading": "6 fasst Bewertungen zusammen…",
+      "error": "Bewertungen konnten nicht zusammengefasst werden",
+      "cached": "Zwischengespeichert",
+      "fresh": "Neu",
+      "strengths": "Stärken",
+      "weaknesses": "Worauf zu achten",
+      "sampleQuotes": "Stimmen aus Bewertungen"
+    },
+    "recommend": {
+      "getPicks": "6s Empfehlungen",
+      "thinking": "6 wählt aus…",
+      "loading": "6 wägt Bewertung, Entfernung und deine Präferenzen ab…",
+      "error": "Empfehlungen konnten nicht erstellt werden",
+      "empty": "6 hat niemanden zum Empfehlen gefunden. Erweitere die Filter und versuche es erneut.",
+      "title": "6s Top-Auswahl",
+      "subtitle": "{count, plural, =1 {1 Auswahl} other {# Auswahlen}}",
+      "basedOn": "Abgestimmt auf das, woran 6 sich erinnert:"
+    },
+    "picker": {
+      "pickThis": "Diesen wählen",
+      "notifying": "Wird benachrichtigt…",
+      "confirm": "Wenn du diesen Handwerker wählst, sendet 6 ihm eine Zusage-Nachricht und allen anderen Kandidaten eine freundliche Notiz mit Tipps. Fortfahren?",
+      "signInRequired": "Melde dich an, um einen Handwerker zu wählen.",
+      "error": "Benachrichtigungen konnten nicht gesendet werden",
+      "title": "6 hat die Kandidaten benachrichtigt",
+      "summary": "{sent} gesendet · {failed} fehlgeschlagen",
+      "winnerLabel": "Gewinner",
+      "losersLabel": "{count, plural, =1 {Ein weiterer benachrichtigt} other {# weitere benachrichtigt}}",
+      "delivered": "zugestellt",
+      "failed": "fehlgeschlagen"
+    },
+    "payment": {
+      "hireAndPay": "Beauftragen & zahlen",
+      "starting": "Wird gestartet…",
+      "amountPrompt": "Vereinbarten Betrag in Dollar eingeben (z. B. 500):",
+      "amountInvalid": "Der Betrag muss eine positive Zahl in Dollar sein.",
+      "notConfigured": "Zahlungen sind noch nicht konfiguriert. 6 kann abrechnen, sobald die Stripe-Schlüssel hinterlegt sind.",
+      "contractorNotOnboarded": "Dieser Handwerker hat die Auszahlungen noch nicht eingerichtet — wähle jemand anderen oder versuche es später.",
+      "error": "Zahlung konnte nicht gestartet werden",
+      "return": {
+        "kicker": "iSolveUrProblems · Bezahlung",
+        "titleSuccess": "Zahlung erhalten",
+        "titleCanceled": "Zahlung abgebrochen",
+        "subtitlePaid": "6 hat die Zahlung bestätigt. Der Handwerker wurde benachrichtigt und wir bringen euch in Kontakt.",
+        "subtitleProcessing": "Danke — Stripe schließt die Zahlung ab. 6 benachrichtigt den Handwerker, sobald sie bestätigt ist.",
+        "subtitleCanceled": "Es wurde nichts abgebucht. Du kannst jemand anderen wählen oder später zurückkommen.",
+        "contractId": "Vertrag",
+        "category": "Kategorie",
+        "amount": "Betrag",
+        "platformFee": "Plattformgebühr",
+        "status": "Status",
+        "backToContractors": "Zurück zu Handwerkern",
+        "backTo6": "Zurück zu 6"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Etwas ist schiefgegangen.",

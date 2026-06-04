@@ -107,6 +107,113 @@
       "signInRequired": "Sign in to deliver this report."
     }
   },
+  "contractors": {
+    "kicker": "iSolveUrProblems · Contractors",
+    "title": "Find a contractor",
+    "blurb": "Tell us what you need and where — 6 will rank vetted candidates by rating, distance, and your filters.",
+    "backTo6": "← Back to 6",
+    "search": "Search",
+    "searching": "Searching…",
+    "noResults": "No contractors matched those filters. Try widening the radius or relaxing the rating floor.",
+    "resultsCount": "Showing {shown} of {considered} considered.",
+    "openWebsite": "Website",
+    "noGeolocation": "Your browser doesn't support geolocation. Type a lat/lng instead.",
+    "geolocationDenied": "Couldn't read your location. Type a lat/lng instead.",
+    "locationRequired": "Latitude and longitude are required.",
+    "filters": {
+      "category": "Category",
+      "radius": "Radius (km)",
+      "lat": "Latitude",
+      "lng": "Longitude",
+      "useMyLocation": "Use my location",
+      "minRating": "Minimum rating",
+      "maxPriceTier": "Max price",
+      "priceAny": "Any price",
+      "locallyOwned": "Locally owned only",
+      "sameDay": "Same-day service only"
+    },
+    "categoryName": {
+      "plumber": "Plumber",
+      "electrician": "Electrician",
+      "hvac": "HVAC / AC",
+      "roofer": "Roofer",
+      "landscaper": "Landscaper",
+      "painter": "Painter",
+      "handyman": "Handyman",
+      "general": "General contractor",
+      "carpenter": "Carpenter",
+      "flooring": "Flooring",
+      "appliance": "Appliance repair",
+      "cleaning": "House cleaning",
+      "pest": "Pest control",
+      "garage_door": "Garage door",
+      "window": "Window / siding"
+    },
+    "badge": {
+      "licensed": "Licensed",
+      "sameDay": "Same day",
+      "locallyOwned": "Locally owned",
+      "score": "Match {score}"
+    },
+    "summary": {
+      "tellMeMore": "Tell me more",
+      "hide": "Hide details",
+      "loading": "6 is summarizing reviews…",
+      "error": "Couldn't summarize reviews",
+      "cached": "Cached",
+      "fresh": "Fresh",
+      "strengths": "Strengths",
+      "weaknesses": "Watch-outs",
+      "sampleQuotes": "What people say"
+    },
+    "recommend": {
+      "getPicks": "Get 6's picks",
+      "thinking": "6 is choosing…",
+      "loading": "6 is weighing rating, distance, and your preferences…",
+      "error": "Couldn't generate recommendations",
+      "empty": "6 didn't find any candidates worth recommending. Widen the filters and try again.",
+      "title": "6's top picks",
+      "subtitle": "{count, plural, =1 {1 pick} other {# picks}}",
+      "basedOn": "Tuned by what 6 remembers:"
+    },
+    "picker": {
+      "pickThis": "Pick this one",
+      "notifying": "Notifying…",
+      "confirm": "Picking this contractor will send a win notification to them and a 'thanks, here's how to win next time' note to every other candidate. Continue?",
+      "signInRequired": "Sign in to pick a contractor.",
+      "error": "Couldn't dispatch notifications",
+      "title": "6 has notified the candidates",
+      "summary": "{sent} sent · {failed} failed",
+      "winnerLabel": "Winner",
+      "losersLabel": "{count, plural, =1 {Other candidate notified} other {# other candidates notified}}",
+      "delivered": "delivered",
+      "failed": "failed"
+    },
+    "payment": {
+      "hireAndPay": "Hire & pay",
+      "starting": "Starting…",
+      "amountPrompt": "Enter the agreed amount in dollars (e.g. 500):",
+      "amountInvalid": "Amount must be a positive number of dollars.",
+      "notConfigured": "Payments aren't configured yet on the platform. 6 will be ready to charge once Stripe keys are set.",
+      "contractorNotOnboarded": "This contractor hasn't set up payouts yet — pick another, or try again later.",
+      "error": "Couldn't start payment",
+      "return": {
+        "kicker": "iSolveUrProblems · Checkout",
+        "titleSuccess": "Payment received",
+        "titleCanceled": "Checkout canceled",
+        "subtitlePaid": "6 confirmed the payment. The contractor has been notified and we'll connect you.",
+        "subtitleProcessing": "Thanks — Stripe is finalizing the charge. 6 will notify the contractor as soon as it's confirmed.",
+        "subtitleCanceled": "No charge was made. You can pick someone else or come back later.",
+        "contractId": "Contract",
+        "category": "Category",
+        "amount": "Amount",
+        "platformFee": "Platform fee",
+        "status": "Status",
+        "backToContractors": "Back to contractors",
+        "backTo6": "Back to 6"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Something went wrong.",

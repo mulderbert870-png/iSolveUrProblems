@@ -107,6 +107,113 @@
       "signInRequired": "Inicia sesión para entregar este informe."
     }
   },
+  "contractors": {
+    "kicker": "iSolveUrProblems · Contratistas",
+    "title": "Encuentra un contratista",
+    "blurb": "Dinos qué necesitas y dónde — 6 clasificará candidatos verificados por calificación, distancia y tus filtros.",
+    "backTo6": "← Volver a 6",
+    "search": "Buscar",
+    "searching": "Buscando…",
+    "noResults": "Ningún contratista coincidió con esos filtros. Amplía el radio o reduce la calificación mínima.",
+    "resultsCount": "Mostrando {shown} de {considered} considerados.",
+    "openWebsite": "Sitio web",
+    "noGeolocation": "Tu navegador no admite geolocalización. Escribe lat/lng manualmente.",
+    "geolocationDenied": "No se pudo leer tu ubicación. Escribe lat/lng manualmente.",
+    "locationRequired": "Latitud y longitud son obligatorias.",
+    "filters": {
+      "category": "Categoría",
+      "radius": "Radio (km)",
+      "lat": "Latitud",
+      "lng": "Longitud",
+      "useMyLocation": "Usar mi ubicación",
+      "minRating": "Calificación mínima",
+      "maxPriceTier": "Precio máximo",
+      "priceAny": "Cualquier precio",
+      "locallyOwned": "Solo propiedad local",
+      "sameDay": "Solo servicio el mismo día"
+    },
+    "categoryName": {
+      "plumber": "Plomero",
+      "electrician": "Electricista",
+      "hvac": "HVAC / aire",
+      "roofer": "Techador",
+      "landscaper": "Paisajista",
+      "painter": "Pintor",
+      "handyman": "Manitas",
+      "general": "Contratista general",
+      "carpenter": "Carpintero",
+      "flooring": "Pisos",
+      "appliance": "Reparación de electrodomésticos",
+      "cleaning": "Limpieza del hogar",
+      "pest": "Control de plagas",
+      "garage_door": "Puerta de garaje",
+      "window": "Ventanas / fachada"
+    },
+    "badge": {
+      "licensed": "Licenciado",
+      "sameDay": "Mismo día",
+      "locallyOwned": "Local",
+      "score": "Coincidencia {score}"
+    },
+    "summary": {
+      "tellMeMore": "Cuéntame más",
+      "hide": "Ocultar detalles",
+      "loading": "6 está resumiendo las reseñas…",
+      "error": "No se pudieron resumir las reseñas",
+      "cached": "En caché",
+      "fresh": "Nuevo",
+      "strengths": "Fortalezas",
+      "weaknesses": "Cuidado con",
+      "sampleQuotes": "Lo que dicen"
+    },
+    "recommend": {
+      "getPicks": "Recomendaciones de 6",
+      "thinking": "6 está eligiendo…",
+      "loading": "6 está sopesando calificación, distancia y tus preferencias…",
+      "error": "No se pudieron generar recomendaciones",
+      "empty": "6 no encontró candidatos para recomendar. Amplía los filtros e intenta de nuevo.",
+      "title": "Las mejores opciones de 6",
+      "subtitle": "{count, plural, =1 {1 opción} other {# opciones}}",
+      "basedOn": "Ajustado por lo que 6 recuerda:"
+    },
+    "picker": {
+      "pickThis": "Elegir a este",
+      "notifying": "Notificando…",
+      "confirm": "Al elegir a este contratista, se le enviará una notificación de victoria y a los demás candidatos una nota amable con consejos para mejorar. ¿Continuar?",
+      "signInRequired": "Inicia sesión para elegir un contratista.",
+      "error": "No se pudieron enviar las notificaciones",
+      "title": "6 ha notificado a los candidatos",
+      "summary": "{sent} enviados · {failed} fallidos",
+      "winnerLabel": "Ganador",
+      "losersLabel": "{count, plural, =1 {Otro candidato notificado} other {# otros candidatos notificados}}",
+      "delivered": "entregado",
+      "failed": "fallido"
+    },
+    "payment": {
+      "hireAndPay": "Contratar y pagar",
+      "starting": "Iniciando…",
+      "amountPrompt": "Introduce el importe acordado en dólares (p. ej. 500):",
+      "amountInvalid": "El importe debe ser un número positivo en dólares.",
+      "notConfigured": "Los pagos aún no están configurados. 6 podrá cobrar cuando se añadan las claves de Stripe.",
+      "contractorNotOnboarded": "Este contratista aún no ha configurado los pagos — elige a otro o inténtalo más tarde.",
+      "error": "No se pudo iniciar el pago",
+      "return": {
+        "kicker": "iSolveUrProblems · Pago",
+        "titleSuccess": "Pago recibido",
+        "titleCanceled": "Pago cancelado",
+        "subtitlePaid": "6 confirmó el pago. Se ha notificado al contratista y te pondremos en contacto.",
+        "subtitleProcessing": "Gracias — Stripe está procesando el cargo. 6 notificará al contratista en cuanto se confirme.",
+        "subtitleCanceled": "No se realizó ningún cargo. Puedes elegir a otra persona o volver más tarde.",
+        "contractId": "Contrato",
+        "category": "Categoría",
+        "amount": "Importe",
+        "platformFee": "Comisión de la plataforma",
+        "status": "Estado",
+        "backToContractors": "Volver a contratistas",
+        "backTo6": "Volver a 6"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Algo salió mal.",

@@ -58,6 +58,34 @@ export const MAX_VIDEO_FRAME_BASE64_CHARS = 2_200_000;
 
 const BEARER_TOKEN_MAX_LEN = 8192;
 
+/**
+ * Verify an `Authorization: Bearer <ADMIN_SECRET>` header in constant
+ * time. Used by every /api/admin/* route — keep the comparison routed
+ * through here so future routes can't accidentally regress to `===`.
+ *
+ * Returns `{ ok: true }` only when the header is present, well-formed,
+ * and matches the configured secret. All failure modes collapse to
+ * `{ ok: false }` without leaking which check failed.
+ */
+export function verifyAdminBearer(
+  authHeader: string | null,
+  adminSecret: string,
+): { ok: boolean } {
+  if (!adminSecret) return { ok: false };
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return { ok: false };
+  const token = authHeader.slice(7).trim();
+  if (!token) return { ok: false };
+  if (token.length !== adminSecret.length) return { ok: false };
+  // Constant-time XOR compare. Buffer.from + crypto.timingSafeEqual would
+  // also work; the manual loop avoids importing node:crypto into this
+  // edge-runtime-friendly module.
+  let mismatch = 0;
+  for (let i = 0; i < token.length; i++) {
+    mismatch |= token.charCodeAt(i) ^ adminSecret.charCodeAt(i);
+  }
+  return { ok: mismatch === 0 };
+}
+
 /** Reject C0 controls, DEL, and Unicode line/paragraph separators (CRLF header injection). */
 function isUnsafeBearerTokenChar(code: number): boolean {
   if (code <= 0x1f || code === 0x7f) return true;
