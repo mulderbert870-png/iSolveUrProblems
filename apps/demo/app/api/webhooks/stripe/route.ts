@@ -64,7 +64,8 @@ async function handleAccountUpdated(account: Record<string, unknown>) {
   await setContractorStripeConnect({
     contractor_id,
     stripe_connect_account_id: id,
-    payouts_enabled: payouts_enabled && charges_enabled,
+    charges_enabled: charges_enabled,
+    payouts_enabled: payouts_enabled,
     onboarded_at: details_submitted ? new Date().toISOString() : null,
   });
 }

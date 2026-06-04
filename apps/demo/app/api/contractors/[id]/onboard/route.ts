@@ -79,6 +79,7 @@ export async function POST(
       await setContractorStripeConnect({
         contractor_id: row.id,
         stripe_connect_account_id: accountId,
+        charges_enabled: false,
         payouts_enabled: false,
       });
     } catch (e) {

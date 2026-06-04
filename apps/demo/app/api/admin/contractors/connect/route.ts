@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     await setContractorStripeConnect({
       contractor_id: body.contractor_id,
       stripe_connect_account_id: acct.data.id,
+      charges_enabled: acct.data.charges_enabled,
       payouts_enabled: acct.data.payouts_enabled,
       onboarded_at: acct.data.details_submitted ? new Date().toISOString() : null,
     });

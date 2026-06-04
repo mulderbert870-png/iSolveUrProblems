@@ -125,12 +125,22 @@ export async function getContractById(
 export async function setContractorStripeConnect(args: {
   contractor_id: string;
   stripe_connect_account_id: string;
+  /**
+   * Whether the connected account can RECEIVE platform payments
+   * (destination charges). This is the gating flag.
+   */
+  charges_enabled: boolean;
+  /**
+   * Whether the connected account can PAY OUT to its bank. Informational
+   * for now — Stripe verifies this asynchronously and we don't block on it.
+   */
   payouts_enabled: boolean;
   onboarded_at?: string | null;
 }): Promise<void> {
   const { url, serviceRoleKey } = getSupabaseAdminConfig();
   const payload: Record<string, unknown> = {
     stripe_connect_account_id: args.stripe_connect_account_id,
+    stripe_charges_enabled: args.charges_enabled,
     payouts_enabled: args.payouts_enabled,
   };
   if (args.onboarded_at !== undefined) {
@@ -159,13 +169,14 @@ export async function getContractorStripeRow(
   name: string;
   email: string | null;
   stripe_connect_account_id: string | null;
+  stripe_charges_enabled: boolean;
   payouts_enabled: boolean;
 } | null> {
   const { url, serviceRoleKey } = getSupabaseAdminConfig();
   const res = await fetch(
     `${url}/rest/v1/contractors?id=eq.${encodeURIComponent(
       contractor_id,
-    )}&select=id,name,email,stripe_connect_account_id,payouts_enabled&limit=1`,
+    )}&select=id,name,email,stripe_connect_account_id,stripe_charges_enabled,payouts_enabled&limit=1`,
     { headers: adminHeaders(serviceRoleKey), cache: "no-store" },
   );
   if (!res.ok) return null;
@@ -174,6 +185,7 @@ export async function getContractorStripeRow(
     name: string;
     email: string | null;
     stripe_connect_account_id: string | null;
+    stripe_charges_enabled: boolean;
     payouts_enabled: boolean;
   }>;
   return rows[0] ?? null;

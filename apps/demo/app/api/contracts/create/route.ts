@@ -170,12 +170,19 @@ export async function POST(request: NextRequest) {
     candidateIds = [body.winner_id, ...candidateIds];
   }
 
-  // 2. Look up the winner & verify they can receive payouts
+  // 2. Look up the winner & verify they can receive platform payments.
+  //
+  // Gate semantics: a destination charge with transfer_data.destination
+  // requires the connected account's `charges_enabled` flag. That's the
+  // ability to RECEIVE platform funds. `payouts_enabled` is whether the
+  // contractor can then move those funds from their Stripe balance to
+  // their bank — Stripe verifies that asynchronously and we don't block
+  // on it (was the gate originally, was too strict, fixed 2026-06-04).
   const winner = await getContractorStripeRow(body.winner_id);
   if (!winner) return bad("contractor not found", 404);
-  if (!winner.stripe_connect_account_id || !winner.payouts_enabled) {
+  if (!winner.stripe_connect_account_id || !winner.stripe_charges_enabled) {
     return bad(
-      "This contractor hasn't completed payouts onboarding yet — pick someone else or try again later.",
+      "This contractor isn't set up to accept payments through 6 yet — pick someone else, or check back after they've finished setup.",
       409,
     );
   }
