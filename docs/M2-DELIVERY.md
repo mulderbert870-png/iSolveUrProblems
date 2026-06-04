@@ -26,7 +26,7 @@ This document tells you exactly what shipped in Milestone 2, where each piece is
 4. **Decide platform fee %** (1 minute — recommended 5%)
 5. **`ADMIN_SECRET`** for the admin endpoints (you generate it locally)
 6. **Optional — `SERPAPI_API_KEY`** if you want real contractor data instead of the built-in mock dataset
-7. **Three new Supabase migrations** to apply
+7. **Four new Supabase migrations** to apply
 
 Details below.
 
@@ -361,14 +361,15 @@ The app ships with a **mock data adapter** that produces realistic contractor re
 
 You can subscribe and swap to SerpAPI at any time — no code changes; the adapter slot already exists. (When you're ready, let me know and I'll write the SerpAPI adapter implementation.)
 
-### 7. Three Supabase migrations to apply
+### 7. Four Supabase migrations to apply
 
 Run in the Supabase Dashboard → **SQL Editor** in this order:
 
 ```
-apps/demo/supabase/migrations/20260520_contractors.sql           — M2.1
-apps/demo/supabase/migrations/20260527_contractor_summaries.sql  — M2.3
-apps/demo/supabase/migrations/20260602_payments.sql              — M2.5
+apps/demo/supabase/migrations/20260520_contractors.sql                       — M2.1
+apps/demo/supabase/migrations/20260527_contractor_summaries.sql              — M2.3
+apps/demo/supabase/migrations/20260602_payments.sql                          — M2.5
+apps/demo/supabase/migrations/20260604_contractors_charges_enabled.sql       — M2.5 fix: gate on charges_enabled
 ```
 
 Or via the Supabase CLI: `supabase migration up`.
@@ -457,7 +458,7 @@ STRIPE_CHECKOUT_RETURN_PATH=/checkout
 
 ## How to verify the build works (smoke test)
 
-After applying the 3 migrations + setting `ADMIN_SECRET`:
+After applying the 4 migrations + setting `ADMIN_SECRET`:
 
 1. **Seed contractor data** (once).
 
