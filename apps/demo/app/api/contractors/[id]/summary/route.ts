@@ -8,6 +8,44 @@ import {
   summarizeReviews,
   upsertContractorSummary,
 } from "../../../../../src/lib/contractors";
+import type { SummarizeFailureReason } from "../../../../../src/lib/contractors/summarize";
+
+/**
+ * Map each internal failure reason to a SHORT, user-facing message
+ * (rendered in the inline panel) and a stable HTTP status code. The
+ * raw diagnostic ('debug' field) is set separately and surfaces in
+ * the JSON response body for DevTools inspection.
+ */
+const FAILURE_COPY: Record<
+  SummarizeFailureReason,
+  { status: number; userMessage: string }
+> = {
+  openai_not_configured: {
+    status: 503,
+    userMessage: "6's summarizer is offline right now. Try again later.",
+  },
+  too_few_reviews: {
+    status: 422,
+    userMessage:
+      "Not enough reviews yet — 6 needs at least 3 with text to summarize.",
+  },
+  llm_http_error: {
+    status: 502,
+    userMessage: "6 couldn't reach the summarizer. Try again in a moment.",
+  },
+  llm_fetch_threw: {
+    status: 502,
+    userMessage: "6 couldn't reach the summarizer. Try again in a moment.",
+  },
+  llm_parse_failed: {
+    status: 502,
+    userMessage: "6's summarizer returned something odd. Try again.",
+  },
+  llm_empty_summary: {
+    status: 502,
+    userMessage: "6 couldn't produce a useful summary. Try again.",
+  },
+};
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -45,7 +83,13 @@ export async function POST(
 
   const { id } = await context.params;
   if (!isUuid(id)) {
-    return NextResponse.json({ error: "invalid contractor id" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "That contractor link doesn't look right.",
+        debug: `received id '${id}' did not match UUID regex`,
+      },
+      { status: 400 },
+    );
   }
 
   let existing;
@@ -53,7 +97,10 @@ export async function POST(
     existing = await getContractorSummary(id);
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "read failed" },
+      {
+        error: "Something went wrong on our end. Try again in a moment.",
+        debug: `getContractorSummary threw: ${e instanceof Error ? e.message : "unknown"}`,
+      },
       { status: 500 },
     );
   }
@@ -63,12 +110,21 @@ export async function POST(
     data = await getContractorWithReviews(id);
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "read failed" },
+      {
+        error: "Something went wrong on our end. Try again in a moment.",
+        debug: `getContractorWithReviews threw: ${e instanceof Error ? e.message : "unknown"}`,
+      },
       { status: 500 },
     );
   }
   if (!data) {
-    return NextResponse.json({ error: "contractor not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error: "We couldn't find that contractor.",
+        debug: `no contractor row for id '${id}'`,
+      },
+      { status: 404 },
+    );
   }
 
   const stale = isSummaryStale({
@@ -88,25 +144,38 @@ export async function POST(
     reviews: data.reviews,
   });
 
-  if (!fresh) {
+  if (!fresh.ok) {
+    // Stale cache is better than nothing — serve it if we have one.
     if (existing) {
-      // Generation failed; fall back to whatever's cached.
       return NextResponse.json({ cached: true, summary: existing });
     }
+    const copy = FAILURE_COPY[fresh.reason];
     return NextResponse.json(
-      { error: "not enough review signal to summarize" },
-      { status: 422 },
+      {
+        error: copy.userMessage,
+        reason: fresh.reason,
+        debug: fresh.debug,
+        // Helpful counts so inspection can confirm DB shape at a glance.
+        review_count_total: data.reviews.length,
+        review_count_with_body: data.reviews.filter(
+          (r) => typeof r.body === "string" && r.body.trim().length > 0,
+        ).length,
+      },
+      { status: copy.status },
     );
   }
 
   try {
     await upsertContractorSummary({
       contractorId: id,
-      summary: fresh,
+      summary: fresh.summary,
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "store failed" },
+      {
+        error: "Couldn't save the summary just now. Try again in a moment.",
+        debug: `upsertContractorSummary threw: ${e instanceof Error ? e.message : "unknown"}`,
+      },
       { status: 500 },
     );
   }
@@ -114,7 +183,7 @@ export async function POST(
   return NextResponse.json({
     cached: false,
     summary: {
-      ...fresh,
+      ...fresh.summary,
       contractor_id: id,
       generated_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

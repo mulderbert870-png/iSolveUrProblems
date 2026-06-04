@@ -1026,7 +1026,7 @@ function SummaryPanel({ state }: { state: SummaryState | undefined }) {
   if (state.status === "error") {
     return (
       <div className="mt-2 rounded-md border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-200">
-        {t("summary.error")}: {state.message}
+        {state.message}
       </div>
     );
   }

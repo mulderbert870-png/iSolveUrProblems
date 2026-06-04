@@ -49,6 +49,37 @@ What's there:
 - Dedupe logic on (normalized phone) ∪ (name+address)
 - 15-category fixed taxonomy: plumber, electrician, HVAC, roofer, landscaper, painter, handyman, general, carpenter, flooring, appliance, cleaning, pest, garage door, window
 
+**How to verify in-app:**
+M2.1 is the data layer — there's no UI screen dedicated to it. The first user-facing surface that proves M2.1 works is M2.2's contractor results (next module): if you can search and see cards on `/en/contractors`, M2.1 is alive end-to-end.
+
+The one explicit ops step you do once (since the admin dashboard is post-M2):
+
+**Windows PowerShell** (native, recommended on Windows):
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://localhost:3001/api/admin/contractors/seed" `
+  -Method POST `
+  -Headers @{ "Authorization" = "Bearer $env:ADMIN_SECRET" } `
+  -ContentType "application/json" `
+  -Body "{}"
+```
+
+**Bash / WSL / Git Bash:**
+
+```bash
+curl -X POST http://localhost:3001/api/admin/contractors/seed \
+  -H "Authorization: Bearer $ADMIN_SECRET" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+Response should report `total_contractors > 0` and `total_reviews > 0`. Optional Supabase check:
+
+```sql
+select count(*), source from contractors group by source;
+select count(*) from contractor_reviews;
+```
+
 ### M2.2 — Preference-tuned search
 
 **Vision ¶10:** *"Price? Same day service? Locally owned business? 4.5 rated or higher?"*
@@ -59,6 +90,19 @@ What's there:
 - Composite score: `0.55 × rating × confidence + 0.45 × distance score`
 - Result cards: name, ★ rating + review count, distance km, $/$$/$$$/$$$$, Licensed / Same-day / Locally-owned badges, match score, phone/website
 - **6 can run the search from chat**: a `search_contractors` OpenAI function tool is wired into `/api/openai-chat-complete`. Ask 6 *"find me a top-rated plumber near Austin"* and 6 fetches + summarizes inline.
+
+**How to verify in-app:**
+
+*Page check:*
+1. Visit `http://localhost:3001/en/contractors` (or `/es/contractors`, `/fr/contractors`, etc.) — form is pre-filled with **Plumber**, Austin coords, 25 km radius, min rating 4.5.
+2. Click **Search** → result cards render with name, ★ rating, distance km, $/$$/$$$/$$$$, Licensed / Same-day / Locally-owned badges, match score, phone/website.
+3. Tick **Locally owned only** → click **Search** → result set shrinks; every remaining card carries the *Locally owned* badge.
+4. Lower **Minimum rating** to 0 and raise **Radius** to 100 → more cards appear, broader variety.
+5. Click **Use my location** → lat/lng switch to your real coords; if you're far from Austin the result list goes empty — that proves the radius filter works.
+
+*Chat check:*
+1. On the home page, start a session and tell 6: *"Find me a top-rated plumber near Austin, Texas."*
+2. 6 calls the search tool server-side and reads back a short list of candidates in your selected language. If 6 doesn't know your location, it asks; tell it "Austin, TX" and it'll re-call with approximate coords.
 
 ### M2.3 — Review summarizer + strengths/weaknesses
 
@@ -71,6 +115,24 @@ What's there:
 - Templated fallback if OpenAI call fails — never blocks the user-facing render
 - Cost: ≈ $0.005 per summary, summarized once per contractor every 30 days
 
+**How to verify in-app:**
+
+1. On `/en/contractors`, run a search (any category) → result cards appear.
+2. On any card, click **Tell me more** (zinc button on the right of the contact row).
+3. The panel expands and shows *"6 is summarizing reviews…"* for ~2–5 seconds.
+4. The panel then renders:
+   - 1–2 sentence overview at the top
+   - Green **Strengths** bullet list
+   - Rose **Watch-outs** bullet list (if reviews are mixed)
+   - 2–3 italic **sample quotes** with star ratings
+   - Top-right corner shows **Fresh** (first generation)
+5. Click **Hide details** → panel collapses. Click **Tell me more** again on the same card → panel re-opens *instantly* with the top-right corner now reading **Cached** (proves the LLM wasn't re-called).
+6. *Edge-case check:* find a low-review contractor (e.g. drop **Min rating** to 0, raise **Radius**) → click **Tell me more** on a card with few reviews → you should see *"Couldn't summarize reviews: not enough review signal to summarize"* (the 422 branch is supposed to do this).
+
+*Cross-locale check:* switch language via the locale picker → click **Tell me more** → labels (Strengths, Watch-outs, What people say, Cached) appear in the chosen language. Summary body itself stays in whatever language the reviews were written in — expected for v1.
+
+*Backend fallback:* `select count(*) from contractor_summaries;` should equal the number of unique cards expanded since the migration was applied.
+
 ### M2.4 — 6's recommendation engine
 
 **Vision ¶11:** *"make recommendations on which contractors he prefers"*
@@ -81,6 +143,29 @@ What's there:
 - Top-5 algorithmic candidates handed to `gpt-4o-mini` (JSON mode) — model picks the final 3 and writes a 1-line reason per pick. Templated fallback on LLM failure.
 - UI: **Get 6's picks** button on the contractors page produces a gold-bordered panel with the 3 ranked picks, each carrying a natural-language reason
 - `recommend_contractors` OpenAI function tool wired into the chat: ask 6 *"which one should I pick?"* and 6 runs the recommender
+
+**How to verify in-app:**
+
+*Page check:*
+1. On `/en/contractors`, fill the form (Plumber, Austin coords, 25 km, min rating 4.5) — no need to Search first.
+2. Click **Get 6's picks** (amber-outlined button next to **Search**).
+3. After ~2–4 seconds an amber-bordered panel appears titled **6's top picks** with **3 picks**.
+4. Each pick card shows:
+   - `#1`, `#2`, `#3` ranking
+   - Contractor name + ★ rating + distance + price tier
+   - A 1-sentence natural-language reason 6 wrote (e.g. *"Top rating with 200+ reviews and they're the closest to you"*)
+   - Phone / Website links
+5. Tighten the filters (raise min rating to 4.8, tick Locally owned) → click **Get 6's picks** again → the picks rerank or shrink.
+
+*Personalization check (the M1.2 tie-in):*
+1. Sign in (`/auth/sign-in`).
+2. In a chat session, tell 6 something like *"I prefer locally-owned businesses"* — 6 silently writes that to your memory facts.
+3. Visit `/en/account/memory` to confirm the preference fact was stored.
+4. Go back to `/en/contractors` → click **Get 6's picks** → above the picks the panel now shows *"Tuned by what 6 remembers: prefers locally-owned"* (or similar) and locally-owned contractors are bumped up in the ranking.
+
+*Chat check:*
+1. On the home page, ask 6 *"Which plumber should I pick near Austin?"*
+2. 6 calls the `recommend_contractors` tool and reads back the 3 picks with their reasons in your selected language.
 
 ### M2.5 — Payments + platform cut + payouts
 
@@ -98,6 +183,53 @@ What's there:
 - Platform fee defaults to **5%** (Q2.5c — overridable via `PLATFORM_FEE_PERCENT` env)
 - Currency: **USD only** (Q2.5d — overridable via `PLATFORM_CURRENCY` env)
 
+**How to verify in-app:**
+
+This has two states depending on whether Stripe is configured.
+
+*State A — Stripe NOT configured (today, before SG Dietz hands over keys):*
+1. On `/en/contractors`, run a search.
+2. On any result card, click **Hire & pay** (solid amber button).
+3. A `window.prompt` asks for the agreed dollar amount → enter e.g. `500` → click OK.
+4. A rose-bordered notice appears at the top of the results: *"Couldn't start payment: Payments aren't configured yet on the platform. 6 will be ready to charge once Stripe keys are set."*
+
+That is the in-app verification — it confirms the route is wired, the auth gate works, and the 503 surface degrades cleanly. M2.6's simulated **Pick this one** flow (next module) still works without payments.
+
+*State B — Stripe configured (test mode is fine):*
+1. With test keys in `.env.local`, run `stripe listen --forward-to localhost:3001/api/webhooks/stripe` in a side terminal.
+2. Create a Connect Express test account in the Stripe Dashboard and copy its `acct_…` id.
+3. Attach it to a real contractor row.
+
+   **Windows PowerShell:**
+   ```powershell
+   Invoke-RestMethod `
+     -Uri "http://localhost:3001/api/admin/contractors/connect" `
+     -Method POST `
+     -Headers @{ "Authorization" = "Bearer $env:ADMIN_SECRET" } `
+     -ContentType "application/json" `
+     -Body (@{
+         contractor_id              = "<uuid>"
+         stripe_connect_account_id  = "acct_..."
+       } | ConvertTo-Json -Compress)
+   ```
+
+   **Bash / WSL / Git Bash:**
+   ```bash
+   curl -X POST http://localhost:3001/api/admin/contractors/connect \
+     -H "Authorization: Bearer $ADMIN_SECRET" \
+     -H "Content-Type: application/json" \
+     -d '{"contractor_id":"<uuid>","stripe_connect_account_id":"acct_..."}'
+   ```
+
+4. On `/en/contractors`, find that contractor → click **Hire & pay** → enter `500` → browser redirects to Stripe Checkout.
+5. Pay with `4242 4242 4242 4242` (any CVC, any future expiry) → Stripe redirects back to `/en/checkout/<contract_id>?ok=1`.
+6. The return page shows:
+   - Title **Payment received**
+   - **Amount:** `500.00 USD`
+   - **Platform fee:** `25.00 USD` (5%)
+   - **Status:** `paid`
+7. Supabase: `select status, amount_cents, platform_fee_cents, stripe_transfer_id from contracts;` — row is `status=paid`, fee=2500, transfer id populated.
+
 ### M2.6 — Win/lose contractor notifications + feedback
 
 **Vision ¶19:** *"6 can deliver the news to the contractors that win the projects, and those that do not… give them feedback… always in a friendly, warm manner."*
@@ -110,6 +242,35 @@ What's there:
   - **Simulated:** `POST /api/contractors/pick` lets a signed-in user simulate the trigger without payment — useful for testing while Stripe isn't configured yet. Rows are tagged `context.simulation=true` so reconciliation can distinguish them.
 - **UI:** emerald **Pick this one** button (simulation) + amber **Hire & pay** button (real Stripe flow) on every result card and recommend pick. Result panel shows winner channel + status and a list of each notified loser.
 - All deliveries flow through the M1.7 fabric → audit rows in `notifications_sent`. Vendor errors (mock data has no email + Twilio not configured yet) show up cleanly as `status='failed'` with the vendor reason in the row.
+
+**How to verify in-app:**
+
+*Simulated trigger (works today, no Stripe needed):*
+1. Sign in (`/auth/sign-in`) and visit `/en/contractors`.
+2. Run a search → result cards appear.
+3. On any card, click **Pick this one** (emerald-outlined button).
+4. A browser confirm dialog explains what will happen: *"Picking this contractor will send a win notification to them and a 'thanks, here's how to win next time' note to every other candidate. Continue?"* → click OK.
+5. The button text changes to *"Notifying…"* for ~3–8 seconds.
+6. An emerald-bordered panel appears titled **6 has notified the candidates**, showing:
+   - Header subtitle like *"3 sent · 17 failed"*
+   - **Winner** card with their channel (email/sms) and `delivered` / `failed`
+   - List of every other candidate with their channel and status
+7. Vendor failures (most rows) are *expected* with the current setup — mock contractors mostly have no email, Twilio isn't configured yet. The point is the trigger fired and 20 audit rows now exist:
+   ```sql
+   select template_id, channel, status, count(*)
+     from notifications_sent
+     where template_id like 'contractor.%'
+     group by template_id, channel, status;
+   ```
+
+*Recommend → Pick flow:*
+1. Click **Get 6's picks** → amber panel populates.
+2. Each pick card also has **Pick this one** on the right → click → same fan-out flow.
+
+*Real Stripe trigger (after State B above in M2.5):*
+- A successful Stripe Checkout payment auto-fires the same fan-out via the `payment_intent.succeeded` webhook handler. After a successful test charge, check `notifications_sent` — new win + lose rows tagged `context.triggered_by='stripe.payment_intent.succeeded'` (vs. `context.simulation=true` for the **Pick this one** path).
+
+*Why most notifications show 'failed' on mock data:* mock contractors have `email: null` and fake phone numbers; M1's Resend domain is unverified and Twilio number isn't configured yet. The fabric records vendor errors honestly in the audit row. The moment SG Dietz wires up Resend domain + Twilio number (see [M1-DELIVERY.md](M1-DELIVERY.md)) — and real SerpAPI data has real contact info — deliveries start succeeding with zero code change.
 
 ---
 
@@ -155,7 +316,7 @@ Once Connect is enabled, grab these from the Stripe Dashboard and put them in yo
 
 For local dev, use the Stripe CLI:
 ```
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
+stripe listen --forward-to localhost:3001/api/webhooks/stripe
 ```
 The CLI prints a `whsec_…` to use during development.
 
@@ -298,12 +459,25 @@ STRIPE_CHECKOUT_RETURN_PATH=/checkout
 
 After applying the 3 migrations + setting `ADMIN_SECRET`:
 
-1. **Seed contractor data** (once):
+1. **Seed contractor data** (once).
+
+   **Windows PowerShell:**
+   ```powershell
+   Invoke-RestMethod `
+     -Uri "http://localhost:3001/api/admin/contractors/seed" `
+     -Method POST `
+     -Headers @{ "Authorization" = "Bearer $env:ADMIN_SECRET" } `
+     -ContentType "application/json" `
+     -Body "{}"
    ```
-   curl -X POST http://localhost:3000/api/admin/contractors/seed \
+
+   **Bash / WSL / Git Bash:**
+   ```bash
+   curl -X POST http://localhost:3001/api/admin/contractors/seed \
      -H "Authorization: Bearer $ADMIN_SECRET" \
-     -H "Content-Type: application/json" -d "{}"
+     -H "Content-Type: application/json" -d '{}'
    ```
+
    Should report `total_contractors > 0`.
 
 2. **Open** `/en/contractors` → see the search form pre-filled with **Plumber**, **Austin coords**, **25 km**, **min rating 4.5** → click **Search** → result cards render.
@@ -317,14 +491,29 @@ After applying the 3 migrations + setting `ADMIN_SECRET`:
 6. **Click Hire & pay** without Stripe configured → see the friendly *"Payments aren't configured yet"* error notice. This verifies the 503 gate is wired correctly.
 
 7. **Once Stripe keys are in `.env`:**
-   - Run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+   - Run `stripe listen --forward-to localhost:3001/api/webhooks/stripe`
    - Create a Connect test account in Stripe Dashboard → copy its `acct_…` id
-   - Attach to a real contractor row:
+   - Attach to a real contractor row.
+
+     **Windows PowerShell:**
+     ```powershell
+     Invoke-RestMethod `
+       -Uri "http://localhost:3001/api/admin/contractors/connect" `
+       -Method POST `
+       -Headers @{ "Authorization" = "Bearer $env:ADMIN_SECRET" } `
+       -ContentType "application/json" `
+       -Body (@{
+           contractor_id              = "<contractor-uuid>"
+           stripe_connect_account_id  = "acct_..."
+         } | ConvertTo-Json -Compress)
      ```
-     curl -X POST http://localhost:3000/api/admin/contractors/connect \
-       -H "Authorization: Bearer $ADMIN_SECRET" \
+
+     **Bash / WSL / Git Bash:**
+     ```bash
+     curl -X POST http://localhost:3001/api/admin/contractors/connect \
+       -H "Authorization: Bearer 4e9094ea7ab17bced5d461229b38e9c43110e9ae2490b3f7ee1dfd1b8d867038" \
        -H "Content-Type: application/json" \
-       -d '{"contractor_id":"<uuid>","stripe_connect_account_id":"acct_..."}'
+       -d '{"contractor_id":"59f56bf5-19bd-423c-9849-2cc13f5cc80e","stripe_connect_account_id":"acct_1TeIabAQ3hU7PzWU"}'
      ```
    - Run search → click **Hire & pay** on that contractor → enter `500` → redirected to Stripe Checkout → pay with `4242 4242 4242 4242` → land on `/en/checkout/<id>?ok=1`
    - Supabase: `select status, amount_cents, platform_fee_cents from contracts;` → status=paid, fee=2500 (5% of 50000)
