@@ -78,7 +78,7 @@ Roughly paragraphs 3–7 of the vision doc are partially live. Everything from p
 
 | # | Feature | Notes |
 |---|---|---|
-| M3.0 | Voice-first foundation (brain pivot to CUSTOM/LITE, overlay UI, transcript wiring) | *Enabling infrastructure — implied by vision ¶8 + ¶26 voice-first model. Ships before any M3.x.* |
+| M3.0 | Voice-first foundation (overlay UI + transcript wiring + intent classifier + context-injection orchestrator) | *Enabling infrastructure — implied by vision ¶8 + ¶26 voice-first model. Ships before any M3.x. Stays in FULL avatar mode; voice-driven tool calls work via the context-injection pattern proven in the existing image-analysis flow.* |
 | M3.1 | 3-way phone calls (user + contractor + 6) | Vision ¶12 — "real-time three-way conversations between users and contractors — he can literally be on the phone or videophone". **Built spike-first.** |
 | ~~M3.2~~ | ~~3-way video calls~~ | **Deferred per SG Dietz 2026-06-04.** Phone is the priority; video can be added later if it matters. Vision ¶12 anchor preserved for the future. |
 | M3.3 | Full call recording + searchable transcript index | Vision ¶12 — "it will all be on record". Ships only if M3.1 spike succeeds. |
@@ -147,3 +147,6 @@ Roughly paragraphs 3–7 of the vision doc are partially live. Everything from p
 | 1 | Initial 5-milestone plan derived from vision doc | SG Dietz / Claude |
 | 2 | Removed all timeline / duration / calendar content — roadmap is now scope-only | Bert / Claude |
 | 3 | M3 pivoted to voice + avatar first; M3.2 video deferred; M3.1 calling becomes spike-first; explicit "voice test drive" deliverable for SG Dietz before heavy build | SG Dietz / Bert / Claude (2026-06-04) |
+| 4 | M3 architecture refined: stay in FULL avatar mode; phone-call pipeline absorbs M3.6 (voice estimates) + M3.9 (dispute); M3.8 (decision support) ships as drawer text v1; CUSTOM-mode fix deferred to optional Phase 4 behind explicit SG Dietz greenlight | Bert / Claude (2026-06-05) |
+| 5 | Bert spotted context-injection pattern already in production in image-analysis flow ([LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978)): backend computes a result, wraps it as a "context message" prompt, and sends via `session.message()` so HeyGen's FULL-mode brain narrates the actual data. M3.0e refactored from "detect-and-populate-drawer-only" to "detect-and-inject-into-brain"; M3.8 voice-on-avatar surface promoted from "Phase 4 only" to "v1 viable"; CUSTOM-mode spike further demoted to truly-optional | Bert / Claude (2026-06-05) |
+| 6 | CUSTOM-mode fix spike **removed from M3 scope entirely.** On honest review, every M3 conversational feature is satisfied by either (a) the context-injection pattern on the avatar UI, or (b) the phone-call pipeline (M3.6, M3.9). No concrete M3 deliverable depends on CUSTOM mode. The 1–2 week spike is moved to a Future Considerations note — revisited only if a future-milestone feature genuinely requires it | Bert / Claude (2026-06-05) |

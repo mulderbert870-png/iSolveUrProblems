@@ -9,6 +9,18 @@
 > - **No M3.2 video.** Phone only. Video can come later if there's demand.
 > - **M3.1 phone calling is spike-first.** Prove feasibility quickly with a small test, then build everything else in parallel so a stuck calling track doesn't block M3.
 > - **First deliverable is SG Dietz's voice test drive** — 6 talking him through finding a contractor, start to finish, on mock data. Ships immediately after M3.0 lands, before heavier work.
+>
+> **Audio-pipeline reality (added 2026-06-05 after revisiting earlier CUSTOM-mode test results):**
+> - **Avatar UI stays in FULL mode.** The earlier CUSTOM-mode test had 5–10 s end-to-end latency and **silent audio on iPhone**. Both are real, observed problems — not theoretical. Fixing them properly is ~1–2 weeks of focused work (streaming OpenAI, streaming ElevenLabs, iOS audio-injection path). We do not pay that cost as a prerequisite for M3.
+> - **Conversational vision-anchored features move to the phone-call pipeline** where we control latency end-to-end and iOS audio isn't in the picture (it's a phone call). That covers M3.6 voice estimates (vision ¶17 — *"as the contractor drives down the road"* literally implies phone) and M3.9 dispute mediation.
+> - **M3.0d test drive** uses an intent classifier on `USER_TRANSCRIPTION` events + the **context-injection pattern** (see next major section): backend computes the result, wraps it as a "context message" prompt, sends via `session.message()` so HeyGen's brain narrates the actual data through its native low-latency pipeline. Drawer cards populate as visual reinforcement.
+>
+> **The Context-Injection Discovery (added 2026-06-05 after Bert identified the pattern):**
+> - **The image-analysis flow already in production proves we can feed backend results into HeyGen's FULL-mode brain.** See [LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978). After our `/api/analyze-image` returns a vision LLM description, the client wraps it in a `[IMAGE CONTEXT — not spoken by user]` prompt and sends it via `session.message()`. HeyGen's brain narrates the actual image content as if it had perceived it directly. This same mechanism works for *any* backend result, not just images.
+> - **M3.0e refactored from "detect-and-populate-drawer-only" to "detect-and-inject-into-brain".** The intent classifier no longer just fires backend actions in parallel to whatever HeyGen's brain happens to say — it actively hands the brain the actual data via a context message. HeyGen narrates the real result with its native low-latency pipeline; the drawer reinforces visually.
+> - **M3.8 decision support runs as voice-on-avatar v1** via context injection (was originally planned as drawer text only). Voice-driven re-rank ("not that one, too far") works the same way — each refinement gets a fresh injection. Drawer compare panel stays as visual reinforcement.
+>
+> **CUSTOM mode removed from M3 scope entirely (2026-06-05).** On honest review, every M3 conversational feature is satisfied by either the context-injection pattern on the avatar UI or the phone-call pipeline. No concrete M3 deliverable depends on CUSTOM mode. The earlier "Optional Phase 4 fix spike" is dropped — see [Future Considerations](#future-considerations) for the conditions under which a future milestone might revisit it.
 
 This doc has two audiences:
 - **The dev team** — uses the per-feature sub-task lists, dependency graph, and the M3.0 architecture-pivot section to plan the build.
@@ -30,23 +42,105 @@ What changes: the **face** on top. The `/contractors` form page (dropdowns, slid
 
 ---
 
+## The Context-Injection Pattern (architectural foundation for M3.0d–M3.0e)
+
+This pattern is the single most important piece of architecture in M3. It explains how voice-driven tool calling works without CUSTOM mode.
+
+### The mechanism
+
+The existing image-analysis flow at [LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978) demonstrates the pattern. After a backend call computes a result, the client wraps that result in a prompt and sends it to the avatar as if it were a user message:
+
+```typescript
+const contextMessage = `[IMAGE CONTEXT — not spoken by user]
+Vision just processed an image the user captured. You are viewing it
+directly. Here is what's in it: ${analysis}.
+Respond naturally in first person as 6, tie what you see to the ongoing
+conversation… Respond briefly (1-2 sentences). Never say you can't see
+it or that you're relying on someone else's analysis — you can see it
+directly.`;
+sessionRef.current.message(contextMessage);
+```
+
+HeyGen's FULL-mode brain receives this through the same channel as a real user message, reads the wrapper instructions, and generates a natural-sounding response grounded in the *actual data we computed on our backend*. Subsequent conversational turns include this in HeyGen's context window, so 6 can keep talking about the image (or contractor, or estimate) coherently.
+
+### What this means for tool calling in FULL mode
+
+The naive view ("FULL mode brain has no HTTP, so we need CUSTOM for tool calling") is technically true but practically wrong. In practice:
+
+```
+Voice-triggered tool call in FULL mode:
+
+  1. User speaks: "find me a plumber"
+  2. HeyGen receives audio → STT → text "find me a plumber"
+  3. SDK fires USER_TRANSCRIPTION event with that text
+  4. Our M3.0e intent classifier reads the transcript
+  5. Our backend calls /api/contractors/search
+  6. We construct a context message wrapping the results
+  7. We send it via session.message() — optionally after AVATAR_INTERRUPT
+     if HeyGen's brain has already started replying generically
+  8. HeyGen's brain narrates the actual results in its low-latency
+     native pipeline (~1–2s, iPhone-safe)
+  9. In parallel, the drawer state store renders cards as visual
+     reinforcement
+```
+
+The brain effectively gets "function-call results" delivered as a fake user message. It doesn't know it's a workaround — it just sees more conversational context and responds accordingly.
+
+### Where this pattern works and where it doesn't
+
+| Scenario | Pattern fits? |
+|---|---|
+| User asks for contractor list ("find a plumber") | ✅ Strong fit — we compute, inject, brain narrates the result |
+| User asks 6 to recommend ("which one should I pick?") | ✅ Strong fit — same pattern, brain narrates the top pick + reason |
+| User confirms an action ("book the first one") | ✅ Strong fit — backend fires the action, injection confirms ("Done — they'll be in touch shortly") |
+| User asks 6 to summarize reviews on a card | ✅ Strong fit — summary text injected as context |
+| Decision-support back-and-forth ("not that one, too expensive") | ✅ Strong fit — re-run with new constraint, inject new result |
+| Real-time bidirectional tool chains mid-utterance (rare in our domain) | ⚠️ Theoretically a CUSTOM-mode use case, but no concrete M3 feature actually requires it — see [Future Considerations](#future-considerations) |
+| Phone-call estimate generation (contractor talks, 6 builds estimate live) | ❌ Different surface — runs on M3.1 phone pipeline, not avatar UI |
+
+The "doesn't fit" rows are narrow and not in the M3 critical path. Almost everything M3 needs to do at the avatar UI fits the context-injection pattern.
+
+### The one real concurrency risk
+
+When the trigger is voice (not a UI button), HeyGen's brain may already be generating a generic response (*"Sure, let me check…"*) by the time our backend search completes and we send the context message. Three ways to handle it:
+
+| Strategy | UX feel | Implementation |
+|---|---|---|
+| **`AVATAR_INTERRUPT` then inject** | Avatar pivots mid-sentence to the actual result | Cleaner result, slight cut-off feel |
+| **Wait for `AVATAR_SPEAK_ENDED`, then inject** | Natural "let me check… OK, found 5 plumbers" rhythm | Adds the brain's initial response time to the loop |
+| **Just inject and let HeyGen handle the queue** | Untested — HeyGen may merge or queue both messages | Cheapest, needs measurement |
+
+We pick the strategy in the M3.0e implementation. v1 default: **wait for `AVATAR_SPEAK_ENDED`** — feels closest to a real assistant looking something up.
+
+### Why CUSTOM mode is no longer in M3 scope
+
+Earlier I treated CUSTOM mode as the only real path to voice-driven tool calling. Pressure-testing that claim against the context-injection pattern, the supposed CUSTOM-mode-only use cases (mid-utterance tool chains, token-by-token LLM control, latency) all either:
+
+- **Aren't real M3 features** — they were "what if" scenarios, not vision-anchored deliverables, or
+- **Are actually satisfied by context injection** in a way that's at least as natural as CUSTOM would be
+
+Combined with the real, observed CUSTOM-mode regressions from the prior attempt (5–10 s latency, silent iPhone audio — a 1–2 week fix project), the honest call is: **drop CUSTOM mode from M3 scope entirely.** Document it in [Future Considerations](#future-considerations) so a future milestone can revisit only if a concrete feature genuinely requires it.
+
+---
+
 ## What M3 Delivers
 
 The 9 vision-anchored features below + a foundation pre-step. Each vision-anchored entry has a paragraph reference; M3.0 is enabling infrastructure (no vision anchor — it makes the rest possible).
 
-| # | Feature | Vision anchor |
-|---|---|---|
-| M3.0 | Voice-first foundation (brain pivot + overlay UI + transcript wiring) | *Enabling infrastructure — no vision anchor; ¶8 + ¶26 imply the voice-first model* |
-| **M3.0d** | **🎯 SG Dietz voice test drive on mock data** | *First deliverable he sees — proves M3.0 works end-to-end through M2's engine* |
-| M3.1 | 3-way phone calls (homeowner + contractor + 6) | ¶12 — *"real-time three-way conversations between users and contractors — he can literally be on the phone or videophone"*. **Spike-first.** |
-| ~~M3.2~~ | ~~3-way video calls~~ | **Deferred per SG Dietz 2026-06-04.** Anchor preserved: ¶12 — *"videophone… 3-way conversation"*. May ship in a later milestone if user demand warrants. |
-| M3.3 | Full call recording + searchable transcript index | ¶12 — *"it will all be on record"*. Ships only if the M3.1 spike succeeds. |
-| M3.4 | Appointment & reminder agent | ¶14 — *"before meetings or when work is to occur, 6 will message both parties to make sure they'll be on time and ready"* |
-| M3.5 | Auto-reschedule flow | ¶14 — *"If not, he'll coordinate rescheduling"* |
-| M3.6 | Voice-driven estimate generator (contractor talks → line-item estimate) | ¶17 — *"help estimate projects… simply by talking to the contractor, which can be done as the contractor drives down the road"* |
-| M3.7 | Contract drafter + e-signature delivery | ¶17 — *"write up contracts… deliver the contract in writing in their email box"* |
-| M3.8 | Decision-support chat ("which contractor should I pick?") | ¶18 — *"help the user work through uncertainties and come to decisions"* |
-| M3.9 | Dispute mediator agent | ¶16 — *"6 will be the front line for disputes, to help work out problems in the moment"* |
+| # | Feature | Surface | Vision anchor |
+|---|---|---|---|
+| M3.0 | Voice-first foundation (overlay UI + transcript wiring + intent classifier) | Avatar (FULL) | *Enabling infrastructure — no vision anchor; ¶8 + ¶26 imply the voice-first model* |
+| ~~M3.0a~~ | ~~Brain pivot FULL → CUSTOM~~ | — | **Deferred.** Last attempt had 5–10 s latency + silent audio on iPhone. Re-attempt requires a ~1–2 week fix spike, only on SG Dietz greenlight. M3 ships without it. |
+| **M3.0d** | **🎯 SG Dietz voice test drive on mock data** | Avatar (FULL) + drawer | *First deliverable — intent-classifier-driven drawer population + HeyGen narration* |
+| M3.1 | 3-way phone calls (homeowner + contractor + 6) | Phone (Twilio) | ¶12 — *"real-time three-way conversations between users and contractors — he can literally be on the phone or videophone"*. **Spike-first.** |
+| ~~M3.2~~ | ~~3-way video calls~~ | — | **Deferred per SG Dietz 2026-06-04.** Anchor preserved: ¶12 — *"videophone… 3-way conversation"*. May ship in a later milestone if user demand warrants. |
+| M3.3 | Full call recording + searchable transcript index | Phone (Twilio) | ¶12 — *"it will all be on record"*. Ships only if the M3.1 spike succeeds. |
+| M3.4 | Appointment & reminder agent | Backend job | ¶14 — *"before meetings or when work is to occur, 6 will message both parties to make sure they'll be on time and ready"* |
+| M3.5 | Auto-reschedule flow | Backend job | ¶14 — *"If not, he'll coordinate rescheduling"* |
+| M3.6 | Voice-driven estimate generator (contractor talks → line-item estimate) | **Phone (Twilio)** | ¶17 — *"help estimate projects… simply by talking to the contractor, which can be done as the contractor drives down the road"* — the vision **explicitly implies phone**, not avatar UI. Runs as a feature of the M3.1 call. |
+| M3.7 | Contract drafter + e-signature delivery | Backend (event-triggered) | ¶17 — *"write up contracts… deliver the contract in writing in their email box"* |
+| M3.8 | Decision-support chat ("which contractor should I pick?") | **Voice-on-avatar (context injection)** + drawer compare panel | ¶18 — *"help the user work through uncertainties and come to decisions"*. v1 runs voice-on-avatar via the context-injection pattern (M3.0e), with the drawer's compare panel as visual reinforcement. Multi-turn re-rank works the same way — each refinement gets a fresh injection. |
+| M3.9 | Dispute mediator agent | **Phone (Twilio) or async text** | ¶16 — *"6 will be the front line for disputes, to help work out problems in the moment"*. Disputes aren't usually a "stare at the avatar right now" moment — phone or asynchronous text is the natural surface. |
 
 **M3 Exit criteria:** A homeowner can ask 6 *"call the plumber"* → a 3-way phone call connects with 6 as an active third participant → the call is recorded + transcribed → during the call the contractor verbally walks through an estimate that 6 turns into a line-item PDF → 6 emails the homeowner a generated contract → both parties e-sign → a calendar reminder fires the day before the scheduled work — all voice-driven, no forms touched.
 
@@ -69,28 +163,36 @@ Three sequential phases; tracks within Phase 3 run in parallel.
 
 ### Phase 2 — Voice-first foundation (the SG Dietz test drive)
 
+Stays in FULL avatar mode. The "voice-first" experience is achieved via the **context-injection pattern** (proven by the existing image-analysis flow): user speech triggers a backend action via intent classifier, the result is injected into HeyGen's brain as a context message, the brain narrates the actual data with its native low-latency pipeline. Drawer populates in parallel as visual reinforcement.
+
 | Step | Feature | Why this position |
 |---|---|---|
-| **1**  | M3.0a — Brain switchover FULL → CUSTOM mode | Prerequisite for every voice-driven tool call below. Already partially scaffolded — see M3.0 details. |
-| **2**  | M3.0b — Voice-first overlay UI + chat-driven state store | The "results pop up on screen" surface that the chat brain mutates. |
-| **3**  | M3.0c — Transcript event wiring (`USER_TRANSCRIPTION` / `AVATAR_TRANSCRIPTION`) | Persists conversation for later features (M3.3 / M3.8 / M3.9). |
-| **🎯 4** | **M3.0d — SG Dietz voice test drive on mock data** | **First user-facing checkpoint.** SG Dietz can voice-drive M2 (search → recommend → pick → simulated payment) end-to-end on mock contractors. Ugly cards are fine; design layer comes later. |
+| **1**  | M3.0b — Voice-first overlay UI + state store (Zustand) | The "results pop up on screen" surface. Cards reinforce the brain's narration visually. |
+| **2**  | M3.0c — Transcript event wiring (`USER_TRANSCRIPTION` + `AVATAR_SPEAK_ENDED`) | Captures every user utterance for the intent classifier; captures avatar speech-end to time the context-injection moment. |
+| **3**  | M3.0e — Intent classifier + context-injection orchestrator | Side-channel backend route consumes user transcripts → fires the matching M2 backend → wraps the result in a context message → injects via `session.message()` so HeyGen's brain narrates the actual data. Reuses the proven [LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978) pattern from image analysis. |
+| **🎯 4** | **M3.0d — SG Dietz voice test drive on mock data** | **First user-facing checkpoint.** SG Dietz voice-drives M2 (search → recommend → pick → simulated payment) end-to-end on mock contractors. Brain narrates the actual backend results via context injection; drawer cards reinforce. |
 
 ### Phase 3 — Parallel build (after Phase 2 ships)
 
-After the test drive lands, M3.1 runs as a time-boxed spike, while the rest of M3 builds on independent tracks. If M3.1 fails or proves out of scope, the other tracks ship anyway.
+After the test drive lands, M3.1 runs as a time-boxed spike, while the rest of M3 builds on independent tracks. The conversational vision-anchored features (M3.6, M3.9) move to the **phone-call audio pipeline** where we control latency and iOS isn't a factor.
 
 | Track | Feature | Why this position |
 |---|---|---|
-| **A.1** | **M3.1 spike** — minimal proof-of-concept 3-way call (2 humans + 6) | **Time-box: ~1 working day.** Goal: prove sub-2 s loop is reachable end-to-end. Decision gate at end. |
+| **A.1** | **M3.1 spike** — minimal proof-of-concept 3-way call (2 humans + 6) | **Time-box: ~1 working day.** Goal: prove sub-2 s loop is reachable end-to-end on the Twilio + Deepgram + OpenAI + ElevenLabs pipeline. Decision gate at end. |
 | **A.2** | M3.1 full implementation | Only if the spike clears. Otherwise carries to a later milestone. |
 | **A.3** | M3.3 — Recording + transcript index | Depends on M3.1 audio stream being real. Only if A.2 ships. |
-| **B.1** | M3.6 — Voice-driven estimate generator | Independent of calling; contractor talks → line items. Runs entirely on M3.0 transcripts + LLM. |
-| **B.2** | M3.7 — Contract drafter + e-signature delivery | Builds on M3.6 estimates. Independent of A track. |
+| **A.4** | **M3.6 — Voice-driven estimate generator (in-call feature)** | Now part of the M3.1 call pipeline — when the contractor describes work on the call, 6's brain (server-side) builds the structured estimate live. |
+| **A.5** | **M3.9 — Dispute mediator (phone or async text)** | Same Twilio + STT pipeline as M3.1. Could also run as async text intake via the drawer; both surfaces are fine. |
+| **B.1** | M3.7 — Contract drafter + e-signature delivery | Triggered by event after M3.6 estimate confirmed. Independent of A.1–A.3 if estimates also reachable via drawer flow (fallback). |
 | **C.1** | M3.4 — Appointment & reminder agent | Needs Google Calendar OAuth verified (Phase-1 kickoff). |
 | **C.2** | M3.5 — Auto-reschedule flow | Small layer on top of M3.4. |
-| **D.1** | M3.8 — Decision-support chat | Independent. Extends M2.4 recommender as a conversational loop. |
-| **D.2** | M3.9 — Dispute mediator agent | Needs M3.3 transcripts + M3.7 contracts as context corpus. Ships last; degrades gracefully if M3.3 deferred. |
+| **D.1** | M3.8 — Decision-support chat (drawer text v1) | Text-driven chat surface in the overlay drawer; user reads the picks, types or clicks follow-ups, drawer re-ranks. HeyGen narrates in parallel from FULL brain. **Voice-on-avatar version waits on CUSTOM-mode fix.** |
+
+<!-- Optional Phase 4 (CUSTOM-mode fix spike) removed 2026-06-05.
+     The context-injection pattern eliminated every M3-scoped use case for
+     CUSTOM mode. Recorded in [Future Considerations](#future-considerations)
+     for revisit if a later milestone surfaces a concrete need. -->
+
 
 ---
 
@@ -103,45 +205,43 @@ Phase 1: Vendor kickoffs (parallel, day 1)
    ├─ Twilio Voice + phone number
    └─ Deepgram API key
 
-Phase 2: Voice foundation (sequential)
-   M3.0a Brain pivot ──→ M3.0b Overlay UI ──→ M3.0c Transcript wiring ──→ 🎯 M3.0d SG Dietz test drive
+Phase 2: Voice foundation (sequential, FULL mode stays)
+   M3.0b Overlay UI ──→ M3.0c Transcript wiring ──→ M3.0e Intent classifier ──→ 🎯 M3.0d SG Dietz test drive
 
 Phase 3: Parallel tracks (after Phase 2)
 
-   Track A (Calling — spike-first)
+   Track A (Phone-call pipeline — spike-first; we control audio here)
       M3.1 spike ──→ [decision gate] ──→ M3.1 full ──→ M3.3 Recording + transcript
+                                              │
+                                              ├──→ M3.6 Voice estimate (in-call feature)
+                                              └──→ M3.9 Dispute mediator (in-call OR async)
 
-   Track B (Contracts — independent)
-      M3.6 Voice estimate ──→ M3.7 Contract drafter + e-sign delivery
+   Track B (Contracts — event-triggered)
+      M3.6 estimate confirmed ──→ M3.7 Contract drafter + e-sign delivery
 
    Track C (Calendar — needs Google OAuth verified)
       M3.4 Reminders ──→ M3.5 Reschedule
 
-   Track D (Decision + dispute — independent)
-      M3.8 Decision-support chat
-      M3.9 Dispute mediator (uses M3.3 + M3.7 context if available)
+   Track D (Decision support — voice-on-avatar via context injection)
+      M3.8 Decision-support — voice + drawer compare panel reinforcement
 ```
 
 ---
 
 ## M3.0 — Voice-First Foundation (Pre-feature)
 
-This is the SG Dietz pivot in code form. Three sub-tasks; all three block M3.1+.
+The SG Dietz pivot in code form. Three sub-tasks; **none of them require switching avatar brain mode**. M3 stays in FULL mode throughout, using the context-injection pattern (see [The Context-Injection Pattern](#the-context-injection-pattern-architectural-foundation-for-m30dm30e) section above) for voice-driven tool calling.
 
-### M3.0a — Brain switchover (FULL → CUSTOM mode)
+### ~~M3.0a~~ — Brain switchover (FULL → CUSTOM mode) — Out of M3 scope
 
-**Why:** HeyGen FULL mode runs the conversational brain on HeyGen's servers using their hosted GPT-4o-mini. Their SDK (`@heygen/liveavatar-web-sdk` v0.0.9) has **no function-call event** — so M2's `search_contractors` / `recommend_contractors` chat tools sit unused in production. To make voice-driven tool calls work, we move the brain into our backend (CUSTOM/LITE mode) where tool calling already works (verified during M2.2).
+**Status:** Removed from M3 scope entirely (2026-06-05). Prior CUSTOM-mode test showed two blocking problems:
 
-### Sub-tasks
-1. Flip [LiveAvatarDemo.tsx](../apps/demo/src/components/LiveAvatarDemo.tsx) `mode="FULL"` → `mode="CUSTOM"`
-2. Confirm `/api/start-custom-session/route.ts` returns a working session token (already wired, currently unused)
-3. Verify [useTextChat.ts](../apps/demo/src/liveavatar/useTextChat.ts) CUSTOM branch routes user speech through `/api/openai-chat-complete` → ElevenLabs TTS → `session.repeatAudio()`
-4. Tune the system prompt in [openai-chat-complete/route.ts](../apps/demo/app/api/openai-chat-complete/route.ts) to carry 6's voice and persona (was being handled by HeyGen brain)
-5. Profile end-to-end latency: speech → STT → tool-call → TTS → speech. Target <2 s for "easy" answers, <4 s for tool-calling ones
-6. Side-by-side compare with FULL mode and flag any regressions
+1. **End-to-end latency 5–10 s** vs FULL mode's ~1–2 s. Caused by sequential blocking calls in [useTextChat.ts](../apps/demo/src/liveavatar/useTextChat.ts): `/api/openai-chat-complete` (full response) → `/api/elevenlabs-text-to-speech` (full audio) → `repeatAudio()`. No streaming anywhere in the chain.
+2. **Silent audio on iPhone Safari** — `session.repeatAudio(audio)` plays through a different code path than HeyGen's native WebRTC track. iOS autoplay restrictions + `getUserMedia()` audio-output locking interfere.
 
-### Files touched
-- **Modified:** `LiveAvatarDemo.tsx`, `openai-chat-complete/route.ts` (system prompt tuning), possibly `useTextChat.ts`
+Fixing both is a ~1–2 week focused engineering project. **No M3 feature requires CUSTOM mode** once context injection is on the table — see [Future Considerations](#future-considerations) for the criteria under which a later milestone might revisit this.
+
+**Implication for M3:** every M3 conversational feature designs around FULL mode by either (a) the context-injection pattern on the avatar UI (M3.0d, M3.8) or (b) running on the phone-call pipeline where we control audio end-to-end (M3.1, M3.6, M3.9).
 
 ---
 
@@ -186,39 +286,78 @@ This is the SG Dietz pivot in code form. Three sub-tasks; all three block M3.1+.
 
 ---
 
-## 🎯 M3.0d — SG Dietz Voice Test Drive (Checkpoint)
+### M3.0e — Intent classifier + context-injection orchestrator
 
-**Why:** SG Dietz: *"build toward me experiencing that early."* This is not a feature in the traditional sense — it's the proof that M3.0 actually unblocks the voice-first vision. After M3.0a/b/c land, SG Dietz personally voice-drives the M2 engine end-to-end on mock data. If this works, M3.1+ is worth building. If 6 is awkward or the cards land wrong, we tune before adding more surface area.
-
-### What it looks like
-
-1. SG Dietz opens the home page → avatar session starts in CUSTOM mode
-2. He says *"6, find me a plumber near Austin"*
-3. 6 calls the existing `search_contractors` chat tool (M2.2)
-4. The right-side drawer (M3.0b) opens with ranked contractor cards
-5. 6 narrates: *"I found 5 plumbers. The top one is Acme Plumbing — 4.8 stars, 2 km from you. Want me to tell you more?"*
-6. SG Dietz says *"what are people saying about them?"*
-7. 6 calls the M2.3 summarizer → strengths + watch-outs panel opens in the drawer; 6 reads the gist aloud
-8. SG Dietz says *"which one should I go with?"*
-9. 6 calls `recommend_contractors` (M2.4) → top-3 picks with reasons appear; 6 reads the #1 pick's reason aloud
-10. SG Dietz says *"book that one"*
-11. 6 confirms verbally and triggers the simulated **Pick this one** path (M2.6) — the win/lose notification fan-out fires through the M1.7 fabric
+**Why:** This is the workhorse of M3.0d. User speech in FULL mode can't directly trigger our backend (HeyGen's brain has no HTTP). But we can detect intent from `USER_TRANSCRIPTION` events, run the matching M2 backend ourselves, and **inject the result back into HeyGen's brain via `session.message()` as a context message** — the exact pattern the image-analysis flow already uses in production at [LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978). HeyGen's brain narrates the real data with its native pipeline.
 
 ### Sub-tasks
-1. Define and document the conversational flow above as the working "happy path" SG Dietz signs off against
-2. Tune the chat brain's system prompt so each tool-call narration is natural ("I found 5 plumbers" not "I have invoked the search_contractors tool")
-3. Confirm the M2 chat tools (`search_contractors`, `recommend_contractors`) fire reliably under CUSTOM mode
-4. Add a stub `book_contractor({ contractor_id })` tool that wraps the M2.6 `/api/contractors/pick` simulation
-5. Hide `/contractors` from the home-page navigation; keep accessible at `/contractors?dev=1` for our own testing
-6. End-to-end dry run on mock data — record a screen capture for SG Dietz before he tries it
-7. Iterate based on his feedback before any M3.1 spike work begins
+1. Build `POST /api/intent/classify` — accepts `{ transcript_text, session_id, user_id?, context }` and returns `{ intent, slots, confidence, action? }`
+2. Classifier implementation v1: cheap rules-based regex matching for the 5 core intents (`find_contractor`, `tell_me_more`, `recommend`, `pick`, `book`) + extracted location/category slots. **Avoid an LLM call for v1** — keep round-trip <100 ms.
+3. Build `src/lib/intent/contextInjector.ts` — per-intent prompt-wrapping helpers. For each intent, define the "wrapper" template (mirrors the [IMAGE CONTEXT] one) that frames the backend result and instructs the brain how to narrate it.
+4. Hook the classifier into the M3.0c transcript-append path: after persisting a `user_transcription`, fire the classifier asynchronously; on intent match, call the matching M2 route, wrap the result via `contextInjector`, send via `session.message()`.
+5. Concurrency strategy (Q3.0c implementation): default to **wait for `AVATAR_SPEAK_ENDED`** before injecting — feels natural ("let me check… OK, found 5 plumbers"). Make the strategy a per-intent option for tuning.
+6. Drawer reinforcement: each backend result also emits a surface-update event to M3.0b's Zustand store so cards appear visually as the brain speaks.
+7. Confidence threshold tuning (Q3.0c) — what counts as a strong-enough match? Misfires should fall back to letting HeyGen's brain handle the utterance without injection.
+8. Diagnostic logging: capture (a) the user transcript, (b) the matched intent + slots, (c) the backend result, (d) the wrapped context message, (e) HeyGen's spoken reply. So we can see when injection produces good vs awkward narration during M3.0d tuning.
 
 ### Files touched
-- **New:** `src/lib/contractors/chatToolBook.ts` (small wrapper around `/api/contractors/pick`)
-- **Modified:** `openai-chat-complete/route.ts` (system prompt for narration style + register `book_contractor` tool), navigation links
+- **New:** `src/lib/intent/{classify,rules,slots,contextInjector}.ts`; `app/api/intent/classify/route.ts`
+- **Modified:** `app/api/transcripts/append/route.ts` (chains into classifier + injector after persist); `liveavatar/context.tsx` (exposes a `sendContextMessage()` helper that wraps `session.message()` with the avatar-speak-ended timing logic)
+
+---
+
+## 🎯 M3.0d — SG Dietz Voice Test Drive (Checkpoint)
+
+**Why:** SG Dietz: *"build toward me experiencing that early."* This is not a feature in the traditional sense — it's the proof that the context-injection pattern actually unblocks the voice-first vision **without** depending on the CUSTOM-mode fix. After M3.0b/c/e land, SG Dietz personally voice-drives the M2 engine end-to-end on mock data. If brain-narration of real backend data feels natural, M3.1+ is worth building. If injection timing feels off, we tune the per-intent strategy before adding more surface area.
+
+### What it looks like (FULL mode + context injection)
+
+1. SG Dietz opens the home page → avatar session starts in **FULL mode** (same as today)
+2. He says *"6, find me a plumber near Austin"*
+3. SDK fires `USER_TRANSCRIPTION` event with the text
+4. HeyGen's brain begins replying: *"Sure, let me check…"*
+5. Our intent classifier (M3.0e) parses *"find me a plumber near Austin"* → matches `find_contractor`, extracts category=plumber + location=Austin → calls `/api/contractors/search`
+6. Backend returns 5 ranked contractors
+7. M3.0b store gets a surface-update event → drawer populates with cards (visual reinforcement)
+8. Our context-injection orchestrator waits for `AVATAR_SPEAK_ENDED` (HeyGen finishes its brief "let me check…")
+9. We send `session.message()` with a wrapped context message:
+   ```
+   [CONTRACTOR SEARCH RESULTS — not spoken by user]
+   User just asked for a plumber near Austin. I found these candidates
+   ranked by your existing rules:
+     1. Acme Plumbing — 4.8★ · 2 km · $$ · licensed
+     2. Sunrise Drainworks — 4.7★ · 3 km · $$ · same-day
+     3. Heritage Pipe Co — 4.6★ · 5 km · $$$ · locally-owned
+     ...
+   Respond naturally in first person as 6. Mention the top 1–2 briefly
+   with their ratings and distance. Offer to share more detail or to
+   pick one. Be concise (2 sentences max). Don't list all 5.
+   ```
+10. HeyGen's brain narrates: *"I found a few good options. Acme Plumbing is the top match — 4.8 stars and just 2 km from you. Want me to tell you more, or should I go with them?"*
+11. SG Dietz says *"tell me more about Acme"*
+12. Intent classifier matches `tell_me_more` with target="Acme" → backend runs `/api/contractors/[id]/summary` → wraps result as context message → brain narrates strengths/watch-outs
+13. SG Dietz says *"book the first one"*
+14. Intent classifier matches `pick` → backend fires the M2.6 simulation → wrapped result *"Done — they've been notified and the other candidates are getting friendly feedback"* injected → brain confirms verbally → emerald drawer card shows the fan-out result
+
+### Sub-tasks
+1. Define the 5 core intents (`find_contractor`, `tell_me_more`, `recommend`, `pick`, `book`) and their slot extraction rules
+2. Author the 5 corresponding context-injection wrappers in `src/lib/intent/contextInjector.ts` (each like the [IMAGE CONTEXT] one)
+3. Tune the HeyGen FULL-mode Persona / Knowledge Base so 6's "while we wait" patter is brand-aligned (*"let me check"*, *"give me a second"*, etc.)
+4. Wire M3.0b drawer to render the 4 surface variants (search hits, summary, picks, pick-result) as visual reinforcement
+5. Add a stub `book_contractor({ contractor_id })` backend route that wraps M2.6 `/api/contractors/pick` simulation
+6. Hide `/contractors` from home-page navigation; keep accessible at `/contractors?dev=1`
+7. End-to-end dry run on mock data — record a screencast for SG Dietz before he tries it
+8. Iterate on injection timing strategy (Q3.0c) and wrapper wording based on SG Dietz feedback
+
+### Files touched
+- **New:** `src/lib/contractors/bookContractor.ts` (wraps M2.6); test-drive checklist doc
+- **Modified:** `intent/rules.ts` (the 5 intents), `intent/contextInjector.ts` (the 5 wrappers), `assistantSurface/store.ts` (4 variants), HeyGen Persona/Knowledge Base configuration (out-of-repo, in HeyGen Dashboard)
 
 ### Exit criteria
-SG Dietz uses the home page by voice only, completes the search → recommend → book flow, and signs off on the experience as the foundation worth building M3.1+ on top of.
+SG Dietz uses the home page by voice only, completes the **find → tell-me-more → recommend → book** flow on mock data, and signs off on the experience as the foundation worth building M3.1+ on top of. The brain's narration of real backend data feels natural — like 6 actually looked something up — not like a parallel-running prerecorded message that mismatches what's on screen.
+
+### Honest caveat for SG Dietz
+Voice-triggered context injection has one timing edge case: HeyGen's brain may start speaking a generic acknowledgment (*"let me check"*) before our backend search completes. We mitigate by either interrupting it with `AVATAR_INTERRUPT` (clean but possibly jarring) or waiting for `AVATAR_SPEAK_ENDED` before injecting (natural rhythm, slightly more latency). Default is the natural rhythm; per-intent tuning available. If it feels wrong in testing, both strategies are 1-line config changes.
 
 ---
 
@@ -325,21 +464,23 @@ SG Dietz uses the home page by voice only, completes the search → recommend �
 
 ---
 
-## M3.6 — Voice-Driven Estimate Generator
+## M3.6 — Voice-Driven Estimate Generator (in-call feature on the M3.1 phone pipeline)
+
+**Surface change vs original plan:** vision ¶17 says *"by talking to the contractor… as the contractor drives down the road"* — that's a phone call, not someone staring at the avatar UI in a browser. M3.6 now ships as a feature of the M3.1 call infrastructure. The audio pipeline is Twilio → Deepgram → our LLM → ElevenLabs → Twilio, fully under our control (no HeyGen / iOS audio risk).
 
 ### Sub-tasks
 1. Decide estimate template (Q3.6a) — fixed JSON-schema vs free-form
 2. Decide whether contractor speaks unit prices or whether we have a unit-rate library (Q3.6b)
-3. New `estimates` table (id, contract_id, line_items jsonb, total_cents, status, created_at)
-4. Voice tool: `start_estimate({ contractor_id, homeowner_id, project_brief })`
-5. Streaming LLM that listens to the contractor's voice (via M3.0c transcripts), proposes structured line items, asks clarifying questions
-6. Render estimate as a PDF (reuse M1.5 PDF renderer)
-7. Deliver estimate to homeowner via the M1.7 fabric
-8. UI: estimate preview card in the assistant overlay
+3. New `estimates` table (id, contract_id, contractor_id, homeowner_id, line_items jsonb, total_cents, status, source_call_id, created_at)
+4. In-call **estimate mode**: once an M3.1 call is in progress, 6 (running on our backend) can be put into "estimate mode" via either a voice command from the homeowner (*"6, take down the estimate"*) or auto-trigger when the contractor starts describing line items
+5. Streaming LLM listens to the contractor's voice (via the live Deepgram transcript stream), proposes structured line items, asks clarifying questions verbally back through the call (*"OK, two hours of labor at $150 — do you also need to charge for materials?"*)
+6. Render estimate as a PDF when the call ends (reuse M1.5 PDF renderer)
+7. Deliver estimate to homeowner via the M1.7 fabric on their preferred channel
+8. UI: post-call estimate preview card in the assistant drawer, plus emailed PDF
 
 ### Files touched
-- **New:** `src/lib/estimates/{generate,pdf,store}.ts`; migration `estimates`; `app/[locale]/estimates/[id]/page.tsx`
-- **Modified:** chat tool registry; PDF renderer
+- **New:** `src/lib/estimates/{generate,pdf,store,inCallMode}.ts`; migration `estimates`; `app/[locale]/estimates/[id]/page.tsx`
+- **Modified:** call brain state machine (M3.1) to add estimate-mode; PDF renderer
 
 ---
 
@@ -361,33 +502,41 @@ SG Dietz uses the home page by voice only, completes the search → recommend �
 
 ---
 
-## M3.8 — Decision-Support Chat
+## M3.8 — Decision-Support Chat (voice-on-avatar v1 via context injection)
+
+**Surface upgrade vs the 2026-06-05 morning plan:** the context-injection pattern (image-analysis style) makes voice-driven decision support viable in v1 without the CUSTOM-mode fix. When the homeowner says *"I can't decide"* or *"not that one, too far"*, the intent classifier picks it up, the recommender re-ranks with the new constraint, and we inject the new ranking as a context message so 6 talks the user through the updated picks. The drawer's compare panel stays as visual reinforcement.
 
 ### Sub-tasks
-1. New voice tool: `weigh_options({ option_ids, criteria? })` — wraps M2.4 recommender but with conversational follow-up loops
-2. Brain prompt extension: when user expresses uncertainty ("I can't decide", "what do you think?"), 6 actively asks clarifying questions before re-ranking
-3. Memory tie-in (M1.2) — surface previously stored preferences in the deliberation
-4. Re-rank conversation: user says "not that one, too far" → 6 re-runs the recommender with the added constraint
+1. Backend `POST /api/contractors/deliberate` — accepts `{ option_ids, current_picks, refinement_text, memory_facts }` and returns re-ranked picks with concise per-pick reasoning suited for voice narration
+2. Intent classifier extension: 2 new intents — `deliberate_open` (*"I can't decide", "help me choose"*) and `deliberate_refine` (*"not that one"*, *"only locally-owned"*, *"closer than 5km"*, *"under $300"*) with slot extraction for the refinement constraint
+3. Context-injection wrappers for both intents — open-the-deliberation framing vs refinement-result framing. Brain narrates the top 2–3 picks with key differentiators in <30 words.
+4. Drawer compare panel: side-by-side comparison of the top picks (rating, distance, price tier, sentiment summary, key differentiators) — same data the brain narrates, displayed visually
+5. Memory tie-in (M1.2): surface previously stored preferences in the panel as "6 remembers you said…" and include them in the deliberation backend prompt
+6. Multi-turn loop: each user refinement injects fresh context; brain re-narrates without losing thread
+7. Drawer compare panel also has a free-text input box at the bottom for users who prefer typing over speaking — same backend, different trigger
 
 ### Files touched
-- **New:** `src/lib/contractors/deliberate.ts`
-- **Modified:** chat tool registry; recommender to accept ad-hoc constraint additions
+- **New:** `src/lib/contractors/deliberate.ts`; `app/api/contractors/deliberate/route.ts`; `src/components/AssistantSurface/ComparePanel.tsx`
+- **Modified:** intent rules (add 2 deliberation intents); intent context-injector (add 2 wrappers); recommender to accept ad-hoc constraint additions
 
 ---
 
-## M3.9 — Dispute Mediator Agent
+## M3.9 — Dispute Mediator Agent (phone OR async text)
+
+**Surface change vs original plan:** disputes are rarely a "stare at the avatar right now" moment. v1 ships on two surfaces — a phone call (reuses M3.1 pipeline) for live intake, and an async text thread in the drawer for slower back-and-forth. Both feed the same backend resolution flow. Avatar-UI voice-driven mediation waits on the CUSTOM-mode fix.
 
 ### Sub-tasks
-1. Voice tool: `start_dispute({ contract_id, party, complaint })`
-2. Mediator brain prompt — reads M3.3 transcripts + M3.7 contract + M2.6 notification history as context
-3. Multi-turn structured intake: claim, evidence pointers, sought outcome
-4. Resolution paths: propose remedy, broker reduced refund, escalate to human
-5. Escalation criteria (Q3.9a) — define when 6 hands off to a human reviewer
-6. UI: dispute thread page
+1. Migration: `disputes` table (id, contract_id, party, status, intake_call_id?, intake_thread_id?, created_at, resolved_at, resolution_kind)
+2. Intake — phone path: voice command *"6, I want to file a complaint"* during a call triggers structured intake on the same call audio
+3. Intake — async-text path: a "Start dispute" button on the contract viewer (M2.5) opens a thread in the drawer; user types the complaint
+4. Mediator brain prompt reads available context — M3.3 transcripts (if exist), M3.7 contract, M2.6 notification history — and proposes a remedy or asks for more info
+5. Resolution paths: propose remedy, broker reduced refund, escalate to human per Q3.9a
+6. Escalation criteria (Q3.9a) — define when 6 hands off (3-strike rule, >$500 disputed, "I want a person")
+7. UI: dispute thread page
 
 ### Files touched
-- **New:** `src/lib/disputes/{intake,resolve,store}.ts`; migration `disputes`; `app/[locale]/disputes/[id]/page.tsx`
-- **Modified:** chat tool registry
+- **New:** `src/lib/disputes/{intake,resolve,store}.ts`; migration `disputes`; `app/[locale]/disputes/[id]/page.tsx`; intake intent rule
+- **Modified:** call brain state machine (M3.1) to support dispute-intake mode; intent rules
 
 ---
 
@@ -401,6 +550,13 @@ SG Dietz uses the home page by voice only, completes the search → recommend �
 - **Q3.0b — State management:**
   - Options: Zustand, React context, Jotai, Redux
   - **Recommendation:** **Zustand** — tiny, hook-friendly, plays well with Next.js App Router, no provider wrappers needed.
+- **Q3.0c — Intent classifier implementation v1:**
+  - Options: (a) **regex/rules-based**, (b) **small embedding similarity match**, (c) **LLM call (gpt-4o-mini)**
+  - **Recommendation:** **(a) rules-based for v1.** 5 intents with finite slot-extraction patterns — completable in a couple hundred lines, sub-50 ms latency, no per-utterance cost. Upgrade to (c) if rules drift becomes unmanageable.
+<!-- Q3.0d (CUSTOM-mode fix spike greenlight) removed 2026-06-05 — no
+     M3 feature requires CUSTOM mode once context injection is on the table.
+     See Future Considerations section. -->
+
 
 ### M3.1 — Phone calls
 
@@ -517,6 +673,7 @@ Per SG Dietz's request *("What do you need first, second, third so I can take ca
 |---|---|---|
 | Q3.0a — Overlay shape | Before M3.0b codes | Right-side drawer |
 | Q3.0b — State management | Before M3.0b codes | Zustand |
+| Q3.0c — Intent classifier implementation | Before M3.0e codes | Rules-based v1 |
 | Q3.1a — Telephony provider | Before M3.1 spike | Twilio Voice |
 | Q3.1b — Real-time STT | Before M3.1 spike | Deepgram |
 | Q3.1c — When 6 speaks | Before M3.1 full implementation | Only when addressed by name |
@@ -527,7 +684,7 @@ Per SG Dietz's request *("What do you need first, second, third so I can take ca
 
 ### Vendor / contract items
 
-1. **Voice persona finalization** — after the brain pivot, 6's personality is no longer governed by HeyGen's prompt. Confirm tone-of-voice guidelines: warm, encouraging, technical when needed, never sarcastic. SG Dietz should provide 5–10 example phrases to anchor the system prompt.
+1. **HeyGen Persona / Knowledge Base tuning** — M3 stays in FULL avatar mode, so 6's voice and personality remain under HeyGen's control. SG Dietz should sign off on the "while we wait" patter the brain uses when our backend is computing a result (*"let me check"*, *"give me a second"*) and on how 6 introduces backend-injected data (M3.0d sub-task 3).
 2. **Recording consent language** — every call needs a "this call is being recorded by 6" preamble. SG Dietz approves wording.
 3. **Contract template — legal review** — the v1 generic contract template needs a lawyer review before any e-sign goes out for real money work.
 4. **Dispute escalation contact** — when 6 hands off (Q3.9a), where does the escalation go? (Slack channel? Email alias? Person on call?)
@@ -568,7 +725,7 @@ Roadmap exit criteria: **6 is in the middle of every interaction, not just at th
 
 1. **M3.1 phone calling is the single biggest technical risk in M3** — *and the one SG Dietz is least sure is doable well.* Real-time STT → LLM → TTS with sub-second barge-in latency is non-trivial. **Time-boxed spike is mandatory** — the spike's result is the explicit decision gate for whether M3.1 ships in this milestone or carries forward.
 
-2. **M3.0a brain pivot may change 6's voice personality.** HeyGen's hosted brain has its own prompt; our `/api/openai-chat-complete` has a much thinner system prompt. SG Dietz must approve the new prompt's persona before M3.0a ships to production. Keep FULL mode wired during transition for A/B comparison.
+2. **CUSTOM-mode regression already observed (and intentionally side-stepped).** Last attempt at CUSTOM avatar mode produced 5–10 s latency and silent audio on iPhone Safari. Both are real, not theoretical. M3 designs around this entirely — keeps FULL mode for the avatar UI, drives voice-anchored features through (a) the context-injection pattern (M3.0d, M3.8) or (b) the phone-call pipeline where we control audio end-to-end (M3.1, M3.6, M3.9). No CUSTOM-mode dependency anywhere in M3.
 
 3. **M3.4 Google Calendar verification is a long-lead item** (1–4 weeks). Only one of the procurement items with calendar-weeks of lead time. Submit Day 1.
 
@@ -578,6 +735,37 @@ Roadmap exit criteria: **6 is in the middle of every interaction, not just at th
 
 6. **M3.2 video deferral is reversible.** All M3.1 code (Twilio Voice + Deepgram) is audio-only by choice, not by limitation. If video gets greenlit later, LiveKit (or chosen provider) can be added without unwinding M3.1.
 
+7. **Voice-triggered context-injection timing.** The image-analysis pattern works cleanly because the trigger is a UI button (no concurrent brain response in flight). For voice-triggered intents, HeyGen's brain may start a generic acknowledgment (*"let me check…"*) before our backend search completes and we send the context message. The handling strategy is per-intent (Q3.0c):
+
+   - **`AVATAR_INTERRUPT` + inject** — clean override but possibly jarring (avatar pivots mid-sentence)
+   - **Wait for `AVATAR_SPEAK_ENDED` + inject** — natural rhythm (*"let me check… OK, found 5 plumbers"*), small added latency. Default for M3.0d v1.
+   - **Inject without waiting** — untested; HeyGen may queue or merge; needs measurement
+
+   None of these strategies is universally correct — what feels right depends on the intent. For *"find a plumber"* the natural-rhythm wait probably works. For *"book the first one"* an interrupt may feel more confident. M3.0d tunes per intent. The image-analysis flow has worked in production for months using essentially the same mechanism, so this is a tuning problem, not a feasibility problem. If tuning fails outright on a specific intent, we narrow that intent's surface (e.g. push it to phone or drawer text) rather than escalating to a brain switchover — the cost of CUSTOM mode is higher than the cost of moving one intent to a different surface.
+
+---
+
+## Future Considerations
+
+### CUSTOM mode revisit (out of M3 scope; documented for future reference)
+
+The CUSTOM-mode fix project is recorded here in case a future-milestone feature genuinely requires it. It is **not** part of M3.
+
+**What the project would entail (estimated 1–2 weeks):**
+- Streaming response from OpenAI (don't wait for full text)
+- Streaming TTS from ElevenLabs (start audio as text arrives)
+- Parallelize: start TTS on first sentence while LLM continues generating
+- Fix iOS Safari audio playback path — likely drop `session.repeatAudio()` and use a different injection mechanism that respects iOS autoplay + `getUserMedia()` audio-output locking
+- A/B test on real iPhone hardware
+
+**Concrete trigger conditions** (any future feature that hits one of these is the reason to revisit):
+1. A vision-anchored feature requires the LLM to invoke a tool chain entirely mid-utterance without yielding to a "let me check" pause (no current M3 feature does this)
+2. A feature requires byte-level control over what 6 says — e.g. legally-mandated disclaimer text that must be read verbatim with no LLM paraphrase
+3. Real-time multilingual translation mid-utterance (possible M4+ feature)
+4. HeyGen leaks our context-injection wrapper text in production at a measurable rate (empirical observation, not a hypothetical — would need to surface from M3.0d testing)
+
+**Until one of those conditions is documented, we do not budget for the CUSTOM-mode work.** The M3 build order assumes FULL mode + context injection is the architecture, and ships the M3 features against that assumption.
+
 ---
 
 ## Change Log
@@ -586,3 +774,6 @@ Roadmap exit criteria: **6 is in the middle of every interaction, not just at th
 |---|---|---|
 | 1 | Initial M3 build order, voice-first per SG Dietz direction | Bert / Claude |
 | 2 | SG Dietz green-light 2026-06-04: drop M3.2 video, M3.1 becomes time-boxed spike, add M3.0d voice test-drive checkpoint as first deliverable, reorder procurement section by need-priority | SG Dietz / Bert / Claude |
+| 3 | Bert flags 2026-06-05: prior CUSTOM-mode attempt had 5–10 s latency + silent iPhone audio. M3.0a brain pivot deferred to optional Phase 4 spike. Voice-anchored vision features re-routed: M3.6 voice estimates → phone (vision ¶17 implies phone anyway), M3.9 dispute → phone or async text, M3.8 decision-support → drawer text v1. M3.0d test drive now uses intent classifier + AVATAR_SPEAK_TEXT + drawer in FULL mode instead of requiring CUSTOM | Bert / Claude |
+| 4 | Bert identified existing context-injection pattern in production at [LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978). Image analysis flow proves that backend results can be fed to HeyGen's FULL-mode brain via wrapped `session.message()` calls. M3.0e refactored from "side-channel parallel" to "detect + inject into brain"; M3.0d test drive flow rewritten to show context-message narration; M3.8 promoted from "drawer text v1" to "voice-on-avatar v1 viable"; CUSTOM-mode Phase 4 spike narrowed to mid-utterance bidirectional tool chains only; added new "Context-Injection Pattern" architectural section above feature breakdowns | Bert / Claude (2026-06-05) |
+| 5 | On pressure-test, no M3 feature actually requires CUSTOM mode — the supposed need was either covered by context injection or by the phone-call pipeline. **CUSTOM-mode fix project removed from M3 scope entirely.** Recorded in new "Future Considerations" section with explicit trigger conditions for any future revisit. Q3.0d question + decisions row removed. Risk note #2 rewritten to reflect no CUSTOM dependency anywhere in M3. Voice persona / brain-pivot vendor item replaced with HeyGen Persona / Knowledge Base tuning. Dependency graph + Build Order at a Glance no longer reference Phase 4 | Bert / Claude (2026-06-05) |
