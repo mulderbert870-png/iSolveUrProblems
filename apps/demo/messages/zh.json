@@ -215,6 +215,47 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "6 的助理面板",
+      "close": "关闭",
+      "variant": {
+        "contractors": "承包商",
+        "summary": "评论概览",
+        "picks": "6 的首选",
+        "pickResult": "通知已发送"
+      },
+      "contractors": {
+        "empty": "暂无匹配。",
+        "count": "在 {considered} 个中显示 {shown} 个。",
+        "badge": {
+          "licensed": "持证",
+          "sameDay": "当日",
+          "locallyOwned": "本地"
+        },
+        "website": "网站"
+      },
+      "summary": {
+        "fresh": "最新",
+        "cached": "已缓存",
+        "strengths": "优势",
+        "weaknesses": "需注意",
+        "sampleQuotes": "客户评价"
+      },
+      "picks": {
+        "empty": "暂无值得推荐的选项。",
+        "basedOn": "根据 6 记得的偏好微调："
+      },
+      "pickResult": {
+        "title": "6 已通知候选人",
+        "summary": "{sent} 已发 · {failed} 失败",
+        "winnerLabel": "中标",
+        "losersLabel": "{count, plural, other {另 # 位候选人已通知}}",
+        "delivered": "已送达",
+        "failed": "失败"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "出了点问题。",

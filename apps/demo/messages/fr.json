@@ -214,6 +214,47 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "Panneau de 6",
+      "close": "Fermer",
+      "variant": {
+        "contractors": "Artisans",
+        "summary": "Résumé des avis",
+        "picks": "Les choix de 6",
+        "pickResult": "Notifications envoyées"
+      },
+      "contractors": {
+        "empty": "Aucun résultat pour l'instant.",
+        "count": "Affichage de {shown} sur {considered}.",
+        "badge": {
+          "licensed": "Agréé",
+          "sameDay": "Jour même",
+          "locallyOwned": "Local"
+        },
+        "website": "Site web"
+      },
+      "summary": {
+        "fresh": "Nouveau",
+        "cached": "Cache",
+        "strengths": "Points forts",
+        "weaknesses": "Points de vigilance",
+        "sampleQuotes": "Ce que disent les clients"
+      },
+      "picks": {
+        "empty": "Aucun choix à afficher pour l'instant.",
+        "basedOn": "Ajusté selon ce dont 6 se souvient :"
+      },
+      "pickResult": {
+        "title": "6 a notifié les candidats",
+        "summary": "{sent} envoyés · {failed} échoués",
+        "winnerLabel": "Gagnant",
+        "losersLabel": "{count, plural, =1 {Autre candidat notifié} other {# autres candidats notifiés}}",
+        "delivered": "livré",
+        "failed": "échec"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Une erreur s'est produite.",

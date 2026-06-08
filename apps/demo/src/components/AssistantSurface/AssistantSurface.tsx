@@ -1,0 +1,124 @@
+"use client";
+
+import { useEffect } from "react";
+import { useTranslations } from "next-intl";
+import { useAssistantSurface } from "../../lib/assistantSurface";
+import { ContractorsPanel } from "./ContractorsPanel";
+import { SummaryPanel } from "./SummaryPanel";
+import { PicksPanel } from "./PicksPanel";
+import { PickResultPanel } from "./PickResultPanel";
+
+/**
+ * AssistantSurface — the right-side drawer that 6 drives during voice
+ * conversations (M3.0b).
+ *
+ * Mounted at the locale layout so it persists across navigation between
+ * sibling routes (home, /contractors, /reports, etc.).
+ *
+ * Non-modal: the avatar UI stays interactive while the drawer is open.
+ *
+ * Desktop: 400px right-side panel.
+ * Mobile:  full-width bottom sheet (~80vh tall).
+ *
+ * v1 is deliberately minimal — no animations beyond a CSS slide; design
+ * polish (WW look) layered on later per SG Dietz "ugly is fine".
+ */
+
+export function AssistantSurface() {
+  const variant = useAssistantSurface((s) => s.variant);
+  const isOpen = useAssistantSurface((s) => s.isOpen);
+  const dismiss = useAssistantSurface((s) => s.dismiss);
+  const t = useTranslations("assistant.surface");
+
+  // ESC key to dismiss — convention for non-modal overlays.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismiss();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, dismiss]);
+
+  if (!variant) return null;
+
+  return (
+    <aside
+      aria-hidden={!isOpen}
+      aria-label={t("ariaLabel")}
+      className={
+        // Outer container — fixed position, doesn't push page content.
+        // Desktop: right-side drawer. Mobile: bottom sheet.
+        "pointer-events-none fixed inset-0 z-50 flex " +
+        "items-end justify-end sm:items-stretch"
+      }
+    >
+      <div
+        className={
+          // The drawer panel itself.
+          "pointer-events-auto flex flex-col bg-zinc-900/95 backdrop-blur " +
+          "border-zinc-800 text-zinc-100 shadow-2xl " +
+          "w-full sm:w-[400px] " +
+          "h-[80vh] sm:h-full " +
+          "rounded-t-2xl sm:rounded-none " +
+          "border-t sm:border-t-0 sm:border-l " +
+          "transition-transform duration-200 ease-out " +
+          (isOpen
+            ? "translate-y-0 sm:translate-x-0"
+            : "translate-y-full sm:translate-y-0 sm:translate-x-full")
+        }
+      >
+        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-800">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-amber-300">
+            {labelForVariant(variant.kind, t)}
+          </p>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+            aria-label={t("close")}
+          >
+            ✕
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {variant.kind === "contractors" && (
+            <ContractorsPanel
+              hits={variant.hits}
+              totalConsidered={variant.total_considered}
+            />
+          )}
+          {variant.kind === "summary" && (
+            <SummaryPanel payload={variant.payload} cached={variant.cached} />
+          )}
+          {variant.kind === "picks" && (
+            <PicksPanel
+              picks={variant.picks}
+              preferenceFacts={variant.preference_facts}
+            />
+          )}
+          {variant.kind === "pickResult" && (
+            <PickResultPanel payload={variant.payload} />
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function labelForVariant(
+  kind: "contractors" | "summary" | "picks" | "pickResult",
+  t: (key: string) => string,
+): string {
+  switch (kind) {
+    case "contractors":
+      return t("variant.contractors");
+    case "summary":
+      return t("variant.summary");
+    case "picks":
+      return t("variant.picks");
+    case "pickResult":
+      return t("variant.pickResult");
+  }
+}

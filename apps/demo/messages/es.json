@@ -214,6 +214,47 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "Panel de 6",
+      "close": "Cerrar",
+      "variant": {
+        "contractors": "Contratistas",
+        "summary": "Resumen de reseñas",
+        "picks": "Las opciones de 6",
+        "pickResult": "Notificaciones enviadas"
+      },
+      "contractors": {
+        "empty": "Aún no hay coincidencias.",
+        "count": "Mostrando {shown} de {considered}.",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mismo día",
+          "locallyOwned": "Local"
+        },
+        "website": "Sitio web"
+      },
+      "summary": {
+        "fresh": "Nuevo",
+        "cached": "En caché",
+        "strengths": "Fortalezas",
+        "weaknesses": "Cuidado con",
+        "sampleQuotes": "Lo que dicen"
+      },
+      "picks": {
+        "empty": "Aún no hay opciones que mostrar.",
+        "basedOn": "Ajustado por lo que 6 recuerda:"
+      },
+      "pickResult": {
+        "title": "6 ha notificado a los candidatos",
+        "summary": "{sent} enviados · {failed} fallidos",
+        "winnerLabel": "Ganador",
+        "losersLabel": "{count, plural, =1 {Otro candidato notificado} other {# otros candidatos notificados}}",
+        "delivered": "entregado",
+        "failed": "fallido"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Algo salió mal.",

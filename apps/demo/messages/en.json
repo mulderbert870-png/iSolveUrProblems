@@ -214,6 +214,47 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "6's assistant panel",
+      "close": "Close",
+      "variant": {
+        "contractors": "Contractors",
+        "summary": "Review summary",
+        "picks": "6's picks",
+        "pickResult": "Notifications sent"
+      },
+      "contractors": {
+        "empty": "No matches yet.",
+        "count": "Showing {shown} of {considered}.",
+        "badge": {
+          "licensed": "Licensed",
+          "sameDay": "Same day",
+          "locallyOwned": "Locally owned"
+        },
+        "website": "Website"
+      },
+      "summary": {
+        "fresh": "Fresh",
+        "cached": "Cached",
+        "strengths": "Strengths",
+        "weaknesses": "Watch-outs",
+        "sampleQuotes": "What people say"
+      },
+      "picks": {
+        "empty": "No picks worth showing yet.",
+        "basedOn": "Tuned by what 6 remembers:"
+      },
+      "pickResult": {
+        "title": "6 has notified the candidates",
+        "summary": "{sent} sent · {failed} failed",
+        "winnerLabel": "Winner",
+        "losersLabel": "{count, plural, =1 {Other candidate notified} other {# other candidates notified}}",
+        "delivered": "delivered",
+        "failed": "failed"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Something went wrong.",

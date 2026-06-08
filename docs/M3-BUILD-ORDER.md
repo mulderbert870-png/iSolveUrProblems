@@ -188,10 +188,6 @@ After the test drive lands, M3.1 runs as a time-boxed spike, while the rest of M
 | **C.2** | M3.5 — Auto-reschedule flow | Small layer on top of M3.4. |
 | **D.1** | M3.8 — Decision-support chat (drawer text v1) | Text-driven chat surface in the overlay drawer; user reads the picks, types or clicks follow-ups, drawer re-ranks. HeyGen narrates in parallel from FULL brain. **Voice-on-avatar version waits on CUSTOM-mode fix.** |
 
-<!-- Optional Phase 4 (CUSTOM-mode fix spike) removed 2026-06-05.
-     The context-injection pattern eliminated every M3-scoped use case for
-     CUSTOM mode. Recorded in [Future Considerations](#future-considerations)
-     for revisit if a later milestone surfaces a concrete need. -->
 
 
 ---

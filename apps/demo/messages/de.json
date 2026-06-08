@@ -214,6 +214,47 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "6s Assistenz-Panel",
+      "close": "Schließen",
+      "variant": {
+        "contractors": "Handwerker",
+        "summary": "Bewertungs-Zusammenfassung",
+        "picks": "6s Auswahl",
+        "pickResult": "Benachrichtigungen versendet"
+      },
+      "contractors": {
+        "empty": "Noch keine Treffer.",
+        "count": "Zeige {shown} von {considered}.",
+        "badge": {
+          "licensed": "Lizenziert",
+          "sameDay": "Same-day",
+          "locallyOwned": "Lokal"
+        },
+        "website": "Website"
+      },
+      "summary": {
+        "fresh": "Neu",
+        "cached": "Zwischengespeichert",
+        "strengths": "Stärken",
+        "weaknesses": "Worauf zu achten",
+        "sampleQuotes": "Stimmen aus Bewertungen"
+      },
+      "picks": {
+        "empty": "Noch keine Auswahl, die es wert ist.",
+        "basedOn": "Abgestimmt auf das, woran 6 sich erinnert:"
+      },
+      "pickResult": {
+        "title": "6 hat die Kandidaten benachrichtigt",
+        "summary": "{sent} gesendet · {failed} fehlgeschlagen",
+        "winnerLabel": "Gewinner",
+        "losersLabel": "{count, plural, =1 {Ein weiterer benachrichtigt} other {# weitere benachrichtigt}}",
+        "delivered": "zugestellt",
+        "failed": "fehlgeschlagen"
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Etwas ist schiefgegangen.",
