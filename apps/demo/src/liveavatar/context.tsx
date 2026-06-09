@@ -126,6 +126,85 @@ const useVoiceChatState = (sessionRef: React.RefObject<LiveAvatarSession>) => {
   return { isMuted, voiceChatState, microphoneWarning };
 };
 
+/**
+ * M3.0c — Buffer per-turn USER_TRANSCRIPTION + AVATAR_TRANSCRIPTION events
+ * and flush each finalized turn to /api/transcripts/append on speak-ended.
+ *
+ * The avatar SDK fires transcription events repeatedly during a turn (each
+ * event carries the current cumulative text). We hold the latest text in
+ * a ref and persist exactly one row per turn — keeps row count proportional
+ * to utterance count, not event count, and matches what M3.0e + M3.9 want
+ * to read.
+ *
+ * Fire-and-forget: a failed POST never blocks the avatar UI.
+ */
+const useTranscriptCapture = (
+  sessionRef: React.RefObject<LiveAvatarSession>,
+) => {
+  const userTurnRef = useRef<string>("");
+  const avatarTurnRef = useRef<string>("");
+
+  useEffect(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+
+    const flush = async (speaker: "user" | "avatar", text: string) => {
+      const sid = sessionRef.current?.sessionId;
+      if (!sid) return;
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      try {
+        await fetch("/api/transcripts/append", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sid,
+            speaker,
+            text: trimmed,
+          }),
+        });
+      } catch (e) {
+        // Fire-and-forget — never break the avatar UI on a transcript
+        // persist failure.
+        console.warn("transcripts append failed:", e);
+      }
+    };
+
+    const onUserTranscription = (event: { text: string }) => {
+      if (typeof event?.text === "string") {
+        userTurnRef.current = event.text;
+      }
+    };
+    const onAvatarTranscription = (event: { text: string }) => {
+      if (typeof event?.text === "string") {
+        avatarTurnRef.current = event.text;
+      }
+    };
+    const onUserSpeakEnded = () => {
+      const text = userTurnRef.current;
+      userTurnRef.current = "";
+      if (text) void flush("user", text);
+    };
+    const onAvatarSpeakEnded = () => {
+      const text = avatarTurnRef.current;
+      avatarTurnRef.current = "";
+      if (text) void flush("avatar", text);
+    };
+
+    session.on(AgentEventsEnum.USER_TRANSCRIPTION, onUserTranscription);
+    session.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, onAvatarTranscription);
+    session.on(AgentEventsEnum.USER_SPEAK_ENDED, onUserSpeakEnded);
+    session.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, onAvatarSpeakEnded);
+
+    return () => {
+      session.off(AgentEventsEnum.USER_TRANSCRIPTION, onUserTranscription);
+      session.off(AgentEventsEnum.AVATAR_TRANSCRIPTION, onAvatarTranscription);
+      session.off(AgentEventsEnum.USER_SPEAK_ENDED, onUserSpeakEnded);
+      session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onAvatarSpeakEnded);
+    };
+  }, [sessionRef]);
+};
+
 const useTalkingState = (sessionRef: React.RefObject<LiveAvatarSession>) => {
   const [isUserTalking, setIsUserTalking] = useState(false);
   const [isAvatarTalking, setIsAvatarTalking] = useState(false);
@@ -224,6 +303,8 @@ export const LiveAvatarContextProvider = ({
   const { isMuted, voiceChatState, microphoneWarning } =
     useVoiceChatState(sessionRef);
   const { isUserTalking, isAvatarTalking } = useTalkingState(sessionRef);
+  // M3.0c — persist every finalized USER + AVATAR utterance to Supabase.
+  useTranscriptCapture(sessionRef);
   // const { messages } = useChatHistoryState(sessionRef);
 
   const lastActivityAtRef = useRef(0);
