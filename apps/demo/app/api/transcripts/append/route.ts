@@ -3,6 +3,10 @@ import { assertAllowedOrigin } from "../../../../src/lib/apiRouteSecurity";
 import { checkRateLimit } from "../../../../src/lib/rateLimit";
 import { getUserId } from "../../../../src/lib/auth/getUser";
 import { appendTranscript } from "../../../../src/lib/transcripts";
+import {
+  orchestrate,
+  type SurfaceSnapshot,
+} from "../../../../src/lib/intent";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +58,12 @@ export async function POST(request: NextRequest) {
     speaker?: unknown;
     text?: unknown;
     context?: unknown;
+    /**
+     * M3.0e — optional snapshot of the assistant-surface state at the
+     * moment of speech-end. Lets the orchestrator resolve "the first one"
+     * / "Acme" references against what the user is actually looking at.
+     */
+    surface_snapshot?: unknown;
   };
   try {
     body = await request.json();
@@ -104,5 +114,59 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // M3.0e — On user transcripts only, run the intent orchestrator and
+  // include its output in the response so the client can update the
+  // assistant surface + send a context message to HeyGen's brain.
+  // Avatar transcripts are persisted but never re-classified.
+  if (body.speaker === "user") {
+    const snapshot = parseSurfaceSnapshot(body.surface_snapshot);
+    try {
+      const orch = await orchestrate({
+        text: body.text,
+        session_id: body.session_id,
+        user_id: userId,
+        currentSurface: snapshot,
+      });
+      return NextResponse.json({
+        id: inserted.id,
+        orchestrator: orch,
+      });
+    } catch (e) {
+      // Orchestrator failure must NOT break the transcript persist —
+      // the row is already saved. Return the id with an orchestrator
+      // error so DevTools can see what blew up.
+      return NextResponse.json({
+        id: inserted.id,
+        orchestrator: {
+          kind: "none",
+          reason: `orchestrator threw: ${
+            e instanceof Error ? e.message : "unknown"
+          }`,
+        },
+      });
+    }
+  }
+
   return NextResponse.json({ id: inserted.id });
+}
+
+function parseSurfaceSnapshot(
+  raw: unknown,
+): SurfaceSnapshot | undefined {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const r = raw as { kind?: unknown; contractorIds?: unknown };
+  const validKinds = new Set([
+    "contractors",
+    "summary",
+    "picks",
+    "pickResult",
+  ]);
+  const kind =
+    typeof r.kind === "string" && validKinds.has(r.kind)
+      ? (r.kind as SurfaceSnapshot["kind"])
+      : null;
+  const contractorIds = Array.isArray(r.contractorIds)
+    ? r.contractorIds.filter((x): x is string => typeof x === "string")
+    : [];
+  return { kind, contractorIds };
 }
