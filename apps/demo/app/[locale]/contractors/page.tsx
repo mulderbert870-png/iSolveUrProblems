@@ -49,6 +49,15 @@ export default async function ContractorsPage({
         <p className="text-sm text-zinc-400">{t("blurb")}</p>
       </header>
 
+      {/*
+        M3.0d — this form-driven surface is no longer the primary UX.
+        6 drives this by voice now; this page persists as a debug surface
+        for engineering. Banner reminds anyone who lands here.
+      */}
+      <div className="rounded-md border border-amber-400/40 bg-amber-400/5 px-4 py-2 text-xs text-amber-200">
+        Dev surface — 6 now drives contractor search by voice on the home page (M3.0d). Form-driven page kept for engineering debug.
+      </div>
+
       <SearchClient
         categories={[...CATEGORY_SLUGS]}
         initialCategory={initialCategory}

@@ -17,9 +17,9 @@ import {
   wrapRecommendationsResult,
   wrapSummaryResult,
 } from "./contextInjector";
+import { executeBook } from "./bookHandler";
 import type {
   ContractorCard,
-  PickResultPayload,
   RecommendationCard,
   SummaryPayload,
   SurfaceVariant,
@@ -361,6 +361,7 @@ async function handleRecommend(args: {
 async function handleBook(args: {
   slots: IntentSlots;
   snapshot?: SurfaceSnapshot;
+  user_id: string | null;
 }): Promise<
   | { variant: SurfaceVariant; contextMessage: string }
   | { contextMessage: string }
@@ -384,38 +385,20 @@ async function handleBook(args: {
     };
   }
 
-  // v1 test drive: we mock the M2.6 fan-out rather than firing it for
-  // real, because /api/contractors/pick requires sign-in and the test
-  // drive runs anonymously. When the test drive ships to signed-in
-  // users, swap this block for a call to runPickFanOut().
-  const loserIds = (args.snapshot?.contractorIds ?? []).filter(
-    (id) => id !== resolved.id,
-  );
-  const payload: PickResultPayload = {
-    winner: {
-      contractor_id: resolved.id,
-      name: resolved.name,
-      channel: "sms",
-      delivered: true,
-    },
-    losers: loserIds.map((id) => ({
-      contractor_id: id,
-      name: "(other candidate)",
-      channel: "email",
-      delivered: false,
-      error: "mock — would dispatch in production",
-    })),
-    total_sent: 1,
-    total_failed: loserIds.length,
-  };
+  const { payload } = await executeBook({
+    winner_id: resolved.id,
+    winner_name: resolved.name,
+    candidate_ids: args.snapshot?.contractorIds ?? [],
+    user_id: args.user_id,
+  });
 
   return {
     variant: { kind: "pickResult", payload },
     contextMessage: wrapPickResult({
       winner_name: resolved.name,
-      loser_count: loserIds.length,
-      delivered_count: 1,
-      failed_count: loserIds.length,
+      loser_count: payload.losers.length,
+      delivered_count: payload.total_sent,
+      failed_count: payload.total_failed,
     }),
   };
 }
@@ -487,6 +470,7 @@ export async function orchestrate(
       const r = await handleBook({
         slots: classification.slots,
         snapshot: input.currentSurface,
+        user_id: input.user_id,
       });
       return {
         kind: "action",
