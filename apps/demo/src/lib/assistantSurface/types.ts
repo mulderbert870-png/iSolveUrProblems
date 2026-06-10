@@ -66,6 +66,47 @@ export type PickResultPayload = {
   total_failed: number;
 };
 
+/**
+ * Side-by-side compare payload (M3.8). Two picks rendered as full cards
+ * with a list of differentiators highlighted. Used by the deliberation
+ * loop — the v1 view shows pairs since 6's voice typically narrates a
+ * 2-way comparison; the panel can extend to 3 if needed later.
+ */
+export type ComparePayload = {
+  picks: RecommendationCard[];
+  /**
+   * Brief, comma-separated headlines per pick — what makes each
+   * distinctive. Generated server-side from the differentiator math
+   * so the brain and the panel agree on the same talking points.
+   */
+  headlines: string[];
+  /**
+   * Human-readable list of filters currently in effect, for the UI label
+   * (e.g. "locally owned · same-day · ≤ 5 km"). The brain narrates these
+   * naturally; the panel renders them as chips.
+   */
+  active_constraints: string[];
+  /** Memory-fact preferences surfaced via M1.2. */
+  preference_facts: string[];
+  /**
+   * Machine-readable carryover state so multi-turn deliberation can
+   * accumulate constraints across utterances without losing the thread.
+   * The client snapshot reads this on each turn and the orchestrator
+   * starts the next deliberation from here.
+   */
+  state: {
+    category: string;
+    constraints: {
+      locally_owned?: boolean;
+      same_day?: boolean;
+      min_rating?: number;
+      max_price_tier?: 1 | 2 | 3 | 4;
+      max_distance_km?: number;
+      exclude_ids?: string[];
+    };
+  };
+};
+
 /** The variant union — discriminated by `kind`. */
 export type SurfaceVariant =
   | { kind: "contractors"; hits: ContractorCard[]; total_considered: number }
@@ -75,6 +116,7 @@ export type SurfaceVariant =
       picks: RecommendationCard[];
       preference_facts: string[];
     }
-  | { kind: "pickResult"; payload: PickResultPayload };
+  | { kind: "pickResult"; payload: PickResultPayload }
+  | { kind: "compare"; payload: ComparePayload };
 
 export type SurfaceVariantKind = SurfaceVariant["kind"];

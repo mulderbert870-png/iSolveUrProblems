@@ -222,7 +222,8 @@
         "contractors": "Contratistas",
         "summary": "Resumen de reseñas",
         "picks": "Las opciones de 6",
-        "pickResult": "Notificaciones enviadas"
+        "pickResult": "Notificaciones enviadas",
+        "compare": "6 te ayuda a decidir"
       },
       "contractors": {
         "empty": "Aún no hay coincidencias.",
@@ -252,6 +253,16 @@
         "losersLabel": "{count, plural, =1 {Otro candidato notificado} other {# otros candidatos notificados}}",
         "delivered": "entregado",
         "failed": "fallido"
+      },
+      "compare": {
+        "empty": "No hay candidatos para comparar. Amplía la búsqueda e intenta de nuevo.",
+        "activeConstraints": "Filtros activos:",
+        "basedOn": "Ajustado por lo que 6 recuerda:",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mismo día",
+          "locallyOwned": "Local"
+        }
       }
     }
   },

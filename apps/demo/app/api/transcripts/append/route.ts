@@ -154,12 +154,17 @@ function parseSurfaceSnapshot(
   raw: unknown,
 ): SurfaceSnapshot | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
-  const r = raw as { kind?: unknown; contractorIds?: unknown };
+  const r = raw as {
+    kind?: unknown;
+    contractorIds?: unknown;
+    deliberation?: unknown;
+  };
   const validKinds = new Set([
     "contractors",
     "summary",
     "picks",
     "pickResult",
+    "compare",
   ]);
   const kind =
     typeof r.kind === "string" && validKinds.has(r.kind)
@@ -168,5 +173,45 @@ function parseSurfaceSnapshot(
   const contractorIds = Array.isArray(r.contractorIds)
     ? r.contractorIds.filter((x): x is string => typeof x === "string")
     : [];
-  return { kind, contractorIds };
+
+  // Parse deliberation carryover (compare variant only)
+  let deliberation: SurfaceSnapshot["deliberation"] | undefined;
+  if (
+    typeof r.deliberation === "object" &&
+    r.deliberation !== null
+  ) {
+    const d = r.deliberation as { category?: unknown; constraints?: unknown };
+    if (typeof d.category === "string" && d.category.trim() !== "") {
+      const c =
+        typeof d.constraints === "object" && d.constraints !== null
+          ? (d.constraints as Record<string, unknown>)
+          : {};
+      deliberation = {
+        category: d.category.trim(),
+        constraints: {
+          locally_owned:
+            typeof c.locally_owned === "boolean"
+              ? c.locally_owned
+              : undefined,
+          same_day:
+            typeof c.same_day === "boolean" ? c.same_day : undefined,
+          min_rating:
+            typeof c.min_rating === "number" ? c.min_rating : undefined,
+          max_price_tier:
+            typeof c.max_price_tier === "number"
+              ? (c.max_price_tier as 1 | 2 | 3 | 4)
+              : undefined,
+          max_distance_km:
+            typeof c.max_distance_km === "number"
+              ? c.max_distance_km
+              : undefined,
+          exclude_ids: Array.isArray(c.exclude_ids)
+            ? c.exclude_ids.filter((x): x is string => typeof x === "string")
+            : undefined,
+        },
+      };
+    }
+  }
+
+  return { kind, contractorIds, deliberation };
 }

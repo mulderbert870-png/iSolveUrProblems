@@ -223,7 +223,8 @@
         "contractors": "承包商",
         "summary": "评论概览",
         "picks": "6 的首选",
-        "pickResult": "通知已发送"
+        "pickResult": "通知已发送",
+        "compare": "6 帮你做决定"
       },
       "contractors": {
         "empty": "暂无匹配。",
@@ -253,6 +254,16 @@
         "losersLabel": "{count, plural, other {另 # 位候选人已通知}}",
         "delivered": "已送达",
         "failed": "失败"
+      },
+      "compare": {
+        "empty": "暂无可比较的候选项。请放宽筛选并重试。",
+        "activeConstraints": "已应用筛选：",
+        "basedOn": "根据 6 记得的偏好微调：",
+        "badge": {
+          "licensed": "持证",
+          "sameDay": "当日",
+          "locallyOwned": "本地"
+        }
       }
     }
   },

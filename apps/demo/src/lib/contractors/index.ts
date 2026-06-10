@@ -48,3 +48,9 @@ export {
   type FanOutInput,
   type FanOutOutput,
 } from "./fanOut";
+export {
+  deliberate,
+  type DeliberateConstraints,
+  type DeliberateInput,
+  type DeliberateResult,
+} from "./deliberate";

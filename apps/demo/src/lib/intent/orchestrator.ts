@@ -6,12 +6,16 @@ import {
   summarizeReviews,
   upsertContractorSummary,
   recommendContractors,
+  deliberate,
+  type DeliberateConstraints,
 } from "../contractors";
 import { getSupabaseAdminConfig } from "../supabaseAdmin";
 import { classifyIntent } from "./classify";
 import { DEFAULT_CENTER } from "./slots";
 import {
   wrapContractorsResult,
+  wrapDeliberateOpen,
+  wrapDeliberateRefine,
   wrapFallback,
   wrapPickResult,
   wrapRecommendationsResult,
@@ -51,9 +55,18 @@ import type {
  */
 
 export type SurfaceSnapshot = {
-  kind: "contractors" | "summary" | "picks" | "pickResult" | null;
+  kind: "contractors" | "summary" | "picks" | "pickResult" | "compare" | null;
   /** Ordered as displayed in the drawer. Empty for non-list variants. */
   contractorIds: string[];
+  /**
+   * Carryover state when current surface is the deliberation compare panel.
+   * Lets multi-turn refinement accumulate constraints without losing the
+   * category or previous filters.
+   */
+  deliberation?: {
+    category: string;
+    constraints: DeliberateConstraints;
+  };
 };
 
 export type OrchestratorInput = {
@@ -358,6 +371,159 @@ async function handleRecommend(args: {
   };
 }
 
+/**
+ * If no category is on the user's lips, look it up from whatever's on
+ * screen. Used by deliberate_open when the first utterance is "I can't
+ * decide" with no prior compare state.
+ */
+async function inferCategoryFromSnapshot(
+  snapshot?: SurfaceSnapshot,
+): Promise<string> {
+  if (snapshot?.deliberation?.category) return snapshot.deliberation.category;
+  if (!snapshot?.contractorIds?.length) return "general";
+  const firstId = snapshot.contractorIds[0];
+  try {
+    const { url, serviceRoleKey } = getSupabaseAdminConfig();
+    const res = await fetch(
+      `${url}/rest/v1/contractors?id=eq.${encodeURIComponent(
+        firstId,
+      )}&select=categories&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return "general";
+    const rows = (await res.json()) as Array<{ categories: string[] | null }>;
+    return rows[0]?.categories?.[0] ?? "general";
+  } catch {
+    return "general";
+  }
+}
+
+async function handleDeliberateOpen(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  const category =
+    args.slots.category ??
+    (await inferCategoryFromSnapshot(args.snapshot));
+  const near = args.slots.location ?? DEFAULT_CENTER;
+  const result = await deliberate({
+    user_id: args.user_id,
+    category,
+    near,
+    constraints: args.snapshot?.deliberation?.constraints ?? {},
+    current_pick_ids: args.snapshot?.contractorIds,
+  });
+  if (!result.ok) {
+    return {
+      contextMessage: wrapFallback(`deliberate_open: ${result.reason}`),
+    };
+  }
+  return {
+    variant: { kind: "compare", payload: result.payload },
+    contextMessage: wrapDeliberateOpen({ payload: result.payload }),
+  };
+}
+
+async function handleDeliberateRefine(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  const prior = args.snapshot?.deliberation;
+  const category =
+    prior?.category ?? (await inferCategoryFromSnapshot(args.snapshot));
+  const priorConstraints = prior?.constraints ?? {};
+  const newFilters = args.slots.filters ?? {};
+
+  // Merge filters — new values take precedence.
+  const merged: DeliberateConstraints = {
+    ...priorConstraints,
+    ...(newFilters.locally_owned !== undefined && {
+      locally_owned: newFilters.locally_owned,
+    }),
+    ...(newFilters.same_day !== undefined && {
+      same_day: newFilters.same_day,
+    }),
+    ...(newFilters.min_rating !== undefined && {
+      min_rating: newFilters.min_rating,
+    }),
+    ...(newFilters.max_price_tier !== undefined && {
+      max_price_tier: newFilters.max_price_tier,
+    }),
+    ...(newFilters.max_distance_km !== undefined && {
+      max_distance_km: newFilters.max_distance_km,
+    }),
+  };
+
+  // Handle "not that one" — resolve exclude_ref and append to exclude_ids
+  if (args.slots.exclude_ref) {
+    let toExclude: string | null = null;
+    if (
+      args.slots.exclude_ref.type === "ordinal" &&
+      args.snapshot?.contractorIds
+    ) {
+      const idx = args.slots.exclude_ref.position - 1;
+      toExclude = args.snapshot.contractorIds[idx] ?? null;
+    } else if (args.slots.exclude_ref.type === "name") {
+      const found = await findContractorByName(args.slots.exclude_ref.name);
+      toExclude = found?.id ?? null;
+    }
+    if (toExclude) {
+      merged.exclude_ids = [
+        ...(merged.exclude_ids ?? []),
+        toExclude,
+      ];
+    }
+  }
+
+  // Describe what changed in human terms — used by the wrapper for narration.
+  const changedBits: string[] = [];
+  if (newFilters.locally_owned) changedBits.push("locally owned only");
+  if (newFilters.same_day) changedBits.push("same-day only");
+  if (newFilters.min_rating != null)
+    changedBits.push(`min rating ${newFilters.min_rating}`);
+  if (newFilters.max_price_tier != null)
+    changedBits.push(`under ${"$".repeat(newFilters.max_price_tier)}`);
+  if (newFilters.max_distance_km != null)
+    changedBits.push(`within ${newFilters.max_distance_km} km`);
+  if (args.slots.exclude_ref) changedBits.push("excluding the prior one");
+  const changed = changedBits.join(", ") || "constraints unchanged";
+
+  const result = await deliberate({
+    user_id: args.user_id,
+    category,
+    constraints: merged,
+    current_pick_ids: args.snapshot?.contractorIds,
+  });
+  if (!result.ok) {
+    return {
+      contextMessage: wrapFallback(
+        `refinement (${changed}) returned no candidates`,
+      ),
+    };
+  }
+  return {
+    variant: { kind: "compare", payload: result.payload },
+    contextMessage: wrapDeliberateRefine({
+      payload: result.payload,
+      changed,
+    }),
+  };
+}
+
 async function handleBook(args: {
   slots: IntentSlots;
   snapshot?: SurfaceSnapshot;
@@ -471,6 +637,32 @@ export async function orchestrate(
         slots: classification.slots,
         snapshot: input.currentSurface,
         user_id: input.user_id,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "deliberate_open": {
+      const r = await handleDeliberateOpen({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "deliberate_refine": {
+      const r = await handleDeliberateRefine({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
       });
       return {
         kind: "action",

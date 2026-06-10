@@ -4,6 +4,7 @@ export type {
   SummaryPayload,
   PickResultPerson,
   PickResultPayload,
+  ComparePayload,
   SurfaceVariant,
   SurfaceVariantKind,
 } from "./types";

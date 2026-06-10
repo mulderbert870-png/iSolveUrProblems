@@ -222,7 +222,8 @@
         "contractors": "Artisans",
         "summary": "Résumé des avis",
         "picks": "Les choix de 6",
-        "pickResult": "Notifications envoyées"
+        "pickResult": "Notifications envoyées",
+        "compare": "6 vous aide à décider"
       },
       "contractors": {
         "empty": "Aucun résultat pour l'instant.",
@@ -252,6 +253,16 @@
         "losersLabel": "{count, plural, =1 {Autre candidat notifié} other {# autres candidats notifiés}}",
         "delivered": "livré",
         "failed": "échec"
+      },
+      "compare": {
+        "empty": "Aucun candidat à comparer. Élargissez la recherche et réessayez.",
+        "activeConstraints": "Filtres actifs :",
+        "basedOn": "Ajusté selon ce dont 6 se souvient :",
+        "badge": {
+          "licensed": "Agréé",
+          "sameDay": "Jour même",
+          "locallyOwned": "Local"
+        }
       }
     }
   },

@@ -168,6 +168,7 @@ export function extractFilters(text: string): {
   same_day?: boolean;
   min_rating?: number;
   max_price_tier?: 1 | 2 | 3 | 4;
+  max_distance_km?: number;
 } {
   const t = text.toLowerCase();
   const out: ReturnType<typeof extractFilters> = {};
@@ -185,6 +186,19 @@ export function extractFilters(text: string): {
     out.min_rating = 4.5;
   } else if (/\btop[- ]rated|\bhighly\s*rated|\bbest\s*reviewed/.test(t)) {
     out.min_rating = 4.5;
+  }
+
+  // Distance — "closer than 5 km", "within 10 km", "no more than 3 km"
+  const kmMatch = t.match(
+    /\b(?:closer\s+than|within|less\s+than|no\s+more\s+than|under)\s+(\d+(?:\.\d+)?)\s*(?:km|kilometers?|kilometres?|miles?|mi)\b/,
+  );
+  if (kmMatch) {
+    const n = parseFloat(kmMatch[1]);
+    if (!Number.isNaN(n) && n > 0 && n <= 200) {
+      // Convert miles to km if the unit was miles.
+      const isMiles = /mi(?:les?)?\b/.test(kmMatch[0]);
+      out.max_distance_km = isMiles ? Math.round(n * 1.609 * 10) / 10 : n;
+    }
   }
 
   return out;

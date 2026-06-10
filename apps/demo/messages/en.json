@@ -222,7 +222,8 @@
         "contractors": "Contractors",
         "summary": "Review summary",
         "picks": "6's picks",
-        "pickResult": "Notifications sent"
+        "pickResult": "Notifications sent",
+        "compare": "6 is helping you decide"
       },
       "contractors": {
         "empty": "No matches yet.",
@@ -252,6 +253,16 @@
         "losersLabel": "{count, plural, =1 {Other candidate notified} other {# other candidates notified}}",
         "delivered": "delivered",
         "failed": "failed"
+      },
+      "compare": {
+        "empty": "No candidates to compare. Widen the search and try again.",
+        "activeConstraints": "Active filters:",
+        "basedOn": "Tuned by what 6 remembers:",
+        "badge": {
+          "licensed": "Licensed",
+          "sameDay": "Same day",
+          "locallyOwned": "Locally owned"
+        }
       }
     }
   },

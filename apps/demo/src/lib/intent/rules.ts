@@ -31,14 +31,70 @@ type Rule = {
   /** Builds slots from the text + extractors. */
   build: (text: string) => IntentSlots;
   /** The intent kind this rule produces. */
-  kind: "find_contractor" | "tell_me_more" | "recommend" | "book";
+  kind:
+    | "find_contractor"
+    | "tell_me_more"
+    | "recommend"
+    | "book"
+    | "deliberate_open"
+    | "deliberate_refine";
   /** Required slot keys — if any are missing the result is "medium". */
   required: Array<keyof IntentSlots>;
 };
 
 const RULES: readonly Rule[] = [
+  // ─── DELIBERATE_REFINE ────────────────────────────────────────────
+  // Highest priority — phrases like "not that one, too far" should
+  // beat both book.imperative AND recommend.which.
+  {
+    id: "deliberate.refine.not_that_one",
+    match: (t) =>
+      /\bnot\s+(that|the\s+first|the\s+top|that\s+one|him|her|them)\b/i.test(
+        t,
+      ),
+    build: (t) => {
+      const filters = extractFilters(t);
+      return {
+        exclude_ref: extractContractorRef(t) ?? {
+          type: "ordinal",
+          position: 1,
+        },
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
+      };
+    },
+    kind: "deliberate_refine",
+    required: [],
+  },
+  {
+    id: "deliberate.refine.add_constraint",
+    match: (t) =>
+      /\b(only|just)\s+(local|locally|same[- ]day|under|cheaper|highly\s+rated|top[- ]rated)|\b(closer\s+than|within|less\s+than|no\s+more\s+than|under)\s+\d+\s*(?:km|kilometers?|miles?|mi)\b/i.test(
+        t,
+      ),
+    build: (t) => {
+      const filters = extractFilters(t);
+      return {
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
+      };
+    },
+    kind: "deliberate_refine",
+    required: ["filters"],
+  },
+  // ─── DELIBERATE_OPEN ──────────────────────────────────────────────
+  // "I can't decide", "help me decide" — invitation to open the
+  // deliberation panel.
+  {
+    id: "deliberate.open",
+    match: (t) =>
+      /\b(i\s+can'?t\s+decide|i\s+don'?t\s+know\s+which|help\s+me\s+(decide|choose|pick)|hard\s+to\s+choose|compare\s+(them|those|these))\b/i.test(
+        t,
+      ),
+    build: () => ({}),
+    kind: "deliberate_open",
+    required: [],
+  },
   // ─── BOOK ─────────────────────────────────────────────────────────
-  // Highest priority — must match before any of the other intents
+  // High priority — must match before any of the other intents
   // accidentally claim a "book" phrase.
   {
     id: "book.imperative",

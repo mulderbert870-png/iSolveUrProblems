@@ -186,8 +186,18 @@ const useTranscriptCapture = (
     };
 
     const buildSnapshot = (): {
-      kind: "contractors" | "summary" | "picks" | "pickResult" | null;
+      kind:
+        | "contractors"
+        | "summary"
+        | "picks"
+        | "pickResult"
+        | "compare"
+        | null;
       contractorIds: string[];
+      deliberation?: {
+        category: string;
+        constraints: Record<string, unknown>;
+      };
     } => {
       const variant = useAssistantSurface.getState().variant;
       if (!variant) return { kind: null, contractorIds: [] };
@@ -213,6 +223,15 @@ const useTranscriptCapture = (
             contractorIds: variant.payload.winner
               ? [variant.payload.winner.contractor_id]
               : [],
+          };
+        case "compare":
+          return {
+            kind: "compare",
+            contractorIds: variant.payload.picks.map((p) => p.id),
+            deliberation: {
+              category: variant.payload.state.category,
+              constraints: variant.payload.state.constraints,
+            },
           };
       }
     };

@@ -14,6 +14,7 @@
  */
 
 import type {
+  ComparePayload,
   ContractorCard,
   PickResultPayload,
   RecommendationCard,
@@ -124,6 +125,66 @@ export function wrapPickResult(args: {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+/**
+ * M3.8 — "I can't decide" / "help me choose" entry into deliberation.
+ * Brain frames a side-by-side comparison and offers to refine.
+ */
+export function wrapDeliberateOpen(args: {
+  payload: ComparePayload;
+}): string {
+  const { picks, headlines, active_constraints, preference_facts } =
+    args.payload;
+  if (picks.length === 0) {
+    return `[DELIBERATION — not spoken by user] User asked for help deciding but no candidates matched. Respond as 6 in one sentence — suggest widening the search.`;
+  }
+  const list = picks
+    .map((p, i) => `  ${i + 1}. ${p.name} — ${headlines[i] || p.reason}`)
+    .join("\n");
+  const constraintsLine =
+    active_constraints.length > 0
+      ? `Active filters: ${active_constraints.join(", ")}.`
+      : "";
+  const prefsLine =
+    preference_facts.length > 0
+      ? `Tracked preferences: ${preference_facts.slice(0, 3).join(", ")}.`
+      : "";
+  return [
+    `[DELIBERATION — not spoken by user]`,
+    `User said they can't decide. I've pulled the top ${picks.length} candidates side-by-side with the key differentiators:`,
+    list,
+    constraintsLine,
+    prefsLine,
+    `Respond in first person as 6. Lay them out as a 2-way comparison in one sentence — name each pick and its key advantage. Then offer to refine ("want me to narrow it by anything specific?") in one sentence. Two sentences total.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * M3.8 — User refined constraints ("only locally-owned", "closer than 5km",
+ * "not that one"). Brain confirms what changed and re-narrates the new
+ * top picks.
+ */
+export function wrapDeliberateRefine(args: {
+  payload: ComparePayload;
+  changed: string;
+}): string {
+  const { picks, headlines } = args.payload;
+  if (picks.length === 0) {
+    return `[REFINEMENT — not spoken by user] User added a constraint (${args.changed}) but no candidates match anymore. Respond as 6 in one sentence — suggest relaxing or going back.`;
+  }
+  const top = picks[0];
+  const list = picks
+    .map((p, i) => `  ${i + 1}. ${p.name} — ${headlines[i] || p.reason}`)
+    .join("\n");
+  return [
+    `[REFINEMENT — not spoken by user]`,
+    `User refined the deliberation: ${args.changed}. New top candidates:`,
+    list,
+    `Respond in first person as 6. Acknowledge the refinement and name the new #1 pick (${top.name}) with the relevant differentiator. Two sentences max.`,
+  ].join("\n");
 }
 
 /**

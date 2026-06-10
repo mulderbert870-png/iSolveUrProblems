@@ -222,7 +222,8 @@
         "contractors": "Handwerker",
         "summary": "Bewertungs-Zusammenfassung",
         "picks": "6s Auswahl",
-        "pickResult": "Benachrichtigungen versendet"
+        "pickResult": "Benachrichtigungen versendet",
+        "compare": "6 hilft dir bei der Entscheidung"
       },
       "contractors": {
         "empty": "Noch keine Treffer.",
@@ -252,6 +253,16 @@
         "losersLabel": "{count, plural, =1 {Ein weiterer benachrichtigt} other {# weitere benachrichtigt}}",
         "delivered": "zugestellt",
         "failed": "fehlgeschlagen"
+      },
+      "compare": {
+        "empty": "Keine Kandidaten zum Vergleichen. Erweitere die Suche und versuche es erneut.",
+        "activeConstraints": "Aktive Filter:",
+        "basedOn": "Abgestimmt auf das, woran 6 sich erinnert:",
+        "badge": {
+          "licensed": "Lizenziert",
+          "sameDay": "Same-day",
+          "locallyOwned": "Lokal"
+        }
       }
     }
   },

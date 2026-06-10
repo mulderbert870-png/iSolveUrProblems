@@ -22,7 +22,9 @@ export type IntentKind =
   | "find_contractor"
   | "tell_me_more"
   | "recommend"
-  | "book";
+  | "book"
+  | "deliberate_open"
+  | "deliberate_refine";
 
 /** A reference to a specific contractor in conversation context. */
 export type ContractorRef =
@@ -45,7 +47,14 @@ export type IntentSlots = {
     same_day?: boolean;
     min_rating?: number;
     max_price_tier?: 1 | 2 | 3 | 4;
+    max_distance_km?: number;
   };
+  /**
+   * For deliberate_refine — when the user says "not that one", the client
+   * resolves the referenced ID(s) against its current surface and the
+   * orchestrator adds them to the running exclude list.
+   */
+  exclude_ref?: ContractorRef;
 };
 
 /** Confidence buckets — chosen at classify time, used by orchestrator. */

@@ -222,7 +222,8 @@
         "contractors": "Profissionais",
         "summary": "Resumo das avaliações",
         "picks": "As escolhas do 6",
-        "pickResult": "Notificações enviadas"
+        "pickResult": "Notificações enviadas",
+        "compare": "O 6 te ajuda a decidir"
       },
       "contractors": {
         "empty": "Nenhum resultado ainda.",
@@ -252,6 +253,16 @@
         "losersLabel": "{count, plural, =1 {Outro candidato notificado} other {# outros candidatos notificados}}",
         "delivered": "entregue",
         "failed": "falhou"
+      },
+      "compare": {
+        "empty": "Nenhum candidato para comparar. Amplie a busca e tente novamente.",
+        "activeConstraints": "Filtros ativos:",
+        "basedOn": "Ajustado pelo que o 6 lembra:",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mesmo dia",
+          "locallyOwned": "Local"
+        }
       }
     }
   },
