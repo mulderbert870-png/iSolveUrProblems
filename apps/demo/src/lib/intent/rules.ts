@@ -17,10 +17,12 @@
  */
 
 import {
+  extractAmount,
   extractCategory,
   extractContractorRef,
   extractFilters,
   extractLocation,
+  extractScope,
 } from "./slots";
 import { extractDateTime } from "../appointments/extractDateTime";
 import type { ClassifyResult, IntentSlots } from "./types";
@@ -42,7 +44,8 @@ type Rule = {
     | "schedule_appointment"
     | "reschedule_appointment"
     | "cancel_appointment"
-    | "view_appointments";
+    | "view_appointments"
+    | "draft_contract";
   /** Required slot keys — if any are missing the result is "medium". */
   required: Array<keyof IntentSlots>;
 };
@@ -179,6 +182,27 @@ const RULES: readonly Rule[] = [
     },
     kind: "schedule_appointment",
     required: ["when"],
+  },
+  // ─── DRAFT_CONTRACT ───────────────────────────────────────────────
+  // "draft the contract", "write up an agreement", "send the contract
+  // for signing" — must beat book.imperative.
+  {
+    id: "draft.contract.imperative",
+    match: (t) =>
+      /\b(draft|write\s+up|send|generate|create|prepare)\s+(the\s+|a\s+|an\s+)?(contract|agreement|paperwork)\b/i.test(
+        t,
+      ),
+    build: (t) => {
+      const amount = extractAmount(t);
+      const scope = extractScope(t);
+      return {
+        amount_cents: amount,
+        scope,
+        contractor_ref: extractContractorRef(t),
+      };
+    },
+    kind: "draft_contract",
+    required: [],
   },
   // ─── BOOK ─────────────────────────────────────────────────────────
   // High priority — must match before any of the other intents

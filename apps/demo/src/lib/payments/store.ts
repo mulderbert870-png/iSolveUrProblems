@@ -1,5 +1,6 @@
 import { getSupabaseAdminConfig } from "../supabaseAdmin";
 import type { ContractRow, ContractStatus } from "./types";
+import type { EsignEnvelopeStatus, ProviderName } from "../esign";
 
 /**
  * Contracts persistence (M2.5). Service-role only — RLS on `contracts`
@@ -196,6 +197,84 @@ export function computePlatformFeeCents(
   feePercent: number,
 ): number {
   return Math.max(0, Math.floor((amountCents * feePercent) / 100));
+}
+
+/**
+ * M3.7 — Update a contract with e-signature envelope details after the
+ * provider returns. Called from /api/contracts/draft.
+ */
+export async function setContractEsign(args: {
+  contract_id: string;
+  user_id: string;
+  esign_provider: ProviderName;
+  esign_envelope_id: string;
+  esign_envelope_status: EsignEnvelopeStatus;
+  esign_signing_url_user: string | null;
+  esign_signing_url_contractor: string | null;
+  scope: string;
+  // For mock: provider returns 'signed' immediately, in which case we
+  // also stamp signed_at_*.
+  stamp_signed_now: boolean;
+}): Promise<void> {
+  const { url, serviceRoleKey } = getSupabaseAdminConfig();
+  const now = new Date().toISOString();
+  const payload: Record<string, unknown> = {
+    scope: args.scope,
+    esign_provider: args.esign_provider,
+    esign_envelope_id: args.esign_envelope_id,
+    esign_envelope_status: args.esign_envelope_status,
+    esign_signing_url_user: args.esign_signing_url_user,
+    esign_signing_url_contractor: args.esign_signing_url_contractor,
+  };
+  if (args.stamp_signed_now) {
+    payload.signed_at_user = now;
+    payload.signed_at_contractor = now;
+  }
+  const res = await fetch(
+    `${url}/rest/v1/contracts?id=eq.${encodeURIComponent(
+      args.contract_id,
+    )}&user_id=eq.${encodeURIComponent(args.user_id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `contracts esign patch ${res.status}: ${await res.text()}`,
+    );
+  }
+}
+
+/**
+ * M3.7 — Look up a contract by envelope id, used by the e-sign webhook
+ * handler to reconcile status updates back to the contract row.
+ */
+export async function getContractByEnvelopeId(
+  envelope_id: string,
+): Promise<ContractRow | null> {
+  const { url, serviceRoleKey } = getSupabaseAdminConfig();
+  const res = await fetch(
+    `${url}/rest/v1/contracts?esign_envelope_id=eq.${encodeURIComponent(
+      envelope_id,
+    )}&select=*&limit=1`,
+    {
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) return null;
+  const rows = (await res.json()) as ContractRow[];
+  return rows[0] ?? null;
 }
 
 export function statusFromStripeIntentStatus(

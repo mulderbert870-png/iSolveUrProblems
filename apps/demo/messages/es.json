@@ -224,7 +224,8 @@
         "picks": "Las opciones de 6",
         "pickResult": "Notificaciones enviadas",
         "compare": "6 te ayuda a decidir",
-        "appointment": "Citas"
+        "appointment": "Citas",
+        "contract": "Acuerdo de trabajo"
       },
       "contractors": {
         "empty": "Aún no hay coincidencias.",
@@ -277,6 +278,25 @@
         "status": {
           "cancelled": "Cancelada",
           "rescheduled": "Cambiada desde una hora anterior"
+        }
+      },
+      "contract": {
+        "title": "Acuerdo de trabajo redactado",
+        "contractorLabel": "Contratista",
+        "scopeLabel": "Alcance del trabajo",
+        "amountLabel": "Importe",
+        "platformFeeLabel": "Comisión de la plataforma",
+        "signUserCta": "Revisar y firmar tu copia",
+        "signContractorCta": "Enviar enlace de firma al contratista",
+        "envelopeId": "Sobre {id}",
+        "provider": "vía {name}",
+        "status": {
+          "draft": "Borrador",
+          "awaiting": "Esperando firma",
+          "signed": "Firmado",
+          "declined": "Rechazado",
+          "cancelled": "Cancelado",
+          "expired": "Expirado"
         }
       }
     }

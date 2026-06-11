@@ -27,13 +27,24 @@ import {
   wrapContractorsResult,
   wrapDeliberateOpen,
   wrapDeliberateRefine,
+  wrapDraftContract,
   wrapFallback,
   wrapPickResult,
   wrapRecommendationsResult,
   wrapSummaryResult,
 } from "./contextInjector";
 import { executeBook } from "./bookHandler";
-import type { AppointmentCard } from "../assistantSurface";
+import {
+  insertContract,
+  setContractEsign,
+  computePlatformFeeCents,
+  getContractorStripeRow,
+} from "../payments";
+import {
+  getEsignProvider,
+  getProviderNameFromEnv,
+} from "../esign";
+import type { AppointmentCard, ContractPayload } from "../assistantSurface";
 import type {
   ContractorCard,
   RecommendationCard,
@@ -74,6 +85,7 @@ export type SurfaceSnapshot = {
     | "pickResult"
     | "compare"
     | "appointment"
+    | "contract"
     | null;
   /** Ordered as displayed in the drawer. Empty for non-list variants. */
   contractorIds: string[];
@@ -826,6 +838,261 @@ async function handleViewAppointments(args: {
   };
 }
 
+// ─── Contract drafter (M3.7) ────────────────────────────────────────
+
+const PLATFORM_FEE_PERCENT_FOR_DRAFT = (() => {
+  const raw = process.env.PLATFORM_FEE_PERCENT;
+  const n = raw != null ? parseFloat(raw) : NaN;
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 5;
+})();
+const PLATFORM_CURRENCY_FOR_DRAFT = (
+  process.env.PLATFORM_CURRENCY || "usd"
+).toLowerCase();
+
+const MIN_DRAFT_AMOUNT_CENTS = 100;
+const MAX_DRAFT_AMOUNT_CENTS = 5_000_000;
+
+async function fetchHomeownerName(
+  userId: string,
+): Promise<{ name: string; email: string | null }> {
+  try {
+    const { url, serviceRoleKey } = getSupabaseAdminConfig();
+    const res = await fetch(
+      `${url}/rest/v1/users?id=eq.${encodeURIComponent(
+        userId,
+      )}&select=email,display_name&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return { name: "Homeowner", email: null };
+    const rows = (await res.json()) as Array<{
+      email: string | null;
+      display_name: string | null;
+    }>;
+    const row = rows[0];
+    return {
+      name: row?.display_name ?? "Homeowner",
+      email: row?.email ?? null,
+    };
+  } catch {
+    return { name: "Homeowner", email: null };
+  }
+}
+
+function buildContractBody(args: {
+  homeownerName: string;
+  contractorName: string;
+  scope: string;
+  amountCents: number;
+  currency: string;
+  platformFeeCents: number;
+}): string {
+  const dollars = (args.amountCents / 100).toFixed(2);
+  const feeDollars = (args.platformFeeCents / 100).toFixed(2);
+  const c = args.currency.toUpperCase();
+  return [
+    `WORK AGREEMENT`,
+    ``,
+    `Between: ${args.homeownerName} ("Homeowner")`,
+    `And:     ${args.contractorName} ("Contractor")`,
+    ``,
+    `Scope of Work:`,
+    args.scope,
+    ``,
+    `Total Compensation: ${dollars} ${c}`,
+    `Platform Fee (deducted): ${feeDollars} ${c} (iSolveUrProblems)`,
+    ``,
+    `Both parties agree that:`,
+    `  - Work will be performed in a workmanlike manner.`,
+    `  - Payment will be released through the iSolveUrProblems platform.`,
+    `  - Disputes will be handled per the iSolveUrProblems Terms of Service.`,
+    `  - This agreement is enforceable as a written contract upon both signatures.`,
+    ``,
+    `By signing below, both parties acknowledge and agree to these terms.`,
+  ].join("\n");
+}
+
+async function handleDraftContract(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return {
+      contextMessage: wrapFallback(
+        "drafting a contract requires sign-in (contracts are user-scoped)",
+      ),
+    };
+  }
+
+  // Resolve the contractor — prefer the explicit slot ref, fall back to
+  // whatever's at the top of the current surface (the post-deliberation
+  // / post-booking flow naturally lands here).
+  let contractorRef = args.slots.contractor_ref;
+  if (!contractorRef && args.snapshot?.contractorIds?.length) {
+    contractorRef = { type: "ordinal", position: 1 };
+  }
+  if (!contractorRef) {
+    return {
+      contextMessage: wrapFallback(
+        "user wanted a contract but no contractor on screen and no name said",
+      ),
+    };
+  }
+  const resolved = await resolveContractorRef({
+    ref: contractorRef,
+    snapshot: args.snapshot,
+  });
+  if (!resolved) {
+    return {
+      contextMessage: wrapFallback(
+        "couldn't identify the contractor for the contract",
+      ),
+    };
+  }
+
+  // Amount + scope must be present for v1.
+  const amountCents = args.slots.amount_cents;
+  if (
+    typeof amountCents !== "number" ||
+    !Number.isInteger(amountCents) ||
+    amountCents < MIN_DRAFT_AMOUNT_CENTS ||
+    amountCents > MAX_DRAFT_AMOUNT_CENTS
+  ) {
+    return {
+      contextMessage: wrapFallback(
+        "no clear dollar amount in the request — ask the user to say the price",
+      ),
+    };
+  }
+  const scope = args.slots.scope?.trim();
+  if (!scope) {
+    return {
+      contextMessage: wrapFallback(
+        "no scope phrase in the request — ask the user what the contract should cover",
+      ),
+    };
+  }
+
+  // Pull contractor row for name + email (uses the M2.5 helper).
+  const contractor = await getContractorStripeRow(resolved.id).catch(
+    () => null,
+  );
+  if (!contractor) {
+    return {
+      contextMessage: wrapFallback(
+        "contractor row lookup failed during contract draft",
+      ),
+    };
+  }
+
+  const homeowner = await fetchHomeownerName(args.user_id);
+  const platformFeeCents = computePlatformFeeCents(
+    amountCents,
+    PLATFORM_FEE_PERCENT_FOR_DRAFT,
+  );
+
+  let contractRow;
+  try {
+    contractRow = await insertContract({
+      user_id: args.user_id,
+      contractor_id: resolved.id,
+      category: "general",
+      amount_cents: amountCents,
+      platform_fee_cents: platformFeeCents,
+      currency: PLATFORM_CURRENCY_FOR_DRAFT,
+      candidate_ids: args.snapshot?.contractorIds ?? [],
+      context: { source: "m3.7_voice_draft", scope },
+    });
+  } catch (e) {
+    return {
+      contextMessage: wrapFallback(
+        `contract insert failed: ${e instanceof Error ? e.message : "unknown"}`,
+      ),
+    };
+  }
+
+  const docBody = buildContractBody({
+    homeownerName: homeowner.name,
+    contractorName: contractor.name,
+    scope,
+    amountCents,
+    currency: PLATFORM_CURRENCY_FOR_DRAFT,
+    platformFeeCents,
+  });
+
+  const provider = getEsignProvider();
+  const env = await provider.createEnvelope({
+    contract_id: contractRow.id,
+    title: `Work agreement — ${contractor.name}`,
+    body: docBody,
+    signers: [
+      { role: "user", name: homeowner.name, email: homeowner.email },
+      {
+        role: "contractor",
+        name: contractor.name,
+        email: contractor.email,
+      },
+    ],
+    return_url: "",
+  });
+
+  if (!env.ok) {
+    return {
+      contextMessage: wrapFallback(`esign provider failed: ${env.error}`),
+    };
+  }
+
+  try {
+    await setContractEsign({
+      contract_id: contractRow.id,
+      user_id: args.user_id,
+      esign_provider: getProviderNameFromEnv(),
+      esign_envelope_id: env.envelope_id,
+      esign_envelope_status: env.status,
+      esign_signing_url_user: env.signing_url_by_role.user,
+      esign_signing_url_contractor: env.signing_url_by_role.contractor,
+      scope,
+      stamp_signed_now: env.status === "signed",
+    });
+  } catch (e) {
+    return {
+      contextMessage: wrapFallback(
+        `contract esign patch failed: ${e instanceof Error ? e.message : "unknown"}`,
+      ),
+    };
+  }
+
+  const payload: ContractPayload = {
+    contract_id: contractRow.id,
+    contractor_name: contractor.name,
+    scope,
+    amount_cents: amountCents,
+    platform_fee_cents: platformFeeCents,
+    currency: PLATFORM_CURRENCY_FOR_DRAFT,
+    envelope: {
+      provider: getProviderNameFromEnv(),
+      envelope_id: env.envelope_id,
+      status: env.status,
+      signing_url_user: env.signing_url_by_role.user,
+      signing_url_contractor: env.signing_url_by_role.contractor,
+    },
+  };
+
+  return {
+    variant: { kind: "contract", payload },
+    contextMessage: wrapDraftContract({ payload }),
+  };
+}
+
 // ─── Top-level orchestrator ────────────────────────────────────────
 
 export async function orchestrate(
@@ -968,6 +1235,19 @@ export async function orchestrate(
     case "view_appointments": {
       const r = await handleViewAppointments({
         user_id: input.user_id,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "draft_contract": {
+      const r = await handleDraftContract({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
       });
       return {
         kind: "action",

@@ -224,7 +224,8 @@
         "picks": "6s Auswahl",
         "pickResult": "Benachrichtigungen versendet",
         "compare": "6 hilft dir bei der Entscheidung",
-        "appointment": "Termine"
+        "appointment": "Termine",
+        "contract": "Arbeitsvereinbarung"
       },
       "contractors": {
         "empty": "Noch keine Treffer.",
@@ -277,6 +278,25 @@
         "status": {
           "cancelled": "Abgesagt",
           "rescheduled": "Von einem früheren Zeitpunkt verschoben"
+        }
+      },
+      "contract": {
+        "title": "Arbeitsvereinbarung entworfen",
+        "contractorLabel": "Auftragnehmer",
+        "scopeLabel": "Leistungsumfang",
+        "amountLabel": "Betrag",
+        "platformFeeLabel": "Plattformgebühr",
+        "signUserCta": "Deine Kopie prüfen und unterschreiben",
+        "signContractorCta": "Signatur-Link an Auftragnehmer senden",
+        "envelopeId": "Umschlag {id}",
+        "provider": "über {name}",
+        "status": {
+          "draft": "Entwurf",
+          "awaiting": "Warten auf Unterschrift",
+          "signed": "Unterschrieben",
+          "declined": "Abgelehnt",
+          "cancelled": "Abgesagt",
+          "expired": "Abgelaufen"
         }
       }
     }

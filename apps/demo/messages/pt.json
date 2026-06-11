@@ -224,7 +224,8 @@
         "picks": "As escolhas do 6",
         "pickResult": "Notificações enviadas",
         "compare": "O 6 te ajuda a decidir",
-        "appointment": "Agendamentos"
+        "appointment": "Agendamentos",
+        "contract": "Contrato de trabalho"
       },
       "contractors": {
         "empty": "Nenhum resultado ainda.",
@@ -277,6 +278,25 @@
         "status": {
           "cancelled": "Cancelado",
           "rescheduled": "Movido de um horário anterior"
+        }
+      },
+      "contract": {
+        "title": "Contrato de trabalho elaborado",
+        "contractorLabel": "Prestador",
+        "scopeLabel": "Escopo do trabalho",
+        "amountLabel": "Valor",
+        "platformFeeLabel": "Taxa da plataforma",
+        "signUserCta": "Revisar e assinar sua cópia",
+        "signContractorCta": "Enviar link de assinatura ao prestador",
+        "envelopeId": "Envelope {id}",
+        "provider": "via {name}",
+        "status": {
+          "draft": "Rascunho",
+          "awaiting": "Aguardando assinatura",
+          "signed": "Assinado",
+          "declined": "Recusado",
+          "cancelled": "Cancelado",
+          "expired": "Expirado"
         }
       }
     }

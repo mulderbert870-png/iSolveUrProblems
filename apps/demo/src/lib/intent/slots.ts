@@ -163,6 +163,61 @@ export function extractContractorRef(
 
 // ─── Filter extraction ──────────────────────────────────────────────
 
+/**
+ * Extract a dollar amount in cents from natural language. Handles:
+ *   "$500"           → 50000
+ *   "500 dollars"    → 50000
+ *   "$1,250"         → 125000
+ *   "twenty bucks"   → ... (skipped — not enough signal in v1)
+ *   "2.5k"           → 250000
+ *
+ * Returns undefined if nothing convincing is found.
+ */
+export function extractAmount(text: string): number | undefined {
+  const t = text.toLowerCase();
+
+  // "$1,250" / "$500" / "$2,500.00"
+  const dollar = t.match(/\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/);
+  if (dollar) {
+    const raw = dollar[1].replace(/,/g, "");
+    const n = parseFloat(raw);
+    if (Number.isFinite(n) && n > 0) return Math.round(n * 100);
+  }
+
+  // "500 dollars" / "1,250 dollars" / "500 bucks"
+  const spelled = t.match(
+    /\b(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)\s*(?:dollars?|bucks?|usd)\b/,
+  );
+  if (spelled) {
+    const raw = spelled[1].replace(/,/g, "");
+    const n = parseFloat(raw);
+    if (Number.isFinite(n) && n > 0) return Math.round(n * 100);
+  }
+
+  // "2k" / "1.5k" — k-suffix abbreviation
+  const kSuffix = t.match(/\b(\d+(?:\.\d+)?)\s*k\b/);
+  if (kSuffix) {
+    const n = parseFloat(kSuffix[1]);
+    if (Number.isFinite(n) && n > 0) return Math.round(n * 1000 * 100);
+  }
+
+  return undefined;
+}
+
+/**
+ * Pull out a free-form scope phrase from "for X" / "to do Y" patterns.
+ * Used by draft_contract. Best-effort; returns undefined if nothing
+ * useful matches.
+ */
+export function extractScope(text: string): string | undefined {
+  // "...for installing the new water heater"
+  const m = text.match(
+    /\b(?:for|to)\s+([a-z][\w\s-]{4,120})(?:\s+(?:for\s+\$|at\s+\$|,|\.|$))/i,
+  );
+  if (m) return m[1].trim();
+  return undefined;
+}
+
 export function extractFilters(text: string): {
   locally_owned?: boolean;
   same_day?: boolean;

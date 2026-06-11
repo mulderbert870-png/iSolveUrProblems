@@ -224,7 +224,8 @@
         "picks": "6's picks",
         "pickResult": "Notifications sent",
         "compare": "6 is helping you decide",
-        "appointment": "Appointments"
+        "appointment": "Appointments",
+        "contract": "Work agreement"
       },
       "contractors": {
         "empty": "No matches yet.",
@@ -277,6 +278,25 @@
         "status": {
           "cancelled": "Cancelled",
           "rescheduled": "Moved from a prior time"
+        }
+      },
+      "contract": {
+        "title": "Work agreement drafted",
+        "contractorLabel": "Contractor",
+        "scopeLabel": "Scope of work",
+        "amountLabel": "Amount",
+        "platformFeeLabel": "Platform fee",
+        "signUserCta": "Review & sign your copy",
+        "signContractorCta": "Send contractor signing link",
+        "envelopeId": "Envelope {id}",
+        "provider": "via {name}",
+        "status": {
+          "draft": "Draft",
+          "awaiting": "Awaiting signature",
+          "signed": "Signed",
+          "declined": "Declined",
+          "cancelled": "Cancelled",
+          "expired": "Expired"
         }
       }
     }

@@ -224,7 +224,8 @@
         "picks": "Les choix de 6",
         "pickResult": "Notifications envoyées",
         "compare": "6 vous aide à décider",
-        "appointment": "Rendez-vous"
+        "appointment": "Rendez-vous",
+        "contract": "Contrat de travail"
       },
       "contractors": {
         "empty": "Aucun résultat pour l'instant.",
@@ -277,6 +278,25 @@
         "status": {
           "cancelled": "Annulé",
           "rescheduled": "Déplacé depuis un autre horaire"
+        }
+      },
+      "contract": {
+        "title": "Contrat de travail rédigé",
+        "contractorLabel": "Prestataire",
+        "scopeLabel": "Étendue des travaux",
+        "amountLabel": "Montant",
+        "platformFeeLabel": "Commission de la plateforme",
+        "signUserCta": "Examiner et signer votre exemplaire",
+        "signContractorCta": "Envoyer le lien de signature au prestataire",
+        "envelopeId": "Enveloppe {id}",
+        "provider": "via {name}",
+        "status": {
+          "draft": "Brouillon",
+          "awaiting": "En attente de signature",
+          "signed": "Signé",
+          "declined": "Refusé",
+          "cancelled": "Annulé",
+          "expired": "Expiré"
         }
       }
     }

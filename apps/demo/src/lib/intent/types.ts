@@ -28,7 +28,8 @@ export type IntentKind =
   | "schedule_appointment"
   | "reschedule_appointment"
   | "cancel_appointment"
-  | "view_appointments";
+  | "view_appointments"
+  | "draft_contract";
 
 /** A reference to a specific contractor in conversation context. */
 export type ContractorRef =
@@ -66,6 +67,10 @@ export type IntentSlots = {
   when?: { iso_utc: string; phrase: string };
   /** Free-form agenda text — what the appointment is for. */
   agenda?: string;
+  /** For draft_contract — extracted dollar amount in cents. */
+  amount_cents?: number;
+  /** For draft_contract — free-form work scope text. */
+  scope?: string;
 };
 
 /** Confidence buckets — chosen at classify time, used by orchestrator. */

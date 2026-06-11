@@ -7,6 +7,7 @@ export type {
   ComparePayload,
   AppointmentCard,
   AppointmentSurfacePayload,
+  ContractPayload,
   SurfaceVariant,
   SurfaceVariantKind,
 } from "./types";

@@ -193,6 +193,7 @@ const useTranscriptCapture = (
         | "pickResult"
         | "compare"
         | "appointment"
+        | "contract"
         | null;
       contractorIds: string[];
       deliberation?: {
@@ -243,6 +244,11 @@ const useTranscriptCapture = (
               .map((a) => a.contractor_id)
               .filter((id): id is string => !!id),
           };
+        case "contract":
+          // No contractor IDs leak into the snapshot from a contract panel
+          // — the contract belongs to a contractor but we don't expose
+          // their ID through this surface in v1.
+          return { kind: "contract", contractorIds: [] };
       }
     };
 

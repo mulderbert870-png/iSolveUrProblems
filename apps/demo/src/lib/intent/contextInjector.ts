@@ -16,6 +16,7 @@
 import type {
   AppointmentCard,
   ComparePayload,
+  ContractPayload,
   ContractorCard,
   PickResultPayload,
   RecommendationCard,
@@ -267,6 +268,27 @@ export function wrapAppointmentsList(args: {
     `User asked what's on their calendar. They have ${args.appointments.length} upcoming:`,
     list,
     `Respond as 6 in first person. Name the very next one (#1) with its time and (if relevant) the contractor. Offer to read more if there are others. Two sentences max.`,
+  ].join("\n");
+}
+
+/**
+ * M3.7 — Confirm a freshly drafted work agreement / e-sign envelope.
+ * Brain reads back the contractor + amount + scope and lets the homeowner
+ * know what happens next.
+ */
+export function wrapDraftContract(args: { payload: ContractPayload }): string {
+  const { payload } = args;
+  const dollars = (payload.amount_cents / 100).toFixed(2);
+  const feeDollars = (payload.platform_fee_cents / 100).toFixed(2);
+  const c = payload.currency.toUpperCase();
+  const sentAlready = payload.envelope.status === "signed";
+  return [
+    `[CONTRACT DRAFTED — not spoken by user]`,
+    `Drafted a work agreement with ${payload.contractor_name}. Scope: ${payload.scope}. Total ${dollars} ${c} (platform fee ${feeDollars} ${c}).`,
+    sentAlready
+      ? `Mock provider auto-signed the envelope for the test drive; in production both parties would receive signing links by email.`
+      : `Envelope is out via ${payload.envelope.provider}; both parties will receive signing emails shortly.`,
+    `Respond as 6 in first person. Confirm the contract was drafted, name the contractor and the total, and tell them to check their email to sign. Two sentences max.`,
   ].join("\n");
 }
 

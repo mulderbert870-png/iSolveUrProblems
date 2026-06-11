@@ -225,7 +225,8 @@
         "picks": "6 的首选",
         "pickResult": "通知已发送",
         "compare": "6 帮你做决定",
-        "appointment": "预约"
+        "appointment": "预约",
+        "contract": "施工协议"
       },
       "contractors": {
         "empty": "暂无匹配。",
@@ -278,6 +279,25 @@
         "status": {
           "cancelled": "已取消",
           "rescheduled": "由原时间改动"
+        }
+      },
+      "contract": {
+        "title": "施工协议已起草",
+        "contractorLabel": "承包商",
+        "scopeLabel": "工作范围",
+        "amountLabel": "金额",
+        "platformFeeLabel": "平台费用",
+        "signUserCta": "查看并签署你的副本",
+        "signContractorCta": "向承包商发送签署链接",
+        "envelopeId": "信封 {id}",
+        "provider": "通过 {name}",
+        "status": {
+          "draft": "草稿",
+          "awaiting": "等待签署",
+          "signed": "已签署",
+          "declined": "已拒绝",
+          "cancelled": "已取消",
+          "expired": "已过期"
         }
       }
     }

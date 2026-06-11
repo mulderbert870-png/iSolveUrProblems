@@ -130,6 +130,34 @@ export type AppointmentSurfacePayload = {
   intent_kind: "scheduled" | "rescheduled" | "cancelled" | "list";
 };
 
+/**
+ * Contract draft / signing-status payload (M3.7). Used to show the
+ * homeowner a confirmation that the work agreement was generated and
+ * dispatched for e-signature.
+ */
+export type ContractPayload = {
+  contract_id: string;
+  contractor_name: string;
+  scope: string;
+  amount_cents: number;
+  platform_fee_cents: number;
+  currency: string;
+  envelope: {
+    provider: "mock" | "dropbox_sign";
+    envelope_id: string;
+    status:
+      | "draft"
+      | "sent"
+      | "awaiting_signature"
+      | "signed"
+      | "declined"
+      | "cancelled"
+      | "expired";
+    signing_url_user: string | null;
+    signing_url_contractor: string | null;
+  };
+};
+
 /** The variant union — discriminated by `kind`. */
 export type SurfaceVariant =
   | { kind: "contractors"; hits: ContractorCard[]; total_considered: number }
@@ -141,6 +169,7 @@ export type SurfaceVariant =
     }
   | { kind: "pickResult"; payload: PickResultPayload }
   | { kind: "compare"; payload: ComparePayload }
-  | { kind: "appointment"; payload: AppointmentSurfacePayload };
+  | { kind: "appointment"; payload: AppointmentSurfacePayload }
+  | { kind: "contract"; payload: ContractPayload };
 
 export type SurfaceVariantKind = SurfaceVariant["kind"];
