@@ -1,0 +1,45 @@
+/**
+ * M3.4 + M3.5 — Appointment types.
+ *
+ * Mirrors the columns in 20260610_appointments.sql.
+ */
+
+export type AppointmentStatus =
+  | "scheduled"
+  | "rescheduled"
+  | "cancelled"
+  | "completed"
+  | "no_show";
+
+export type AppointmentRow = {
+  id: string;
+  user_id: string;
+  contractor_id: string | null;
+  contract_id: string | null;
+  scheduled_at: string;
+  duration_minutes: number;
+  agenda: string;
+  status: AppointmentStatus;
+  reminder_24h_sent_at: string | null;
+  reminder_2h_sent_at: string | null;
+  context: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateAppointmentInput = {
+  user_id: string;
+  contractor_id?: string | null;
+  contract_id?: string | null;
+  scheduled_at: string;        // ISO UTC
+  duration_minutes?: number;   // default 60
+  agenda?: string;
+  context?: Record<string, unknown>;
+};
+
+export type RescheduleAppointmentInput = {
+  appointment_id: string;
+  user_id: string;
+  new_scheduled_at: string;    // ISO UTC
+  reason?: string;
+};

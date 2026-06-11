@@ -223,7 +223,8 @@
         "summary": "Resumen de reseñas",
         "picks": "Las opciones de 6",
         "pickResult": "Notificaciones enviadas",
-        "compare": "6 te ayuda a decidir"
+        "compare": "6 te ayuda a decidir",
+        "appointment": "Citas"
       },
       "contractors": {
         "empty": "Aún no hay coincidencias.",
@@ -262,6 +263,20 @@
           "licensed": "Licenciado",
           "sameDay": "Mismo día",
           "locallyOwned": "Local"
+        }
+      },
+      "appointment": {
+        "empty": "No tienes nada en tu calendario por ahora.",
+        "withSomeone": "Cita",
+        "header": {
+          "scheduled": "Cita agendada",
+          "rescheduled": "Cita reprogramada",
+          "cancelled": "Cita cancelada",
+          "list": "Próximas citas"
+        },
+        "status": {
+          "cancelled": "Cancelada",
+          "rescheduled": "Cambiada desde una hora anterior"
         }
       }
     }

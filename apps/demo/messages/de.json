@@ -223,7 +223,8 @@
         "summary": "Bewertungs-Zusammenfassung",
         "picks": "6s Auswahl",
         "pickResult": "Benachrichtigungen versendet",
-        "compare": "6 hilft dir bei der Entscheidung"
+        "compare": "6 hilft dir bei der Entscheidung",
+        "appointment": "Termine"
       },
       "contractors": {
         "empty": "Noch keine Treffer.",
@@ -262,6 +263,20 @@
           "licensed": "Lizenziert",
           "sameDay": "Same-day",
           "locallyOwned": "Lokal"
+        }
+      },
+      "appointment": {
+        "empty": "Aktuell steht nichts in deinem Kalender.",
+        "withSomeone": "Termin",
+        "header": {
+          "scheduled": "Termin vereinbart",
+          "rescheduled": "Termin verschoben",
+          "cancelled": "Termin abgesagt",
+          "list": "Nächste Termine"
+        },
+        "status": {
+          "cancelled": "Abgesagt",
+          "rescheduled": "Von einem früheren Zeitpunkt verschoben"
         }
       }
     }

@@ -223,7 +223,8 @@
         "summary": "Résumé des avis",
         "picks": "Les choix de 6",
         "pickResult": "Notifications envoyées",
-        "compare": "6 vous aide à décider"
+        "compare": "6 vous aide à décider",
+        "appointment": "Rendez-vous"
       },
       "contractors": {
         "empty": "Aucun résultat pour l'instant.",
@@ -262,6 +263,20 @@
           "licensed": "Agréé",
           "sameDay": "Jour même",
           "locallyOwned": "Local"
+        }
+      },
+      "appointment": {
+        "empty": "Rien de prévu dans votre agenda.",
+        "withSomeone": "Rendez-vous",
+        "header": {
+          "scheduled": "Rendez-vous programmé",
+          "rescheduled": "Rendez-vous reprogrammé",
+          "cancelled": "Rendez-vous annulé",
+          "list": "Prochains rendez-vous"
+        },
+        "status": {
+          "cancelled": "Annulé",
+          "rescheduled": "Déplacé depuis un autre horaire"
         }
       }
     }

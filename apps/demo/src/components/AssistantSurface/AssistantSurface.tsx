@@ -8,6 +8,7 @@ import { SummaryPanel } from "./SummaryPanel";
 import { PicksPanel } from "./PicksPanel";
 import { PickResultPanel } from "./PickResultPanel";
 import { ComparePanel } from "./ComparePanel";
+import { AppointmentPanel } from "./AppointmentPanel";
 
 /**
  * AssistantSurface — the right-side drawer that 6 drives during voice
@@ -105,6 +106,9 @@ export function AssistantSurface() {
           {variant.kind === "compare" && (
             <ComparePanel payload={variant.payload} />
           )}
+          {variant.kind === "appointment" && (
+            <AppointmentPanel payload={variant.payload} />
+          )}
         </div>
       </div>
     </aside>
@@ -112,7 +116,13 @@ export function AssistantSurface() {
 }
 
 function labelForVariant(
-  kind: "contractors" | "summary" | "picks" | "pickResult" | "compare",
+  kind:
+    | "contractors"
+    | "summary"
+    | "picks"
+    | "pickResult"
+    | "compare"
+    | "appointment",
   t: (key: string) => string,
 ): string {
   switch (kind) {
@@ -126,5 +136,7 @@ function labelForVariant(
       return t("variant.pickResult");
     case "compare":
       return t("variant.compare");
+    case "appointment":
+      return t("variant.appointment");
   }
 }

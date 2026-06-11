@@ -223,7 +223,8 @@
         "summary": "Review summary",
         "picks": "6's picks",
         "pickResult": "Notifications sent",
-        "compare": "6 is helping you decide"
+        "compare": "6 is helping you decide",
+        "appointment": "Appointments"
       },
       "contractors": {
         "empty": "No matches yet.",
@@ -262,6 +263,20 @@
           "licensed": "Licensed",
           "sameDay": "Same day",
           "locallyOwned": "Locally owned"
+        }
+      },
+      "appointment": {
+        "empty": "Nothing on your calendar right now.",
+        "withSomeone": "Appointment",
+        "header": {
+          "scheduled": "Appointment scheduled",
+          "rescheduled": "Appointment moved",
+          "cancelled": "Appointment cancelled",
+          "list": "Upcoming appointments"
+        },
+        "status": {
+          "cancelled": "Cancelled",
+          "rescheduled": "Moved from a prior time"
         }
       }
     }

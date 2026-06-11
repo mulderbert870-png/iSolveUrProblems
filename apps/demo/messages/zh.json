@@ -224,7 +224,8 @@
         "summary": "评论概览",
         "picks": "6 的首选",
         "pickResult": "通知已发送",
-        "compare": "6 帮你做决定"
+        "compare": "6 帮你做决定",
+        "appointment": "预约"
       },
       "contractors": {
         "empty": "暂无匹配。",
@@ -263,6 +264,20 @@
           "licensed": "持证",
           "sameDay": "当日",
           "locallyOwned": "本地"
+        }
+      },
+      "appointment": {
+        "empty": "当前日程为空。",
+        "withSomeone": "预约",
+        "header": {
+          "scheduled": "预约已安排",
+          "rescheduled": "预约已改期",
+          "cancelled": "预约已取消",
+          "list": "即将到来的预约"
+        },
+        "status": {
+          "cancelled": "已取消",
+          "rescheduled": "由原时间改动"
         }
       }
     }

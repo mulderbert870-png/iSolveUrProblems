@@ -24,7 +24,11 @@ export type IntentKind =
   | "recommend"
   | "book"
   | "deliberate_open"
-  | "deliberate_refine";
+  | "deliberate_refine"
+  | "schedule_appointment"
+  | "reschedule_appointment"
+  | "cancel_appointment"
+  | "view_appointments";
 
 /** A reference to a specific contractor in conversation context. */
 export type ContractorRef =
@@ -55,6 +59,13 @@ export type IntentSlots = {
    * orchestrator adds them to the running exclude list.
    */
   exclude_ref?: ContractorRef;
+  /**
+   * For schedule_appointment / reschedule_appointment — the extracted
+   * date/time in ISO UTC + the original phrase the user said.
+   */
+  when?: { iso_utc: string; phrase: string };
+  /** Free-form agenda text — what the appointment is for. */
+  agenda?: string;
 };
 
 /** Confidence buckets — chosen at classify time, used by orchestrator. */

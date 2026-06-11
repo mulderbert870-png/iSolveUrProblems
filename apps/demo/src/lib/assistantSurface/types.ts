@@ -107,6 +107,29 @@ export type ComparePayload = {
   };
 };
 
+/**
+ * Appointment payload (M3.4 + M3.5). Used both for confirming a fresh
+ * schedule/reschedule and for showing "your upcoming appointment" cards.
+ * When `appointments.length === 1` we render a single confirmation card;
+ * when > 1, a stacked list.
+ */
+export type AppointmentCard = {
+  id: string;
+  contractor_id: string | null;
+  contractor_name: string | null;
+  scheduled_at: string;       // ISO UTC
+  scheduled_when_text: string; // human-friendly: "tomorrow at 10:00 AM"
+  duration_minutes: number;
+  agenda: string;
+  status: "scheduled" | "rescheduled" | "cancelled" | "completed" | "no_show";
+};
+
+export type AppointmentSurfacePayload = {
+  appointments: AppointmentCard[];
+  /** What just happened — used by the panel header copy. */
+  intent_kind: "scheduled" | "rescheduled" | "cancelled" | "list";
+};
+
 /** The variant union — discriminated by `kind`. */
 export type SurfaceVariant =
   | { kind: "contractors"; hits: ContractorCard[]; total_considered: number }
@@ -117,6 +140,7 @@ export type SurfaceVariant =
       preference_facts: string[];
     }
   | { kind: "pickResult"; payload: PickResultPayload }
-  | { kind: "compare"; payload: ComparePayload };
+  | { kind: "compare"; payload: ComparePayload }
+  | { kind: "appointment"; payload: AppointmentSurfacePayload };
 
 export type SurfaceVariantKind = SurfaceVariant["kind"];

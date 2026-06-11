@@ -5,6 +5,8 @@ export type {
   PickResultPerson,
   PickResultPayload,
   ComparePayload,
+  AppointmentCard,
+  AppointmentSurfacePayload,
   SurfaceVariant,
   SurfaceVariantKind,
 } from "./types";

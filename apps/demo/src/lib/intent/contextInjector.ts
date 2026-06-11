@@ -14,6 +14,7 @@
  */
 
 import type {
+  AppointmentCard,
   ComparePayload,
   ContractorCard,
   PickResultPayload,
@@ -184,6 +185,88 @@ export function wrapDeliberateRefine(args: {
     `User refined the deliberation: ${args.changed}. New top candidates:`,
     list,
     `Respond in first person as 6. Acknowledge the refinement and name the new #1 pick (${top.name}) with the relevant differentiator. Two sentences max.`,
+  ].join("\n");
+}
+
+/**
+ * M3.4 — Confirm a freshly scheduled appointment. Brain reads back the
+ * contractor + time + agenda to the homeowner so they're certain.
+ */
+export function wrapAppointmentScheduled(args: {
+  appointment: AppointmentCard;
+}): string {
+  const { appointment } = args;
+  const with_ = appointment.contractor_name
+    ? ` with ${appointment.contractor_name}`
+    : "";
+  const agenda = appointment.agenda.trim()
+    ? ` — ${appointment.agenda}`
+    : "";
+  return [
+    `[APPOINTMENT SCHEDULED — not spoken by user]`,
+    `Just saved a ${appointment.duration_minutes}-minute appointment${with_} ${appointment.scheduled_when_text}${agenda}. Both parties will get a 24-hour and a 2-hour reminder via 6's notifications fabric.`,
+    `Respond as 6 in first person, confirming the time + (if relevant) the other party's name. One sentence.`,
+  ].join("\n");
+}
+
+/**
+ * M3.5 — Confirm a rescheduled appointment. Brain notes the change vs
+ * the original.
+ */
+export function wrapAppointmentRescheduled(args: {
+  appointment: AppointmentCard;
+}): string {
+  const { appointment } = args;
+  const with_ = appointment.contractor_name
+    ? ` with ${appointment.contractor_name}`
+    : "";
+  return [
+    `[APPOINTMENT RESCHEDULED — not spoken by user]`,
+    `Moved the appointment${with_} to ${appointment.scheduled_when_text}. New reminder schedule kicks in.`,
+    `Respond as 6 in first person, confirming the new time briefly. One sentence.`,
+  ].join("\n");
+}
+
+/** M3.4 — Confirm a cancelled appointment. */
+export function wrapAppointmentCancelled(args: {
+  appointment: AppointmentCard;
+}): string {
+  const { appointment } = args;
+  const with_ = appointment.contractor_name
+    ? ` with ${appointment.contractor_name}`
+    : "";
+  return [
+    `[APPOINTMENT CANCELLED — not spoken by user]`,
+    `Cancelled the appointment${with_} that was ${appointment.scheduled_when_text}. Reminders disabled.`,
+    `Respond as 6 in first person, confirming and offering to reschedule. One short sentence.`,
+  ].join("\n");
+}
+
+/** M3.4 — Read back a list of upcoming appointments. */
+export function wrapAppointmentsList(args: {
+  appointments: AppointmentCard[];
+}): string {
+  if (args.appointments.length === 0) {
+    return [
+      `[APPOINTMENTS LIST — not spoken by user]`,
+      `User asked what's on their calendar. Nothing is scheduled.`,
+      `Respond as 6 in first person, one sentence, letting them know they're clear and offering to set something up.`,
+    ].join("\n");
+  }
+  const list = args.appointments
+    .slice(0, 5)
+    .map(
+      (a, i) =>
+        `  ${i + 1}. ${a.contractor_name ?? "an appointment"} — ${a.scheduled_when_text}${
+          a.agenda.trim() ? ` (${a.agenda})` : ""
+        }`,
+    )
+    .join("\n");
+  return [
+    `[APPOINTMENTS LIST — not spoken by user]`,
+    `User asked what's on their calendar. They have ${args.appointments.length} upcoming:`,
+    list,
+    `Respond as 6 in first person. Name the very next one (#1) with its time and (if relevant) the contractor. Offer to read more if there are others. Two sentences max.`,
   ].join("\n");
 }
 

@@ -192,6 +192,7 @@ const useTranscriptCapture = (
         | "picks"
         | "pickResult"
         | "compare"
+        | "appointment"
         | null;
       contractorIds: string[];
       deliberation?: {
@@ -232,6 +233,15 @@ const useTranscriptCapture = (
               category: variant.payload.state.category,
               constraints: variant.payload.state.constraints,
             },
+          };
+        case "appointment":
+          // Pull contractor IDs from the listed appointments so a
+          // follow-up "tell me more about them" can resolve.
+          return {
+            kind: "appointment",
+            contractorIds: variant.payload.appointments
+              .map((a) => a.contractor_id)
+              .filter((id): id is string => !!id),
           };
       }
     };

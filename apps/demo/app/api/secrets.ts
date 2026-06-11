@@ -52,6 +52,12 @@ export const SERPAPI_API_KEY = process.env.SERPAPI_API_KEY || "";
 // Required to call privileged /api/admin/* routes. Set via Vercel env.
 export const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 
+// Cron auth (M3.4+) — guards /api/cron/* routes against public traffic.
+// On Vercel: set as a project env var and reference in vercel.json's
+// crons block. Locally: pass via Authorization: Bearer header when
+// triggering manually.
+export const CRON_SECRET = process.env.CRON_SECRET || "";
+
 // Payments — Stripe Connect Express (M2.5).
 // Q2.5a: Connect flavor = Express.
 // Q2.5b: charge at acceptance.

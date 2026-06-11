@@ -223,7 +223,8 @@
         "summary": "Resumo das avaliações",
         "picks": "As escolhas do 6",
         "pickResult": "Notificações enviadas",
-        "compare": "O 6 te ajuda a decidir"
+        "compare": "O 6 te ajuda a decidir",
+        "appointment": "Agendamentos"
       },
       "contractors": {
         "empty": "Nenhum resultado ainda.",
@@ -262,6 +263,20 @@
           "licensed": "Licenciado",
           "sameDay": "Mesmo dia",
           "locallyOwned": "Local"
+        }
+      },
+      "appointment": {
+        "empty": "Nada na agenda no momento.",
+        "withSomeone": "Agendamento",
+        "header": {
+          "scheduled": "Agendamento marcado",
+          "rescheduled": "Agendamento remarcado",
+          "cancelled": "Agendamento cancelado",
+          "list": "Próximos agendamentos"
+        },
+        "status": {
+          "cancelled": "Cancelado",
+          "rescheduled": "Movido de um horário anterior"
         }
       }
     }

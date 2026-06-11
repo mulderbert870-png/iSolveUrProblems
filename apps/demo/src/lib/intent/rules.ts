@@ -22,6 +22,7 @@ import {
   extractFilters,
   extractLocation,
 } from "./slots";
+import { extractDateTime } from "../appointments/extractDateTime";
 import type { ClassifyResult, IntentSlots } from "./types";
 
 type Rule = {
@@ -37,10 +38,31 @@ type Rule = {
     | "recommend"
     | "book"
     | "deliberate_open"
-    | "deliberate_refine";
+    | "deliberate_refine"
+    | "schedule_appointment"
+    | "reschedule_appointment"
+    | "cancel_appointment"
+    | "view_appointments";
   /** Required slot keys — if any are missing the result is "medium". */
   required: Array<keyof IntentSlots>;
 };
+
+/** Cheap pre-check for any time/day token. Used to gate appointment rules. */
+const TIME_HINT_RE =
+  /\b(tomorrow|tonight|today|next\s+\w+|this\s+\w+|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|afternoon|evening|in\s+\d+\s+(hour|minute|day|week)|\d{1,2}\s*(am|pm)|\d{4}-\d{2}-\d{2})\b/i;
+
+/**
+ * Pull out a free-form agenda phrase from "for X" / "about Y" patterns.
+ * Best-effort — empty string is OK; the orchestrator falls back to the
+ * default agenda text.
+ */
+function extractAgenda(text: string): string | undefined {
+  const m = text.match(
+    /\b(?:for|about|to)\s+(the\s+)?([a-z][\w\s-]{2,80}?)\s+(?:tomorrow|tonight|today|next|this|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at\s+\d|in\s+\d)/i,
+  );
+  if (m) return m[2].trim();
+  return undefined;
+}
 
 const RULES: readonly Rule[] = [
   // ─── DELIBERATE_REFINE ────────────────────────────────────────────
@@ -92,6 +114,71 @@ const RULES: readonly Rule[] = [
     build: () => ({}),
     kind: "deliberate_open",
     required: [],
+  },
+  // ─── CANCEL_APPOINTMENT ───────────────────────────────────────────
+  // Very specific — "cancel my appointment" / "cancel the appointment".
+  // Comes before reschedule so "cancel" isn't accidentally treated as
+  // a reschedule trigger.
+  {
+    id: "cancel.appointment",
+    match: (t) =>
+      /\b(cancel|cancel\s+the|cancel\s+my|call\s+off|drop)\s+(my|the|that)?\s*(appointment|meeting|booking|visit)\b/i.test(
+        t,
+      ),
+    build: () => ({}),
+    kind: "cancel_appointment",
+    required: [],
+  },
+  // ─── RESCHEDULE_APPOINTMENT ───────────────────────────────────────
+  // "move it to Thursday", "push to next Tuesday", "reschedule to 3pm"
+  {
+    id: "reschedule.appointment",
+    match: (t) =>
+      /\b(reschedule|move\s+it\s+to|push\s+(it\s+)?to|change\s+it\s+to|can\s+we\s+(move|push)|move\s+the\s+appointment)\b/i.test(
+        t,
+      ) && TIME_HINT_RE.test(t),
+    build: (t) => {
+      const dt = extractDateTime(t);
+      return dt
+        ? { when: { iso_utc: dt.iso_utc, phrase: dt.matched_phrase } }
+        : {};
+    },
+    kind: "reschedule_appointment",
+    required: ["when"],
+  },
+  // ─── VIEW_APPOINTMENTS ────────────────────────────────────────────
+  // "what's on my calendar", "show me my appointments", "what's coming up"
+  {
+    id: "view.appointments",
+    match: (t) =>
+      /\b(what'?s\s+(on\s+)?(my\s+)?(calendar|schedule)|show\s+me\s+my\s+(appointments|schedule)|what'?s\s+(coming\s+up|next|scheduled)|do\s+i\s+have\s+anything\s+(scheduled|coming))\b/i.test(
+        t,
+      ),
+    build: () => ({}),
+    kind: "view_appointments",
+    required: [],
+  },
+  // ─── SCHEDULE_APPOINTMENT ─────────────────────────────────────────
+  // "schedule the work for tomorrow at 10", "book it for Tuesday",
+  // "set up a visit", "let's do tomorrow morning"
+  {
+    id: "schedule.appointment.with_time",
+    match: (t) =>
+      /\b(schedule|set\s+up|book\s+it|book\s+the\s+(visit|appointment|work)|let'?s\s+do|how\s+about|can\s+we\s+do)\b/i.test(
+        t,
+      ) && TIME_HINT_RE.test(t),
+    build: (t) => {
+      const dt = extractDateTime(t);
+      const agenda = extractAgenda(t);
+      return {
+        when: dt
+          ? { iso_utc: dt.iso_utc, phrase: dt.matched_phrase }
+          : undefined,
+        agenda,
+      };
+    },
+    kind: "schedule_appointment",
+    required: ["when"],
   },
   // ─── BOOK ─────────────────────────────────────────────────────────
   // High priority — must match before any of the other intents

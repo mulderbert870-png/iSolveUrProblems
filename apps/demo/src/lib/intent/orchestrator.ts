@@ -9,10 +9,21 @@ import {
   deliberate,
   type DeliberateConstraints,
 } from "../contractors";
+import {
+  createAppointment,
+  rescheduleAppointment,
+  cancelAppointment,
+  listUpcomingAppointments,
+  type AppointmentRow,
+} from "../appointments";
 import { getSupabaseAdminConfig } from "../supabaseAdmin";
 import { classifyIntent } from "./classify";
 import { DEFAULT_CENTER } from "./slots";
 import {
+  wrapAppointmentCancelled,
+  wrapAppointmentRescheduled,
+  wrapAppointmentScheduled,
+  wrapAppointmentsList,
   wrapContractorsResult,
   wrapDeliberateOpen,
   wrapDeliberateRefine,
@@ -22,6 +33,7 @@ import {
   wrapSummaryResult,
 } from "./contextInjector";
 import { executeBook } from "./bookHandler";
+import type { AppointmentCard } from "../assistantSurface";
 import type {
   ContractorCard,
   RecommendationCard,
@@ -55,7 +67,14 @@ import type {
  */
 
 export type SurfaceSnapshot = {
-  kind: "contractors" | "summary" | "picks" | "pickResult" | "compare" | null;
+  kind:
+    | "contractors"
+    | "summary"
+    | "picks"
+    | "pickResult"
+    | "compare"
+    | "appointment"
+    | null;
   /** Ordered as displayed in the drawer. Empty for non-list variants. */
   contractorIds: string[];
   /**
@@ -569,6 +588,244 @@ async function handleBook(args: {
   };
 }
 
+// ─── Appointment helpers ────────────────────────────────────────────
+
+function appointmentRowToCard(
+  row: AppointmentRow,
+  contractorName: string | null = null,
+): AppointmentCard {
+  const d = new Date(row.scheduled_at);
+  const whenText = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+  // Use "today" / "tomorrow" if applicable for nicer narration.
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow =
+    d.getFullYear() === tomorrow.getFullYear() &&
+    d.getMonth() === tomorrow.getMonth() &&
+    d.getDate() === tomorrow.getDate();
+  const friendlyTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+  const friendlyWhen = sameDay
+    ? `today at ${friendlyTime}`
+    : isTomorrow
+      ? `tomorrow at ${friendlyTime}`
+      : whenText;
+  return {
+    id: row.id,
+    contractor_id: row.contractor_id,
+    contractor_name: contractorName,
+    scheduled_at: row.scheduled_at,
+    scheduled_when_text: friendlyWhen,
+    duration_minutes: row.duration_minutes,
+    agenda: row.agenda,
+    status: row.status,
+  };
+}
+
+async function fetchContractorNameSafe(
+  contractorId: string | null,
+): Promise<string | null> {
+  if (!contractorId) return null;
+  const row = await fetchContractorById(contractorId).catch(() => null);
+  return row?.name ?? null;
+}
+
+/**
+ * Resolve which contractor a fresh schedule_appointment refers to. We
+ * look at the current surface — if the user just booked someone, that's
+ * who the appointment is with. Otherwise null (homeowner appointment
+ * with no specific contractor).
+ */
+function resolveAppointmentContractor(
+  snapshot?: SurfaceSnapshot,
+): string | null {
+  if (!snapshot?.contractorIds?.length) return null;
+  return snapshot.contractorIds[0] ?? null;
+}
+
+async function handleScheduleAppointment(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return {
+      contextMessage: wrapFallback(
+        "scheduling requires sign-in — appointments are user-scoped",
+      ),
+    };
+  }
+  if (!args.slots.when) {
+    return {
+      contextMessage: wrapFallback(
+        "couldn't extract a date/time from the request",
+      ),
+    };
+  }
+  const contractorId = resolveAppointmentContractor(args.snapshot);
+  const row = await createAppointment({
+    user_id: args.user_id,
+    contractor_id: contractorId,
+    scheduled_at: args.slots.when.iso_utc,
+    duration_minutes: 60,
+    agenda: args.slots.agenda ?? "",
+    context: { intake: "voice", matched_phrase: args.slots.when.phrase },
+  });
+  if (!row) {
+    return {
+      contextMessage: wrapFallback(
+        "appointment insert failed — see server logs",
+      ),
+    };
+  }
+  const contractorName = await fetchContractorNameSafe(contractorId);
+  const card = appointmentRowToCard(row, contractorName);
+  return {
+    variant: {
+      kind: "appointment",
+      payload: { appointments: [card], intent_kind: "scheduled" },
+    },
+    contextMessage: wrapAppointmentScheduled({ appointment: card }),
+  };
+}
+
+async function handleRescheduleAppointment(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return { contextMessage: wrapFallback("reschedule requires sign-in") };
+  }
+  if (!args.slots.when) {
+    return {
+      contextMessage: wrapFallback(
+        "couldn't extract a new date/time from the request",
+      ),
+    };
+  }
+  // Resolve which appointment to reschedule — pick the next upcoming.
+  // v1: simplest possible heuristic. v2 lets user say which by name/time.
+  const upcoming = await listUpcomingAppointments({
+    user_id: args.user_id,
+    limit: 1,
+  });
+  if (upcoming.length === 0) {
+    return {
+      contextMessage: wrapFallback("no upcoming appointment to reschedule"),
+    };
+  }
+  const target = upcoming[0];
+  const row = await rescheduleAppointment({
+    appointment_id: target.id,
+    user_id: args.user_id,
+    new_scheduled_at: args.slots.when.iso_utc,
+    reason: "voice reschedule",
+  });
+  if (!row) {
+    return {
+      contextMessage: wrapFallback("reschedule update failed — see server logs"),
+    };
+  }
+  const contractorName = await fetchContractorNameSafe(row.contractor_id);
+  const card = appointmentRowToCard(row, contractorName);
+  return {
+    variant: {
+      kind: "appointment",
+      payload: { appointments: [card], intent_kind: "rescheduled" },
+    },
+    contextMessage: wrapAppointmentRescheduled({ appointment: card }),
+  };
+}
+
+async function handleCancelAppointment(args: {
+  user_id: string | null;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return { contextMessage: wrapFallback("cancel requires sign-in") };
+  }
+  const upcoming = await listUpcomingAppointments({
+    user_id: args.user_id,
+    limit: 1,
+  });
+  if (upcoming.length === 0) {
+    return {
+      contextMessage: wrapFallback("no upcoming appointment to cancel"),
+    };
+  }
+  const target = upcoming[0];
+  const row = await cancelAppointment({
+    appointment_id: target.id,
+    user_id: args.user_id,
+    reason: "voice cancel",
+  });
+  if (!row) {
+    return {
+      contextMessage: wrapFallback("cancel update failed — see server logs"),
+    };
+  }
+  const contractorName = await fetchContractorNameSafe(row.contractor_id);
+  const card = appointmentRowToCard(row, contractorName);
+  return {
+    variant: {
+      kind: "appointment",
+      payload: { appointments: [card], intent_kind: "cancelled" },
+    },
+    contextMessage: wrapAppointmentCancelled({ appointment: card }),
+  };
+}
+
+async function handleViewAppointments(args: {
+  user_id: string | null;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return {
+      contextMessage: wrapFallback("viewing requires sign-in"),
+    };
+  }
+  const rows = await listUpcomingAppointments({
+    user_id: args.user_id,
+    limit: 10,
+  });
+  const cards: AppointmentCard[] = await Promise.all(
+    rows.map(async (r) =>
+      appointmentRowToCard(r, await fetchContractorNameSafe(r.contractor_id)),
+    ),
+  );
+  return {
+    variant: {
+      kind: "appointment",
+      payload: { appointments: cards, intent_kind: "list" },
+    },
+    contextMessage: wrapAppointmentsList({ appointments: cards }),
+  };
+}
+
 // ─── Top-level orchestrator ────────────────────────────────────────
 
 export async function orchestrate(
@@ -663,6 +920,54 @@ export async function orchestrate(
         slots: classification.slots,
         user_id: input.user_id,
         snapshot: input.currentSurface,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "schedule_appointment": {
+      const r = await handleScheduleAppointment({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "reschedule_appointment": {
+      const r = await handleRescheduleAppointment({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "cancel_appointment": {
+      const r = await handleCancelAppointment({
+        user_id: input.user_id,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "view_appointments": {
+      const r = await handleViewAppointments({
+        user_id: input.user_id,
       });
       return {
         kind: "action",

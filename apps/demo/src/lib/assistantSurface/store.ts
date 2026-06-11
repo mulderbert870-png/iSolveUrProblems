@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import type {
+  AppointmentSurfacePayload,
   ComparePayload,
   ContractorCard,
   PickResultPayload,
@@ -41,6 +42,7 @@ type AssistantSurfaceState = {
   ) => void;
   showPickResult: (payload: PickResultPayload) => void;
   showCompare: (payload: ComparePayload) => void;
+  showAppointment: (payload: AppointmentSurfacePayload) => void;
   dismiss: () => void;
   /** Hard reset — clears the variant entirely (vs just hiding it). */
   reset: () => void;
@@ -80,6 +82,12 @@ export const useAssistantSurface = create<AssistantSurfaceState>((set) => ({
       isOpen: true,
     }),
 
+  showAppointment: (payload) =>
+    set({
+      variant: { kind: "appointment", payload },
+      isOpen: true,
+    }),
+
   dismiss: () => set({ isOpen: false }),
 
   reset: () => set({ variant: null, isOpen: false }),
@@ -108,6 +116,8 @@ if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
       useAssistantSurface.getState().showPickResult(payload),
     showCompare: (payload: ComparePayload) =>
       useAssistantSurface.getState().showCompare(payload),
+    showAppointment: (payload: AppointmentSurfacePayload) =>
+      useAssistantSurface.getState().showAppointment(payload),
     dismiss: () => useAssistantSurface.getState().dismiss(),
     reset: () => useAssistantSurface.getState().reset(),
   };
