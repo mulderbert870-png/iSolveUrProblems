@@ -205,6 +205,37 @@ export function extractAmount(text: string): number | undefined {
 }
 
 /**
+ * M3.9 — Pull a complaint phrase out of a "file a dispute / complaint"
+ * utterance. Patterns covered:
+ *   "file a complaint because X"
+ *   "I want to dispute, X did a terrible job"
+ *   "open a dispute about the work — X"
+ *
+ * Best-effort. The orchestrator falls back to using the full utterance
+ * as the complaint when this returns undefined.
+ */
+export function extractComplaint(text: string): string | undefined {
+  // Pattern: "...because/since/about/that <complaint>"
+  const m = text.match(
+    /\b(?:because|since|about|that|—|–|-)\s+(.{4,300})$/i,
+  );
+  if (m) {
+    const phrase = m[1].trim().replace(/[.!?,;\s]+$/, "");
+    if (phrase.length >= 4) return phrase;
+  }
+  // Pattern: ", <complaint>" — anything after a comma following the
+  // dispute-opener phrase.
+  const after = text.match(
+    /\b(?:file|open|start|begin)\s+(?:a\s+)?(?:dispute|complaint|grievance),?\s+(.{4,300})$/i,
+  );
+  if (after) {
+    const phrase = after[1].trim().replace(/[.!?,;\s]+$/, "");
+    if (phrase.length >= 4) return phrase;
+  }
+  return undefined;
+}
+
+/**
  * Pull out a free-form scope phrase from "for X" / "to do Y" patterns.
  * Used by draft_contract. Best-effort; returns undefined if nothing
  * useful matches.

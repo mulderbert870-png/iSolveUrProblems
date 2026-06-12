@@ -225,7 +225,8 @@
         "pickResult": "Notifications envoyées",
         "compare": "6 vous aide à décider",
         "appointment": "Rendez-vous",
-        "contract": "Contrat de travail"
+        "contract": "Contrat de travail",
+        "dispute": "Fil de litige"
       },
       "contractors": {
         "empty": "Aucun résultat pour l'instant.",
@@ -297,6 +298,42 @@
           "declined": "Refusé",
           "cancelled": "Annulé",
           "expired": "Expiré"
+        }
+      },
+      "dispute": {
+        "title": "Fil de litige",
+        "complaintLabel": "Votre réclamation",
+        "contractorPrefix": "contre",
+        "proposalLabel": "Solution proposée par le médiateur",
+        "acceptCta": "Accepter cette solution",
+        "escalateCta": "Parler à un humain",
+        "escalateShort": "Faire remonter",
+        "escalateTooltip": "Transférer à un administrateur humain",
+        "replyPlaceholder": "Répondre à 6…",
+        "sendCta": "Envoyer",
+        "sending": "Envoi…",
+        "sender": {
+          "user": "Vous",
+          "contractor": "Prestataire",
+          "mediator": "6 (médiateur)",
+          "system": "Système"
+        },
+        "kind": {
+          "remedy_proposal": "Proposition de solution",
+          "escalation_notice": "Transféré à un humain",
+          "resolution_confirmation": "Résolution confirmée"
+        },
+        "status": {
+          "open": "Ouvert",
+          "awaiting_user": "En attente de votre réponse",
+          "resolved": "Résolu",
+          "escalated": "Transféré à un humain",
+          "closed": "Clos"
+        },
+        "closedNote": {
+          "resolved": "Ce litige est résolu.",
+          "escalated": "Ce litige a été transféré à un administrateur humain. Il vous contactera.",
+          "closed": "Ce litige est clos."
         }
       }
     }

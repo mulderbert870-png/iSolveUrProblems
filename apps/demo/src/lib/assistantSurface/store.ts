@@ -6,6 +6,7 @@ import type {
   ComparePayload,
   ContractPayload,
   ContractorCard,
+  DisputePayload,
   PickResultPayload,
   RecommendationCard,
   SummaryPayload,
@@ -45,6 +46,7 @@ type AssistantSurfaceState = {
   showCompare: (payload: ComparePayload) => void;
   showAppointment: (payload: AppointmentSurfacePayload) => void;
   showContract: (payload: ContractPayload) => void;
+  showDispute: (payload: DisputePayload) => void;
   dismiss: () => void;
   /** Hard reset — clears the variant entirely (vs just hiding it). */
   reset: () => void;
@@ -96,6 +98,12 @@ export const useAssistantSurface = create<AssistantSurfaceState>((set) => ({
       isOpen: true,
     }),
 
+  showDispute: (payload) =>
+    set({
+      variant: { kind: "dispute", payload },
+      isOpen: true,
+    }),
+
   dismiss: () => set({ isOpen: false }),
 
   reset: () => set({ variant: null, isOpen: false }),
@@ -128,6 +136,8 @@ if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
       useAssistantSurface.getState().showAppointment(payload),
     showContract: (payload: ContractPayload) =>
       useAssistantSurface.getState().showContract(payload),
+    showDispute: (payload: DisputePayload) =>
+      useAssistantSurface.getState().showDispute(payload),
     dismiss: () => useAssistantSurface.getState().dismiss(),
     reset: () => useAssistantSurface.getState().reset(),
   };

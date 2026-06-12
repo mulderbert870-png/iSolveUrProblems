@@ -96,3 +96,13 @@ export const PLATFORM_CURRENCY = (
 // when the route is called server-side.
 export const STRIPE_CHECKOUT_RETURN_PATH =
   process.env.STRIPE_CHECKOUT_RETURN_PATH || "/checkout";
+
+// Dispute mediator — admin escalation queue (Q3.9a). When a dispute
+// trips the 3-strike rule, exceeds $500 disputed, or the user asks for
+// a human, the mediator hands off here. Either channel (Slack incoming
+// webhook OR a designated email) is enough — both is fine. If neither
+// is set we log a warning and the escalation persists in DB only.
+export const ADMIN_ESCALATION_SLACK_WEBHOOK_URL =
+  process.env.ADMIN_ESCALATION_SLACK_WEBHOOK_URL || "";
+export const ADMIN_ESCALATION_EMAIL =
+  process.env.ADMIN_ESCALATION_EMAIL || "";

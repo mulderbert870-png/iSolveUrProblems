@@ -7,6 +7,7 @@ import {
   appointmentReminder24hTemplate,
   appointmentReminder2hTemplate,
 } from "./appointment-reminder";
+import adminDisputeEscalationTemplate from "./admin-dispute-escalation";
 
 /**
  * Local-in-code template registry (Q1.7a).
@@ -28,6 +29,8 @@ const REGISTRY: Record<string, NotificationTemplate<never>> = {
     appointmentReminder24hTemplate as NotificationTemplate<never>,
   "appointment.reminder.2h.v1":
     appointmentReminder2hTemplate as NotificationTemplate<never>,
+  "admin.dispute.escalation.v1":
+    adminDisputeEscalationTemplate as NotificationTemplate<never>,
 };
 
 export function getTemplate(id: string): NotificationTemplate<never> | null {

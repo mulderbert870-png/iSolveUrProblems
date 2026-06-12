@@ -194,6 +194,7 @@ const useTranscriptCapture = (
         | "compare"
         | "appointment"
         | "contract"
+        | "dispute"
         | null;
       contractorIds: string[];
       deliberation?: {
@@ -249,6 +250,10 @@ const useTranscriptCapture = (
           // — the contract belongs to a contractor but we don't expose
           // their ID through this surface in v1.
           return { kind: "contract", contractorIds: [] };
+        case "dispute":
+          // Dispute panel doesn't expose contractor IDs to the snapshot;
+          // follow-up actions should reference the dispute directly.
+          return { kind: "dispute", contractorIds: [] };
       }
     };
 

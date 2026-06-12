@@ -225,7 +225,8 @@
         "pickResult": "Notifications sent",
         "compare": "6 is helping you decide",
         "appointment": "Appointments",
-        "contract": "Work agreement"
+        "contract": "Work agreement",
+        "dispute": "Dispute thread"
       },
       "contractors": {
         "empty": "No matches yet.",
@@ -297,6 +298,42 @@
           "declined": "Declined",
           "cancelled": "Cancelled",
           "expired": "Expired"
+        }
+      },
+      "dispute": {
+        "title": "Dispute thread",
+        "complaintLabel": "Your complaint",
+        "contractorPrefix": "vs.",
+        "proposalLabel": "Mediator's proposed remedy",
+        "acceptCta": "Accept this remedy",
+        "escalateCta": "Get a human",
+        "escalateShort": "Escalate",
+        "escalateTooltip": "Hand this to a human admin",
+        "replyPlaceholder": "Reply to 6…",
+        "sendCta": "Send",
+        "sending": "Sending…",
+        "sender": {
+          "user": "You",
+          "contractor": "Contractor",
+          "mediator": "6 (mediator)",
+          "system": "System"
+        },
+        "kind": {
+          "remedy_proposal": "Remedy proposal",
+          "escalation_notice": "Escalated to human",
+          "resolution_confirmation": "Resolution confirmed"
+        },
+        "status": {
+          "open": "Open",
+          "awaiting_user": "Awaiting your reply",
+          "resolved": "Resolved",
+          "escalated": "Escalated to human",
+          "closed": "Closed"
+        },
+        "closedNote": {
+          "resolved": "This dispute is resolved.",
+          "escalated": "This dispute has been handed to a human admin. They'll be in touch.",
+          "closed": "This dispute is closed."
         }
       }
     }

@@ -18,6 +18,7 @@ import type {
   ComparePayload,
   ContractPayload,
   ContractorCard,
+  DisputePayload,
   PickResultPayload,
   RecommendationCard,
   SummaryPayload,
@@ -289,6 +290,29 @@ export function wrapDraftContract(args: { payload: ContractPayload }): string {
       ? `Mock provider auto-signed the envelope for the test drive; in production both parties would receive signing links by email.`
       : `Envelope is out via ${payload.envelope.provider}; both parties will receive signing emails shortly.`,
     `Respond as 6 in first person. Confirm the contract was drafted, name the contractor and the total, and tell them to check their email to sign. Two sentences max.`,
+  ].join("\n");
+}
+
+/**
+ * M3.9 — Confirm a freshly opened dispute. Brain summarizes the intake
+ * and reads back the mediator's opening reply so the homeowner hears
+ * what 6 just said in writing.
+ */
+export function wrapDisputeOpened(args: { payload: DisputePayload }): string {
+  const { payload } = args;
+  const opener = payload.messages.find((m) => m.sender === "mediator");
+  const tail =
+    payload.status === "escalated"
+      ? `This one's already going to a human — escalation criteria triggered (large amount, user-requested human, or 3-strike rule).`
+      : `The mediator's opening reply is: "${opener?.body ?? ""}". The user can respond in the drawer thread.`;
+  const withContractor = payload.contractor_name
+    ? ` against ${payload.contractor_name}`
+    : "";
+  return [
+    `[DISPUTE OPENED — not spoken by user]`,
+    `Just opened a dispute${withContractor}. Complaint: "${payload.complaint}".`,
+    tail,
+    `Respond as 6 in first person. Acknowledge the dispute calmly, name the contractor (if any), and tell them to look in the drawer to read the mediator's opening response or to keep talking through voice. Two sentences max. Warm, neutral tone.`,
   ].join("\n");
 }
 

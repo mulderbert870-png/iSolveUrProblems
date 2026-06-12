@@ -225,7 +225,8 @@
         "pickResult": "Benachrichtigungen versendet",
         "compare": "6 hilft dir bei der Entscheidung",
         "appointment": "Termine",
-        "contract": "Arbeitsvereinbarung"
+        "contract": "Arbeitsvereinbarung",
+        "dispute": "Streit-Thread"
       },
       "contractors": {
         "empty": "Noch keine Treffer.",
@@ -297,6 +298,42 @@
           "declined": "Abgelehnt",
           "cancelled": "Abgesagt",
           "expired": "Abgelaufen"
+        }
+      },
+      "dispute": {
+        "title": "Streit-Thread",
+        "complaintLabel": "Deine Beschwerde",
+        "contractorPrefix": "gegen",
+        "proposalLabel": "Vom Mediator vorgeschlagene Lösung",
+        "acceptCta": "Diese Lösung akzeptieren",
+        "escalateCta": "Mit einem Menschen sprechen",
+        "escalateShort": "Eskalieren",
+        "escalateTooltip": "An einen menschlichen Admin übergeben",
+        "replyPlaceholder": "Antworte 6…",
+        "sendCta": "Senden",
+        "sending": "Wird gesendet…",
+        "sender": {
+          "user": "Du",
+          "contractor": "Auftragnehmer",
+          "mediator": "6 (Mediator)",
+          "system": "System"
+        },
+        "kind": {
+          "remedy_proposal": "Lösungsvorschlag",
+          "escalation_notice": "An Mensch eskaliert",
+          "resolution_confirmation": "Lösung bestätigt"
+        },
+        "status": {
+          "open": "Offen",
+          "awaiting_user": "Warten auf deine Antwort",
+          "resolved": "Gelöst",
+          "escalated": "An Mensch eskaliert",
+          "closed": "Geschlossen"
+        },
+        "closedNote": {
+          "resolved": "Dieser Streit ist gelöst.",
+          "escalated": "Dieser Streit wurde an einen menschlichen Admin übergeben. Sie melden sich bei dir.",
+          "closed": "Dieser Streit ist geschlossen."
         }
       }
     }

@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
         session_id: body.session_id,
         user_id: userId,
         currentSurface: snapshot,
+        app_origin: new URL(request.url).origin,
       });
       return NextResponse.json({
         id: inserted.id,
@@ -167,6 +168,7 @@ function parseSurfaceSnapshot(
     "compare",
     "appointment",
     "contract",
+    "dispute",
   ]);
   const kind =
     typeof r.kind === "string" && validKinds.has(r.kind)

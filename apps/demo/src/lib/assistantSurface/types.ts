@@ -158,6 +158,50 @@ export type ContractPayload = {
   };
 };
 
+/**
+ * M3.9 — Dispute thread surface. Renders the running async-text thread
+ * with 6 (the mediator) on one side and the homeowner on the other. The
+ * panel exposes Accept (when there's a remedy_proposal on the latest
+ * mediator turn) and Get a human (escalate) buttons.
+ */
+export type DisputeThreadMessage = {
+  id: string;
+  sender: "user" | "contractor" | "mediator" | "system";
+  body: string;
+  kind:
+    | "message"
+    | "remedy_proposal"
+    | "escalation_notice"
+    | "resolution_confirmation";
+  /** ISO UTC. */
+  created_at: string;
+  /** Surfaced on the panel — only present on remedy_proposal kind. */
+  proposed_resolution?: {
+    resolution_kind:
+      | "refund_full"
+      | "refund_partial"
+      | "redo_work"
+      | "no_action"
+      | "human_escalation";
+    summary: string;
+  };
+};
+
+export type DisputePayload = {
+  dispute_id: string;
+  status:
+    | "open"
+    | "awaiting_user"
+    | "resolved"
+    | "escalated"
+    | "closed";
+  complaint: string;
+  disputed_amount_cents: number | null;
+  contractor_name: string | null;
+  contract_id: string | null;
+  messages: DisputeThreadMessage[];
+};
+
 /** The variant union — discriminated by `kind`. */
 export type SurfaceVariant =
   | { kind: "contractors"; hits: ContractorCard[]; total_considered: number }
@@ -170,6 +214,7 @@ export type SurfaceVariant =
   | { kind: "pickResult"; payload: PickResultPayload }
   | { kind: "compare"; payload: ComparePayload }
   | { kind: "appointment"; payload: AppointmentSurfacePayload }
-  | { kind: "contract"; payload: ContractPayload };
+  | { kind: "contract"; payload: ContractPayload }
+  | { kind: "dispute"; payload: DisputePayload };
 
 export type SurfaceVariantKind = SurfaceVariant["kind"];

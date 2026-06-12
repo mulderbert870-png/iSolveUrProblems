@@ -226,7 +226,8 @@
         "pickResult": "通知已发送",
         "compare": "6 帮你做决定",
         "appointment": "预约",
-        "contract": "施工协议"
+        "contract": "施工协议",
+        "dispute": "争议会话"
       },
       "contractors": {
         "empty": "暂无匹配。",
@@ -298,6 +299,42 @@
           "declined": "已拒绝",
           "cancelled": "已取消",
           "expired": "已过期"
+        }
+      },
+      "dispute": {
+        "title": "争议会话",
+        "complaintLabel": "你的投诉",
+        "contractorPrefix": "对方：",
+        "proposalLabel": "调解员建议的解决方案",
+        "acceptCta": "接受此方案",
+        "escalateCta": "请人工介入",
+        "escalateShort": "升级",
+        "escalateTooltip": "转交给人工管理员",
+        "replyPlaceholder": "回复 6…",
+        "sendCta": "发送",
+        "sending": "发送中…",
+        "sender": {
+          "user": "你",
+          "contractor": "承包商",
+          "mediator": "6（调解员）",
+          "system": "系统"
+        },
+        "kind": {
+          "remedy_proposal": "解决方案建议",
+          "escalation_notice": "已升级至人工",
+          "resolution_confirmation": "已确认解决"
+        },
+        "status": {
+          "open": "进行中",
+          "awaiting_user": "等待你的回复",
+          "resolved": "已解决",
+          "escalated": "已升级至人工",
+          "closed": "已关闭"
+        },
+        "closedNote": {
+          "resolved": "此争议已解决。",
+          "escalated": "此争议已转交人工管理员，他们会与你联系。",
+          "closed": "此争议已关闭。"
         }
       }
     }

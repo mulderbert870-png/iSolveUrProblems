@@ -225,7 +225,8 @@
         "pickResult": "Notificações enviadas",
         "compare": "O 6 te ajuda a decidir",
         "appointment": "Agendamentos",
-        "contract": "Contrato de trabalho"
+        "contract": "Contrato de trabalho",
+        "dispute": "Tópico de disputa"
       },
       "contractors": {
         "empty": "Nenhum resultado ainda.",
@@ -297,6 +298,42 @@
           "declined": "Recusado",
           "cancelled": "Cancelado",
           "expired": "Expirado"
+        }
+      },
+      "dispute": {
+        "title": "Tópico de disputa",
+        "complaintLabel": "Sua reclamação",
+        "contractorPrefix": "contra",
+        "proposalLabel": "Remédio proposto pelo mediador",
+        "acceptCta": "Aceitar este remédio",
+        "escalateCta": "Falar com um humano",
+        "escalateShort": "Encaminhar",
+        "escalateTooltip": "Encaminhar para um administrador humano",
+        "replyPlaceholder": "Responder ao 6…",
+        "sendCta": "Enviar",
+        "sending": "Enviando…",
+        "sender": {
+          "user": "Você",
+          "contractor": "Prestador",
+          "mediator": "6 (mediador)",
+          "system": "Sistema"
+        },
+        "kind": {
+          "remedy_proposal": "Proposta de remédio",
+          "escalation_notice": "Encaminhado a humano",
+          "resolution_confirmation": "Resolução confirmada"
+        },
+        "status": {
+          "open": "Aberto",
+          "awaiting_user": "Aguardando sua resposta",
+          "resolved": "Resolvido",
+          "escalated": "Encaminhado a humano",
+          "closed": "Fechado"
+        },
+        "closedNote": {
+          "resolved": "Esta disputa está resolvida.",
+          "escalated": "Esta disputa foi encaminhada a um administrador humano. Eles entrarão em contato.",
+          "closed": "Esta disputa está fechada."
         }
       }
     }

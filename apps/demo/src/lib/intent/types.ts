@@ -29,7 +29,8 @@ export type IntentKind =
   | "reschedule_appointment"
   | "cancel_appointment"
   | "view_appointments"
-  | "draft_contract";
+  | "draft_contract"
+  | "file_dispute";
 
 /** A reference to a specific contractor in conversation context. */
 export type ContractorRef =
@@ -71,6 +72,11 @@ export type IntentSlots = {
   amount_cents?: number;
   /** For draft_contract — free-form work scope text. */
   scope?: string;
+  /**
+   * For file_dispute — the free-form complaint phrase extracted from
+   * the user's utterance. Becomes the opening message of the thread.
+   */
+  complaint?: string;
 };
 
 /** Confidence buckets — chosen at classify time, used by orchestrator. */

@@ -27,6 +27,7 @@ import {
   wrapContractorsResult,
   wrapDeliberateOpen,
   wrapDeliberateRefine,
+  wrapDisputeOpened,
   wrapDraftContract,
   wrapFallback,
   wrapPickResult,
@@ -44,7 +45,24 @@ import {
   getEsignProvider,
   getProviderNameFromEnv,
 } from "../esign";
-import type { AppointmentCard, ContractPayload } from "../assistantSurface";
+import {
+  appendDisputeMessage,
+  createDispute,
+  decideMediatorAction,
+  getDisputeById,
+  listDisputeMessages,
+  notifyAdminEscalation,
+  patchDispute,
+  setDisputeStatus,
+  type DisputeMessageRow,
+  type DisputeRow,
+} from "../disputes";
+import type {
+  AppointmentCard,
+  ContractPayload,
+  DisputePayload,
+  DisputeThreadMessage,
+} from "../assistantSurface";
 import type {
   ContractorCard,
   RecommendationCard,
@@ -86,6 +104,7 @@ export type SurfaceSnapshot = {
     | "compare"
     | "appointment"
     | "contract"
+    | "dispute"
     | null;
   /** Ordered as displayed in the drawer. Empty for non-list variants. */
   contractorIds: string[];
@@ -106,6 +125,9 @@ export type OrchestratorInput = {
   user_id: string | null;
   /** Optional snapshot of what the drawer currently shows. */
   currentSurface?: SurfaceSnapshot;
+  /** Request origin (e.g. "https://app.example.com") — used by features
+   *  that need to deep-link back (e.g. dispute escalation emails). */
+  app_origin?: string | null;
 };
 
 export type OrchestratorOutput =
@@ -1093,6 +1115,159 @@ async function handleDraftContract(args: {
   };
 }
 
+// ─── Dispute mediator (M3.9) ────────────────────────────────────────
+
+function disputeMessageToThread(row: DisputeMessageRow): DisputeThreadMessage {
+  const proposed = (
+    row.context as { proposed_resolution?: DisputeThreadMessage["proposed_resolution"] }
+  )?.proposed_resolution;
+  return {
+    id: row.id,
+    sender: row.sender,
+    body: row.body,
+    kind: row.kind,
+    created_at: row.created_at,
+    proposed_resolution: proposed,
+  };
+}
+
+async function disputeToPayload(args: {
+  dispute: DisputeRow;
+}): Promise<DisputePayload> {
+  const messages = await listDisputeMessages(args.dispute.id);
+  let contractorName: string | null = null;
+  if (args.dispute.contractor_id) {
+    const row = await fetchContractorById(args.dispute.contractor_id).catch(
+      () => null,
+    );
+    contractorName = row?.name ?? null;
+  }
+  return {
+    dispute_id: args.dispute.id,
+    status: args.dispute.status,
+    complaint: args.dispute.complaint,
+    disputed_amount_cents: args.dispute.disputed_amount_cents,
+    contractor_name: contractorName,
+    contract_id: args.dispute.contract_id,
+    messages: messages.map(disputeMessageToThread),
+  };
+}
+
+async function handleFileDispute(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+  raw_text: string;
+  app_origin?: string | null;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return {
+      contextMessage: wrapFallback(
+        "filing a dispute requires sign-in (threads are user-scoped)",
+      ),
+    };
+  }
+
+  const complaint =
+    args.slots.complaint?.trim() ||
+    args.raw_text.trim();
+  if (!complaint) {
+    return {
+      contextMessage: wrapFallback(
+        "no complaint text — ask the user what the problem is",
+      ),
+    };
+  }
+
+  // Optional contractor pin — explicit ref OR top of current surface.
+  let contractorId: string | null = null;
+  if (args.slots.contractor_ref) {
+    const resolved = await resolveContractorRef({
+      ref: args.slots.contractor_ref,
+      snapshot: args.snapshot,
+    });
+    contractorId = resolved?.id ?? null;
+  } else if (args.snapshot?.contractorIds?.length) {
+    contractorId = args.snapshot.contractorIds[0] ?? null;
+  }
+
+  const dispute = await createDispute({
+    user_id: args.user_id,
+    contract_id: null,
+    contractor_id: contractorId,
+    complaint,
+    disputed_amount_cents: args.slots.amount_cents ?? null,
+    context: { source: "m3.9_voice_intake" },
+  });
+  if (!dispute) {
+    return {
+      contextMessage: wrapFallback("dispute insert failed — see server logs"),
+    };
+  }
+
+  // Record the opening user message verbatim.
+  await appendDisputeMessage({
+    dispute_id: dispute.id,
+    sender: "user",
+    body: complaint,
+    kind: "message",
+  });
+
+  // Mediator opens with its first reply (or escalation if rules trip).
+  const decision = await decideMediatorAction({
+    dispute,
+    thread: [],
+    contract: null,
+    latestUserMessage: complaint,
+  });
+
+  if (decision.kind === "escalate") {
+    await appendDisputeMessage({
+      dispute_id: dispute.id,
+      sender: "mediator",
+      body: decision.body,
+      kind: "escalation_notice",
+      context: { reason: decision.reason },
+    });
+    await setDisputeStatus(dispute.id, "escalated", {
+      kind: "human_escalation",
+      summary: decision.reason,
+    });
+  } else {
+    await appendDisputeMessage({
+      dispute_id: dispute.id,
+      sender: "mediator",
+      body: decision.body,
+      kind: decision.message_kind,
+      context: decision.proposed_resolution
+        ? { proposed_resolution: decision.proposed_resolution }
+        : {},
+    });
+    await patchDispute(dispute.id, {
+      status: "awaiting_user",
+      mediator_turn_count: 1,
+    });
+  }
+
+  const refreshed = (await getDisputeById(dispute.id)) ?? dispute;
+  if (decision.kind === "escalate") {
+    await notifyAdminEscalation({
+      dispute: refreshed,
+      reason: decision.reason,
+      app_origin: args.app_origin ?? null,
+    });
+  }
+  const payload = await disputeToPayload({ dispute: refreshed });
+
+  return {
+    variant: { kind: "dispute", payload },
+    contextMessage: wrapDisputeOpened({ payload }),
+  };
+}
+
 // ─── Top-level orchestrator ────────────────────────────────────────
 
 export async function orchestrate(
@@ -1248,6 +1423,21 @@ export async function orchestrate(
         slots: classification.slots,
         user_id: input.user_id,
         snapshot: input.currentSurface,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "file_dispute": {
+      const r = await handleFileDispute({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
+        raw_text: input.text,
+        app_origin: input.app_origin ?? null,
       });
       return {
         kind: "action",

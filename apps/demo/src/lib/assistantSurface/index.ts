@@ -8,6 +8,8 @@ export type {
   AppointmentCard,
   AppointmentSurfacePayload,
   ContractPayload,
+  DisputePayload,
+  DisputeThreadMessage,
   SurfaceVariant,
   SurfaceVariantKind,
 } from "./types";

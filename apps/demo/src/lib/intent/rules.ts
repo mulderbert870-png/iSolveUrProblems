@@ -19,6 +19,7 @@
 import {
   extractAmount,
   extractCategory,
+  extractComplaint,
   extractContractorRef,
   extractFilters,
   extractLocation,
@@ -45,7 +46,8 @@ type Rule = {
     | "reschedule_appointment"
     | "cancel_appointment"
     | "view_appointments"
-    | "draft_contract";
+    | "draft_contract"
+    | "file_dispute";
   /** Required slot keys — if any are missing the result is "medium". */
   required: Array<keyof IntentSlots>;
 };
@@ -182,6 +184,23 @@ const RULES: readonly Rule[] = [
     },
     kind: "schedule_appointment",
     required: ["when"],
+  },
+  // ─── FILE_DISPUTE ─────────────────────────────────────────────────
+  // "file a complaint", "open a dispute", "I want to dispute X" — must
+  // beat book.imperative because "dispute" never means "book".
+  {
+    id: "file.dispute.imperative",
+    match: (t) =>
+      /\b(file\s+a\s+(complaint|dispute|grievance)|open\s+a\s+(complaint|dispute)|start\s+a\s+(complaint|dispute)|i\s+want\s+to\s+(complain|file|dispute|raise\s+a\s+complaint)|i\s+have\s+a\s+complaint|raise\s+an?\s+issue|dispute\s+(the\s+|this\s+|that\s+)?(work|job|charge|contract|invoice|bill))\b/i.test(
+        t,
+      ),
+    build: (t) => ({
+      complaint: extractComplaint(t),
+      amount_cents: extractAmount(t),
+      contractor_ref: extractContractorRef(t),
+    }),
+    kind: "file_dispute",
+    required: [],
   },
   // ─── DRAFT_CONTRACT ───────────────────────────────────────────────
   // "draft the contract", "write up an agreement", "send the contract
