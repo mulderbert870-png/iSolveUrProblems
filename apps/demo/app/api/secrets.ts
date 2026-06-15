@@ -106,3 +106,31 @@ export const ADMIN_ESCALATION_SLACK_WEBHOOK_URL =
   process.env.ADMIN_ESCALATION_SLACK_WEBHOOK_URL || "";
 export const ADMIN_ESCALATION_EMAIL =
   process.env.ADMIN_ESCALATION_EMAIL || "";
+
+// M3.1 — Twilio Programmable Voice (3-way phone calls).
+// Reuses TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN. The Voice
+// number is separate from TWILIO_FROM_PHONE (SMS); both can be the
+// same or different E.164 numbers depending on Twilio plan.
+export const TWILIO_VOICE_FROM_NUMBER =
+  process.env.TWILIO_VOICE_FROM_NUMBER || "";
+
+// M3.1 — public app origin used to build absolute URLs for Twilio
+// webhooks (TwiML, status, transcription, recording). Twilio requires
+// publicly reachable HTTPS; in dev use ngrok / cloudflared tunnels.
+export const APP_PUBLIC_BASE_URL =
+  process.env.APP_PUBLIC_BASE_URL || "";
+
+// M3.3 — Supabase Storage bucket for call recordings. Created via
+// migration; private by default. Recordings reach Supabase via the
+// recording-completed webhook fetching from the Twilio media URL.
+export const CALL_RECORDINGS_BUCKET =
+  process.env.CALL_RECORDINGS_BUCKET || "call-recordings";
+
+// M3.7 — Dropbox Sign (production e-signature provider).
+// Set ESIGN_PROVIDER=dropbox_sign in env to flip the registry switch.
+// Mock provider stays the default while these are absent.
+export const ESIGN_PROVIDER = (process.env.ESIGN_PROVIDER || "mock").toLowerCase();
+export const DROPBOX_SIGN_API_KEY = process.env.DROPBOX_SIGN_API_KEY || "";
+export const DROPBOX_SIGN_CLIENT_ID = process.env.DROPBOX_SIGN_CLIENT_ID || "";
+export const DROPBOX_SIGN_WEBHOOK_SECRET =
+  process.env.DROPBOX_SIGN_WEBHOOK_SECRET || "";

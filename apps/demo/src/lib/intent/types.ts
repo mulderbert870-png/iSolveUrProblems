@@ -30,7 +30,9 @@ export type IntentKind =
   | "cancel_appointment"
   | "view_appointments"
   | "draft_contract"
-  | "file_dispute";
+  | "file_dispute"
+  | "place_call"
+  | "generate_estimate";
 
 /** A reference to a specific contractor in conversation context. */
 export type ContractorRef =

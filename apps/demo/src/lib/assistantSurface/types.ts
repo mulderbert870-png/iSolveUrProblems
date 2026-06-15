@@ -202,6 +202,63 @@ export type DisputePayload = {
   messages: DisputeThreadMessage[];
 };
 
+/**
+ * M3.1 — Live phone-call panel. Mirrors the call's state in the drawer
+ * so the homeowner can watch the conference connect, see who's joined,
+ * and read the rolling transcript while talking.
+ */
+export type CallTranscriptLine = {
+  id: string;
+  speaker: "user" | "contractor" | "six" | "system";
+  text: string;
+  created_at: string;
+};
+
+export type CallPayload = {
+  call_id: string;
+  status:
+    | "queued"
+    | "dialing"
+    | "in_progress"
+    | "completed"
+    | "failed"
+    | "no_answer"
+    | "busy"
+    | "cancelled";
+  contractor_name: string | null;
+  contractor_phone: string | null;
+  user_phone: string;
+  transcript: CallTranscriptLine[];
+  recording_signed_url: string | null;
+  estimate_id: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+};
+
+/**
+ * M3.6 — Estimate panel. Renders the line-item breakdown + totals.
+ */
+export type EstimateLine = {
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price_cents: number;
+  total_cents: number;
+};
+
+export type EstimatePayload = {
+  estimate_id: string;
+  call_id: string | null;
+  contractor_name: string | null;
+  scope_summary: string;
+  line_items: EstimateLine[];
+  subtotal_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  currency: string;
+  status: "draft" | "sent" | "accepted" | "declined" | "expired";
+};
+
 /** The variant union — discriminated by `kind`. */
 export type SurfaceVariant =
   | { kind: "contractors"; hits: ContractorCard[]; total_considered: number }
@@ -215,6 +272,8 @@ export type SurfaceVariant =
   | { kind: "compare"; payload: ComparePayload }
   | { kind: "appointment"; payload: AppointmentSurfacePayload }
   | { kind: "contract"; payload: ContractPayload }
-  | { kind: "dispute"; payload: DisputePayload };
+  | { kind: "dispute"; payload: DisputePayload }
+  | { kind: "call"; payload: CallPayload }
+  | { kind: "estimate"; payload: EstimatePayload };
 
 export type SurfaceVariantKind = SurfaceVariant["kind"];

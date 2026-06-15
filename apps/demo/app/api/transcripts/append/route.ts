@@ -169,6 +169,8 @@ function parseSurfaceSnapshot(
     "appointment",
     "contract",
     "dispute",
+    "call",
+    "estimate",
   ]);
   const kind =
     typeof r.kind === "string" && validKinds.has(r.kind)

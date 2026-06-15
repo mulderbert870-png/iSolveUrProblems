@@ -1,4 +1,5 @@
 import { mockEsignProvider } from "./providers/mock";
+import { dropboxSignProvider } from "./providers/dropbox-sign";
 import type { EsignProvider, ProviderName } from "./types";
 
 export type {
@@ -23,6 +24,7 @@ export type {
  */
 const REGISTRY: Record<string, EsignProvider> = {
   mock: mockEsignProvider,
+  dropbox_sign: dropboxSignProvider,
 };
 
 export function getEsignProvider(): EsignProvider {

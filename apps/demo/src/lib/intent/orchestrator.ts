@@ -24,11 +24,13 @@ import {
   wrapAppointmentRescheduled,
   wrapAppointmentScheduled,
   wrapAppointmentsList,
+  wrapCallPlaced,
   wrapContractorsResult,
   wrapDeliberateOpen,
   wrapDeliberateRefine,
   wrapDisputeOpened,
   wrapDraftContract,
+  wrapEstimateReady,
   wrapFallback,
   wrapPickResult,
   wrapRecommendationsResult,
@@ -57,11 +59,26 @@ import {
   type DisputeMessageRow,
   type DisputeRow,
 } from "../disputes";
+import {
+  createCall,
+  createCallLeg,
+  createEstimate,
+  extractLineItems,
+  getCallById,
+  isTwilioVoiceConfigured,
+  patchCall,
+  setCallStatus,
+  signCallRecordingUrl,
+} from "../calls";
+import { getRecentTranscriptForSession } from "../transcripts/store";
 import type {
   AppointmentCard,
+  CallPayload,
+  CallTranscriptLine,
   ContractPayload,
   DisputePayload,
   DisputeThreadMessage,
+  EstimatePayload,
 } from "../assistantSurface";
 import type {
   ContractorCard,
@@ -105,6 +122,8 @@ export type SurfaceSnapshot = {
     | "appointment"
     | "contract"
     | "dispute"
+    | "call"
+    | "estimate"
     | null;
   /** Ordered as displayed in the drawer. Empty for non-list variants. */
   contractorIds: string[];
@@ -1268,6 +1287,270 @@ async function handleFileDispute(args: {
   };
 }
 
+// ─── Phone call + estimate (M3.1 / M3.6) ────────────────────────────
+
+const E164_RE = /^\+[1-9]\d{6,14}$/;
+
+async function fetchUserPhone(userId: string): Promise<string | null> {
+  try {
+    const { url, serviceRoleKey } = getSupabaseAdminConfig();
+    const res = await fetch(
+      `${url}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=phone&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ phone: string | null }>;
+    return rows[0]?.phone ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchContractorPhone(
+  contractorId: string,
+): Promise<string | null> {
+  try {
+    const { url, serviceRoleKey } = getSupabaseAdminConfig();
+    const res = await fetch(
+      `${url}/rest/v1/contractors?id=eq.${encodeURIComponent(
+        contractorId,
+      )}&select=phone&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return null;
+    const rows = (await res.json()) as Array<{ phone: string | null }>;
+    return rows[0]?.phone ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function handlePlaceCall(args: {
+  slots: IntentSlots;
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!isTwilioVoiceConfigured()) {
+    return {
+      contextMessage: wrapFallback(
+        "phone calling is not configured — Twilio Voice env vars are missing",
+      ),
+    };
+  }
+  if (!args.user_id) {
+    return {
+      contextMessage: wrapFallback(
+        "placing a call requires sign-in (we need the homeowner's phone)",
+      ),
+    };
+  }
+  if (!args.slots.contractor_ref) {
+    return {
+      contextMessage: wrapFallback(
+        "user wanted to call but didn't say which contractor",
+      ),
+    };
+  }
+  const resolved = await resolveContractorRef({
+    ref: args.slots.contractor_ref,
+    snapshot: args.snapshot,
+  });
+  if (!resolved) {
+    return {
+      contextMessage: wrapFallback(
+        "couldn't identify the contractor to call",
+      ),
+    };
+  }
+
+  const [userPhone, contractorPhone] = await Promise.all([
+    fetchUserPhone(args.user_id),
+    fetchContractorPhone(resolved.id),
+  ]);
+  if (!userPhone || !E164_RE.test(userPhone)) {
+    return {
+      contextMessage: wrapFallback(
+        "homeowner has no E.164 phone on file — ask them to add one in settings",
+      ),
+    };
+  }
+  if (!contractorPhone || !E164_RE.test(contractorPhone)) {
+    return {
+      contextMessage: wrapFallback(
+        `${resolved.name} has no usable phone on file`,
+      ),
+    };
+  }
+
+  const fromPhone = process.env.TWILIO_VOICE_FROM_NUMBER ?? "";
+  const call = await createCall({
+    user_id: args.user_id,
+    contractor_id: resolved.id,
+    to_user_phone: userPhone,
+    to_contractor_phone: contractorPhone,
+    from_phone: fromPhone,
+    context: { source: "voice_intent" },
+  });
+  if (!call) {
+    return {
+      contextMessage: wrapFallback("call row insert failed — see server logs"),
+    };
+  }
+
+  // Dial all three legs in parallel.
+  const [userLeg, contractorLeg, sixLeg] = await Promise.all([
+    createCallLeg({ to: userPhone, callId: call.id, participant: "user" }),
+    createCallLeg({
+      to: contractorPhone,
+      callId: call.id,
+      participant: "contractor",
+    }),
+    createCallLeg({ to: fromPhone, callId: call.id, participant: "six" }),
+  ]);
+  if (!userLeg.ok || !contractorLeg.ok || !sixLeg.ok) {
+    await setCallStatus(call.id, "failed");
+    const errMsg = [
+      !userLeg.ok ? `user: ${userLeg.error}` : "",
+      !contractorLeg.ok ? `contractor: ${contractorLeg.error}` : "",
+      !sixLeg.ok ? `six: ${sixLeg.error}` : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
+    return {
+      contextMessage: wrapFallback(`Twilio dial failed: ${errMsg}`),
+    };
+  }
+  await patchCall(call.id, {
+    status: "dialing",
+    twilio_call_sid_user: userLeg.sid,
+    twilio_call_sid_contractor: contractorLeg.sid,
+    twilio_call_sid_six: sixLeg.sid,
+  });
+
+  const payload: CallPayload = {
+    call_id: call.id,
+    status: "dialing",
+    contractor_name: resolved.name,
+    contractor_phone: contractorPhone,
+    user_phone: userPhone,
+    transcript: [],
+    recording_signed_url: null,
+    estimate_id: null,
+    started_at: null,
+    ended_at: null,
+  };
+
+  return {
+    variant: { kind: "call", payload },
+    contextMessage: wrapCallPlaced({ payload }),
+  };
+}
+
+async function handleGenerateEstimate(args: {
+  user_id: string | null;
+  snapshot?: SurfaceSnapshot;
+}): Promise<
+  | { variant: SurfaceVariant; contextMessage: string }
+  | { contextMessage: string }
+> {
+  if (!args.user_id) {
+    return {
+      contextMessage: wrapFallback("estimate generation requires sign-in"),
+    };
+  }
+  // Source: the call currently on the drawer, OR the most recent
+  // completed call. Snapshot.kind === 'call' carries the call_id via
+  // contractorIds? No — the call payload doesn't put it there. We
+  // stash the call_id in a new snapshot field, or fall back to most
+  // recent. For simplicity, take the most recent completed call.
+  const { listRecentCalls } = await import("../calls");
+  const recent = await listRecentCalls({ user_id: args.user_id, limit: 5 });
+  const call = recent.find(
+    (c) => c.status === "completed" || c.status === "in_progress",
+  );
+  if (!call) {
+    return {
+      contextMessage: wrapFallback(
+        "no recent call to estimate from — start a 3-way call first",
+      ),
+    };
+  }
+
+  const transcripts = await getRecentTranscriptForSession({
+    session_id: call.id,
+    limit: 200,
+  });
+  if (transcripts.length === 0) {
+    return {
+      contextMessage: wrapFallback(
+        "the call has no transcript yet — wait a moment and try again",
+      ),
+    };
+  }
+  const chunks = transcripts.map((t) => ({
+    speaker: t.speaker,
+    text: t.text,
+  }));
+
+  const result = await extractLineItems({ chunks });
+  if (!result.ok) {
+    return {
+      contextMessage: wrapFallback(
+        `estimate extraction failed: ${result.reason}`,
+      ),
+    };
+  }
+
+  const contractorName = call.contractor_id
+    ? (await fetchContractorById(call.contractor_id))?.name ?? null
+    : null;
+
+  const estimate = await createEstimate({
+    user_id: args.user_id,
+    contractor_id: call.contractor_id,
+    call_id: call.id,
+    scope_summary: result.scope_summary,
+    line_items: result.line_items,
+  });
+  if (!estimate) {
+    return {
+      contextMessage: wrapFallback("estimate insert failed — see server logs"),
+    };
+  }
+
+  const payload: EstimatePayload = {
+    estimate_id: estimate.id,
+    call_id: estimate.call_id,
+    contractor_name: contractorName,
+    scope_summary: estimate.scope_summary,
+    line_items: estimate.line_items,
+    subtotal_cents: estimate.subtotal_cents,
+    tax_cents: estimate.tax_cents,
+    total_cents: estimate.total_cents,
+    currency: estimate.currency,
+    status: estimate.status,
+  };
+  return {
+    variant: { kind: "estimate", payload },
+    contextMessage: wrapEstimateReady({ payload }),
+  };
+}
+
 // ─── Top-level orchestrator ────────────────────────────────────────
 
 export async function orchestrate(
@@ -1438,6 +1721,31 @@ export async function orchestrate(
         snapshot: input.currentSurface,
         raw_text: input.text,
         app_origin: input.app_origin ?? null,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "place_call": {
+      const r = await handlePlaceCall({
+        slots: classification.slots,
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
+      });
+      return {
+        kind: "action",
+        classification,
+        variant: "variant" in r ? r.variant : undefined,
+        contextMessage: r.contextMessage,
+      };
+    }
+    case "generate_estimate": {
+      const r = await handleGenerateEstimate({
+        user_id: input.user_id,
+        snapshot: input.currentSurface,
       });
       return {
         kind: "action",

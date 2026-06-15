@@ -227,7 +227,9 @@
         "compare": "6 帮你做决定",
         "appointment": "预约",
         "contract": "施工协议",
-        "dispute": "争议会话"
+        "dispute": "争议会话",
+        "call": "与 6 通话",
+        "estimate": "估价单"
       },
       "contractors": {
         "empty": "暂无匹配。",
@@ -298,6 +300,55 @@
           "signed": "已签署",
           "declined": "已拒绝",
           "cancelled": "已取消",
+          "expired": "已过期"
+        }
+      },
+      "call": {
+        "title": "通话进行中",
+        "contractorLabel": "承包商",
+        "contractorPhoneLabel": "号码",
+        "waitingTranscript": "等待通话开始…",
+        "noTranscript": "未捕获到字幕。",
+        "downloadRecording": "下载通话录音",
+        "hangUpCta": "挂断",
+        "estimateReady": "估价单已就绪：#{id}",
+        "status": {
+          "queued": "队列中",
+          "dialing": "拨号中",
+          "in_progress": "通话中",
+          "completed": "通话结束",
+          "failed": "失败",
+          "no_answer": "无人接听",
+          "busy": "占线",
+          "cancelled": "已取消"
+        },
+        "speaker": {
+          "user": "你",
+          "contractor": "承包商",
+          "six": "6",
+          "system": "系统"
+        }
+      },
+      "estimate": {
+        "title": "语音估价单",
+        "contractorLabel": "承包商",
+        "scopeLabel": "工作范围",
+        "scopeEmpty": "（无摘要）",
+        "noLineItems": "尚无标价条目。请在通话中向承包商询问单价。",
+        "colDescription": "项目",
+        "colQty": "数量",
+        "colUnitPrice": "单价",
+        "colTotal": "合计",
+        "subtotalLabel": "小计",
+        "taxLabel": "税费",
+        "totalLabel": "总计",
+        "turnIntoContractCta": "生成合同",
+        "draftingContract": "起草中…",
+        "status": {
+          "draft": "草稿",
+          "sent": "已发送",
+          "accepted": "已接受",
+          "declined": "已拒绝",
           "expired": "已过期"
         }
       },

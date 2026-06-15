@@ -226,7 +226,9 @@
         "compare": "O 6 te ajuda a decidir",
         "appointment": "Agendamentos",
         "contract": "Contrato de trabalho",
-        "dispute": "Tópico de disputa"
+        "dispute": "Tópico de disputa",
+        "call": "Chamada com o 6",
+        "estimate": "Orçamento"
       },
       "contractors": {
         "empty": "Nenhum resultado ainda.",
@@ -297,6 +299,55 @@
           "signed": "Assinado",
           "declined": "Recusado",
           "cancelled": "Cancelado",
+          "expired": "Expirado"
+        }
+      },
+      "call": {
+        "title": "Chamada ao vivo",
+        "contractorLabel": "Prestador",
+        "contractorPhoneLabel": "Número",
+        "waitingTranscript": "Aguardando o início da chamada…",
+        "noTranscript": "Nenhuma transcrição capturada.",
+        "downloadRecording": "Baixar gravação da chamada",
+        "hangUpCta": "Desligar",
+        "estimateReady": "Orçamento pronto: #{id}",
+        "status": {
+          "queued": "Na fila",
+          "dialing": "Discando",
+          "in_progress": "Em chamada",
+          "completed": "Chamada encerrada",
+          "failed": "Falhou",
+          "no_answer": "Sem resposta",
+          "busy": "Ocupado",
+          "cancelled": "Cancelada"
+        },
+        "speaker": {
+          "user": "Você",
+          "contractor": "Prestador",
+          "six": "6",
+          "system": "Sistema"
+        }
+      },
+      "estimate": {
+        "title": "Orçamento por voz",
+        "contractorLabel": "Prestador",
+        "scopeLabel": "Escopo do trabalho",
+        "scopeEmpty": "(sem resumo)",
+        "noLineItems": "Ainda sem itens com preço. Peça preços unitários ao prestador na chamada.",
+        "colDescription": "Item",
+        "colQty": "Qtd",
+        "colUnitPrice": "Unit.",
+        "colTotal": "Total",
+        "subtotalLabel": "Subtotal",
+        "taxLabel": "Imposto",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Transformar em contrato",
+        "draftingContract": "Elaborando…",
+        "status": {
+          "draft": "Rascunho",
+          "sent": "Enviado",
+          "accepted": "Aceito",
+          "declined": "Recusado",
           "expired": "Expirado"
         }
       },

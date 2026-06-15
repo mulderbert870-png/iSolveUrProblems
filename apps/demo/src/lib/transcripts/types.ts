@@ -4,7 +4,12 @@
  * Mirrors the columns in 20260608_transcripts.sql.
  */
 
-export type TranscriptSpeaker = "user" | "avatar";
+export type TranscriptSpeaker =
+  | "user"
+  | "avatar"
+  | "contractor"
+  | "six"
+  | "system";
 
 export type TranscriptRow = {
   id: string;

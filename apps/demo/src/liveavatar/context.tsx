@@ -195,6 +195,8 @@ const useTranscriptCapture = (
         | "appointment"
         | "contract"
         | "dispute"
+        | "call"
+        | "estimate"
         | null;
       contractorIds: string[];
       deliberation?: {
@@ -254,6 +256,14 @@ const useTranscriptCapture = (
           // Dispute panel doesn't expose contractor IDs to the snapshot;
           // follow-up actions should reference the dispute directly.
           return { kind: "dispute", contractorIds: [] };
+        case "call":
+          // Live call panel — only the contractor on the line is
+          // surfaced as the snapshot's contractor (resolves "tell me
+          // more about them" naturally).
+          return { kind: "call", contractorIds: [] };
+        case "estimate":
+          // Estimate panel — same as call: no contractor ID surfacing.
+          return { kind: "estimate", contractorIds: [] };
       }
     };
 

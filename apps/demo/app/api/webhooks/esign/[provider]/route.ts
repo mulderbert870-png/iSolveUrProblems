@@ -1,7 +1,12 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdminConfig } from "../../../../../src/lib/supabaseAdmin";
 import { getContractByEnvelopeId } from "../../../../../src/lib/payments";
 import type { EsignEnvelopeStatus } from "../../../../../src/lib/esign";
+import { mapDropboxStatus } from "../../../../../src/lib/esign/providers/dropbox-sign";
+import {
+  DROPBOX_SIGN_API_KEY,
+} from "../../../../api/secrets";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -76,6 +81,54 @@ async function patchContractByEnvelope(args: {
   );
 }
 
+/**
+ * Dropbox Sign signs its webhook payload as HMAC-SHA256 of
+ * `<event_time><event_type>` using the API key as the secret. The
+ * payload arrives as form-encoded `json=<stringified-json>` per
+ * https://developers.hellosign.com/api/eventsAndCallbacks/eventsAndCallbacks/#callback-event-hash
+ *
+ * If the API key isn't set we cannot verify — reject so we don't
+ * accept spoofed events.
+ */
+function verifyDropboxSignWebhook(args: {
+  event_time: string;
+  event_type: string;
+  event_hash: string;
+}): boolean {
+  if (!DROPBOX_SIGN_API_KEY) return false;
+  const expected = createHmac("sha256", DROPBOX_SIGN_API_KEY)
+    .update(args.event_time + args.event_type)
+    .digest("hex");
+  const a = Buffer.from(args.event_hash, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+type DropboxSignWebhookPayload = {
+  event: {
+    event_time: string;
+    event_type: string;
+    event_hash: string;
+  };
+  signature_request?: {
+    signature_request_id: string;
+    is_complete?: boolean;
+    is_declined?: boolean;
+    has_error?: boolean;
+    signatures?: Array<{
+      signer_email_address?: string;
+      signer_role?: string;
+      signed_at?: number; // unix
+      status_code?: string;
+    }>;
+  };
+};
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ provider: string }> },
@@ -86,9 +139,76 @@ export async function POST(
     return bad(`unknown provider: ${provider}`, 404);
   }
 
-  // Real providers will sign their payloads. The mock provider doesn't —
-  // it's dev-only. When dropbox_sign lands, add HMAC verification here
-  // before reading the body.
+  // ─── Dropbox Sign ─────────────────────────────────────────────────
+  if (provider === "dropbox_sign") {
+    // Dropbox Sign sends form-encoded body: `json=<stringified-json>`
+    // and expects the verbatim string "Hello API Event Received" back
+    // (200). They retry on anything else.
+    let parsed: DropboxSignWebhookPayload;
+    try {
+      const text = await request.text();
+      const params = new URLSearchParams(text);
+      const jsonStr = params.get("json");
+      if (!jsonStr) return bad("missing json field");
+      parsed = JSON.parse(jsonStr) as DropboxSignWebhookPayload;
+    } catch {
+      return bad("invalid Dropbox Sign payload");
+    }
+
+    if (
+      !verifyDropboxSignWebhook({
+        event_time: parsed.event.event_time,
+        event_type: parsed.event.event_type,
+        event_hash: parsed.event.event_hash,
+      })
+    ) {
+      return bad("dropbox_sign signature verification failed", 401);
+    }
+
+    const sr = parsed.signature_request;
+    if (!sr?.signature_request_id) {
+      // Some event types don't include a signature_request — just ack.
+      return new NextResponse("Hello API Event Received", { status: 200 });
+    }
+
+    const contract = await getContractByEnvelopeId(sr.signature_request_id);
+    if (!contract) {
+      return new NextResponse("Hello API Event Received", { status: 200 });
+    }
+
+    const status = mapDropboxStatus({
+      is_complete: sr.is_complete,
+      is_declined: sr.is_declined,
+      has_error: sr.has_error,
+    });
+
+    // Find the per-role signed_at timestamp (if any signature in this
+    // event has signed_at set, it's the one that just signed).
+    let role: "user" | "contractor" | null = null;
+    let signed_at_iso: string | null = null;
+    for (const sig of sr.signatures ?? []) {
+      if (sig.signed_at && sig.signer_role) {
+        if (sig.signer_role === "user" || sig.signer_role === "contractor") {
+          role = sig.signer_role;
+          signed_at_iso = new Date(sig.signed_at * 1000).toISOString();
+          break;
+        }
+      }
+    }
+
+    await patchContractByEnvelope({
+      envelope_id: sr.signature_request_id,
+      status,
+      role,
+      signed_at: signed_at_iso,
+    });
+
+    // Dropbox Sign requires this exact response body.
+    return new NextResponse("Hello API Event Received", { status: 200 });
+  }
+
+  // ─── Mock provider (dev-only) ─────────────────────────────────────
+
   let body: EsignWebhookPayload;
   try {
     body = (await request.json()) as EsignWebhookPayload;
@@ -100,11 +220,8 @@ export async function POST(
     return bad("envelope_id is required");
   }
 
-  // Reconcile: find the contract row this envelope belongs to.
   const contract = await getContractByEnvelopeId(body.envelope_id);
   if (!contract) {
-    // Real providers retry on non-2xx, but for envelopes we don't track
-    // (e.g. legacy test runs) we accept and no-op.
     return NextResponse.json({ ok: true, no_match: true });
   }
 

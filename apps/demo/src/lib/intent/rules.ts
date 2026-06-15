@@ -47,7 +47,9 @@ type Rule = {
     | "cancel_appointment"
     | "view_appointments"
     | "draft_contract"
-    | "file_dispute";
+    | "file_dispute"
+    | "place_call"
+    | "generate_estimate";
   /** Required slot keys — if any are missing the result is "medium". */
   required: Array<keyof IntentSlots>;
 };
@@ -184,6 +186,37 @@ const RULES: readonly Rule[] = [
     },
     kind: "schedule_appointment",
     required: ["when"],
+  },
+  // ─── PLACE_CALL ───────────────────────────────────────────────────
+  // "call the plumber", "get them on the phone", "phone Acme" — must
+  // beat tell_me_more and book.
+  {
+    id: "place.call.imperative",
+    match: (t) =>
+      /\b(call|phone|get\s+(them|him|her|me)\s+on\s+the\s+phone|dial|ring(\s+up)?)\s+(the\s+)?(plumber|electrician|hvac|a\/c|ac|roofer|landscaper|painter|handyman|carpenter|contractor|builder|gardener|them|him|her|#?\d+)\b/i.test(
+        t,
+      ) ||
+      /\b(call|phone|dial)\s+(the\s+|my\s+)?(first|second|third|fourth|fifth|top|1st|2nd|3rd)(\s+(one|pick|guy|gal|person))?\b/i.test(
+        t,
+      ),
+    build: (t) => ({
+      contractor_ref: extractContractorRef(t),
+    }),
+    kind: "place_call",
+    required: ["contractor_ref"],
+  },
+  // ─── GENERATE_ESTIMATE ────────────────────────────────────────────
+  // "make me an estimate", "write up the estimate", "give me a quote".
+  // After a call ends, this triggers M3.6 over the call's transcripts.
+  {
+    id: "generate.estimate.imperative",
+    match: (t) =>
+      /\b(make|write\s+up|generate|create|build|prepare|draft)\s+(me\s+)?(an?\s+)?(estimate|quote|bid|breakdown)\b|\b(quote\s+this|line[- ]item\s+(it|this))\b/i.test(
+        t,
+      ),
+    build: () => ({}),
+    kind: "generate_estimate",
+    required: [],
   },
   // ─── FILE_DISPUTE ─────────────────────────────────────────────────
   // "file a complaint", "open a dispute", "I want to dispute X" — must

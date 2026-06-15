@@ -11,6 +11,8 @@ import { ComparePanel } from "./ComparePanel";
 import { AppointmentPanel } from "./AppointmentPanel";
 import { ContractPanel } from "./ContractPanel";
 import { DisputePanel } from "./DisputePanel";
+import { CallPanel } from "./CallPanel";
+import { EstimatePanel } from "./EstimatePanel";
 
 /**
  * AssistantSurface — the right-side drawer that 6 drives during voice
@@ -117,6 +119,12 @@ export function AssistantSurface() {
           {variant.kind === "dispute" && (
             <DisputePanel payload={variant.payload} />
           )}
+          {variant.kind === "call" && (
+            <CallPanel payload={variant.payload} />
+          )}
+          {variant.kind === "estimate" && (
+            <EstimatePanel payload={variant.payload} />
+          )}
         </div>
       </div>
     </aside>
@@ -132,7 +140,9 @@ function labelForVariant(
     | "compare"
     | "appointment"
     | "contract"
-    | "dispute",
+    | "dispute"
+    | "call"
+    | "estimate",
   t: (key: string) => string,
 ): string {
   switch (kind) {
@@ -152,5 +162,9 @@ function labelForVariant(
       return t("variant.contract");
     case "dispute":
       return t("variant.dispute");
+    case "call":
+      return t("variant.call");
+    case "estimate":
+      return t("variant.estimate");
   }
 }

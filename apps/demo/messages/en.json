@@ -226,7 +226,9 @@
         "compare": "6 is helping you decide",
         "appointment": "Appointments",
         "contract": "Work agreement",
-        "dispute": "Dispute thread"
+        "dispute": "Dispute thread",
+        "call": "Phone call with 6",
+        "estimate": "Estimate"
       },
       "contractors": {
         "empty": "No matches yet.",
@@ -297,6 +299,55 @@
           "signed": "Signed",
           "declined": "Declined",
           "cancelled": "Cancelled",
+          "expired": "Expired"
+        }
+      },
+      "call": {
+        "title": "Live phone call",
+        "contractorLabel": "Contractor",
+        "contractorPhoneLabel": "Number",
+        "waitingTranscript": "Waiting for the call to start…",
+        "noTranscript": "No transcript captured.",
+        "downloadRecording": "Download call recording",
+        "hangUpCta": "Hang up",
+        "estimateReady": "Estimate ready: #{id}",
+        "status": {
+          "queued": "Queued",
+          "dialing": "Dialing",
+          "in_progress": "On the call",
+          "completed": "Call ended",
+          "failed": "Failed",
+          "no_answer": "No answer",
+          "busy": "Busy",
+          "cancelled": "Cancelled"
+        },
+        "speaker": {
+          "user": "You",
+          "contractor": "Contractor",
+          "six": "6",
+          "system": "System"
+        }
+      },
+      "estimate": {
+        "title": "Voice estimate",
+        "contractorLabel": "Contractor",
+        "scopeLabel": "Scope of work",
+        "scopeEmpty": "(no scope summary)",
+        "noLineItems": "No priced line items yet. Ask the contractor for unit prices on the call.",
+        "colDescription": "Item",
+        "colQty": "Qty",
+        "colUnitPrice": "Unit",
+        "colTotal": "Total",
+        "subtotalLabel": "Subtotal",
+        "taxLabel": "Tax",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Turn into a contract",
+        "draftingContract": "Drafting…",
+        "status": {
+          "draft": "Draft",
+          "sent": "Sent",
+          "accepted": "Accepted",
+          "declined": "Declined",
           "expired": "Expired"
         }
       },

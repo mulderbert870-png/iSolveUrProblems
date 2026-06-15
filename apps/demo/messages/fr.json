@@ -226,7 +226,9 @@
         "compare": "6 vous aide à décider",
         "appointment": "Rendez-vous",
         "contract": "Contrat de travail",
-        "dispute": "Fil de litige"
+        "dispute": "Fil de litige",
+        "call": "Appel avec 6",
+        "estimate": "Devis"
       },
       "contractors": {
         "empty": "Aucun résultat pour l'instant.",
@@ -297,6 +299,55 @@
           "signed": "Signé",
           "declined": "Refusé",
           "cancelled": "Annulé",
+          "expired": "Expiré"
+        }
+      },
+      "call": {
+        "title": "Appel en cours",
+        "contractorLabel": "Prestataire",
+        "contractorPhoneLabel": "Numéro",
+        "waitingTranscript": "En attente du début de l'appel…",
+        "noTranscript": "Aucune transcription capturée.",
+        "downloadRecording": "Télécharger l'enregistrement",
+        "hangUpCta": "Raccrocher",
+        "estimateReady": "Devis prêt : #{id}",
+        "status": {
+          "queued": "En file d'attente",
+          "dialing": "Composition",
+          "in_progress": "En communication",
+          "completed": "Appel terminé",
+          "failed": "Échec",
+          "no_answer": "Pas de réponse",
+          "busy": "Occupé",
+          "cancelled": "Annulé"
+        },
+        "speaker": {
+          "user": "Vous",
+          "contractor": "Prestataire",
+          "six": "6",
+          "system": "Système"
+        }
+      },
+      "estimate": {
+        "title": "Devis vocal",
+        "contractorLabel": "Prestataire",
+        "scopeLabel": "Étendue des travaux",
+        "scopeEmpty": "(pas de résumé)",
+        "noLineItems": "Pas encore de lignes chiffrées. Demandez les prix unitaires sur l'appel.",
+        "colDescription": "Article",
+        "colQty": "Qté",
+        "colUnitPrice": "P.U.",
+        "colTotal": "Total",
+        "subtotalLabel": "Sous-total",
+        "taxLabel": "TVA",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Transformer en contrat",
+        "draftingContract": "Rédaction…",
+        "status": {
+          "draft": "Brouillon",
+          "sent": "Envoyé",
+          "accepted": "Accepté",
+          "declined": "Refusé",
           "expired": "Expiré"
         }
       },

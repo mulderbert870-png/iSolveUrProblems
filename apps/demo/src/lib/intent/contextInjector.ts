@@ -15,10 +15,12 @@
 
 import type {
   AppointmentCard,
+  CallPayload,
   ComparePayload,
   ContractPayload,
   ContractorCard,
   DisputePayload,
+  EstimatePayload,
   PickResultPayload,
   RecommendationCard,
   SummaryPayload,
@@ -313,6 +315,45 @@ export function wrapDisputeOpened(args: { payload: DisputePayload }): string {
     `Just opened a dispute${withContractor}. Complaint: "${payload.complaint}".`,
     tail,
     `Respond as 6 in first person. Acknowledge the dispute calmly, name the contractor (if any), and tell them to look in the drawer to read the mediator's opening response or to keep talking through voice. Two sentences max. Warm, neutral tone.`,
+  ].join("\n");
+}
+
+/**
+ * M3.1 — Confirm a freshly initiated 3-way phone call. Brain reads back
+ * who 6 is dialing so the homeowner hears the connection forming.
+ */
+export function wrapCallPlaced(args: { payload: CallPayload }): string {
+  const { payload } = args;
+  const who = payload.contractor_name ?? "the contractor";
+  return [
+    `[CALL DIALING — not spoken by user]`,
+    `Just dialed a 3-way call: the homeowner, ${who}, and 6 as a silent participant who joins audibly when the homeowner says "hey 6".`,
+    `Status: ${payload.status}. The drawer will show the live transcript as it streams in.`,
+    `Respond as 6 in first person. Confirm the call is dialing — name the contractor — and remind the user they can say "hey 6" mid-call if they want me to chime in. Two sentences max.`,
+  ].join("\n");
+}
+
+/**
+ * M3.6 — Confirm a freshly extracted estimate. Brain reads back the
+ * top-line scope and total so the homeowner hears the result.
+ */
+export function wrapEstimateReady(args: { payload: EstimatePayload }): string {
+  const { payload } = args;
+  const dollars = (payload.total_cents / 100).toFixed(2);
+  const c = payload.currency.toUpperCase();
+  const itemCount = payload.line_items.length;
+  if (itemCount === 0) {
+    return [
+      `[ESTIMATE EMPTY — not spoken by user]`,
+      `Couldn't extract line items from the call — the contractor didn't speak any concrete prices yet.`,
+      `Respond as 6 in first person. Acknowledge there's not enough on the call to estimate yet, and offer to ask the contractor for line-item prices. One sentence.`,
+    ].join("\n");
+  }
+  const who = payload.contractor_name ?? "the contractor";
+  return [
+    `[ESTIMATE READY — not spoken by user]`,
+    `Pulled ${itemCount} line item${itemCount === 1 ? "" : "s"} from the call with ${who}. Scope: ${payload.scope_summary}. Total: $${dollars} ${c}.`,
+    `Respond as 6 in first person. Name the total, say it's broken down in the drawer, and offer to turn this into a contract. Two sentences max.`,
   ].join("\n");
 }
 
