@@ -1412,22 +1412,21 @@ async function handlePlaceCall(args: {
     };
   }
 
-  // Dial all three legs in parallel.
-  const [userLeg, contractorLeg, sixLeg] = await Promise.all([
+  // Dial homeowner + contractor in parallel. 6 speaks via Twilio's
+  // Conference Announce API, so no third "6 leg" is needed.
+  const [userLeg, contractorLeg] = await Promise.all([
     createCallLeg({ to: userPhone, callId: call.id, participant: "user" }),
     createCallLeg({
       to: contractorPhone,
       callId: call.id,
       participant: "contractor",
     }),
-    createCallLeg({ to: fromPhone, callId: call.id, participant: "six" }),
   ]);
-  if (!userLeg.ok || !contractorLeg.ok || !sixLeg.ok) {
+  if (!userLeg.ok || !contractorLeg.ok) {
     await setCallStatus(call.id, "failed");
     const errMsg = [
       !userLeg.ok ? `user: ${userLeg.error}` : "",
       !contractorLeg.ok ? `contractor: ${contractorLeg.error}` : "",
-      !sixLeg.ok ? `six: ${sixLeg.error}` : "",
     ]
       .filter(Boolean)
       .join("; ");
@@ -1439,7 +1438,6 @@ async function handlePlaceCall(args: {
     status: "dialing",
     twilio_call_sid_user: userLeg.sid,
     twilio_call_sid_contractor: contractorLeg.sid,
-    twilio_call_sid_six: sixLeg.sid,
   });
 
   const payload: CallPayload = {

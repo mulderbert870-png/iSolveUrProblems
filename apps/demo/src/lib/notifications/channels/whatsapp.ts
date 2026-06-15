@@ -15,10 +15,16 @@ function twilioMessagesUrl(): string {
 }
 
 function basicAuthHeader(): string {
-  const token = Buffer.from(
-    `${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`,
+  // Auth token may be stored as "<sid>:<token>" — strip the SID prefix
+  // if present so basic auth ends up as "<sid>:<token>", not
+  // "<sid>:<sid>:<token>".
+  const tokenOnly = TWILIO_AUTH_TOKEN.includes(":")
+    ? TWILIO_AUTH_TOKEN.split(":").slice(1).join(":")
+    : TWILIO_AUTH_TOKEN;
+  const encoded = Buffer.from(
+    `${TWILIO_ACCOUNT_SID}:${tokenOnly}`,
   ).toString("base64");
-  return `Basic ${token}`;
+  return `Basic ${encoded}`;
 }
 
 /**

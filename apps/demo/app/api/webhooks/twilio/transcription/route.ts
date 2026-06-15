@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { OPENAI_API_KEY } from "../../../../api/secrets";
 import { appendTranscript } from "../../../../../src/lib/transcripts/store";
 import {
+  announceToConference,
+  findConferenceByFriendlyName,
   getCallById,
-  makeSixSpeak,
   patchCall,
 } from "../../../../../src/lib/calls";
 
@@ -101,11 +102,9 @@ export async function POST(request: NextRequest) {
   //    address 6 in v1; the homeowner orchestrates).
   if (speaker === "user" && WAKE_WORD_RE.test(text)) {
     const askedOf6 = stripWakeWord(text);
-    if (askedOf6.length > 0 && !call.six_speaking && call.twilio_call_sid_six) {
+    if (askedOf6.length > 0 && !call.six_speaking && call.twilio_call_sid_user) {
       // Fire 6's reply asynchronously — we don't block the webhook on
-      // the orchestrator + Twilio update. The orchestrator runs through
-      // the existing /api/transcripts/append flow? No — that's the
-      // browser/avatar path. Here we go directly to the orchestrator.
+      // the orchestrator + Twilio Announce. Failures are logged.
       handleSixWakeWord({
         call,
         userMessage: askedOf6,
@@ -135,10 +134,15 @@ export async function POST(request: NextRequest) {
  * spoken summary; otherwise we ack neutrally.
  */
 async function handleSixWakeWord(args: {
-  call: { id: string; user_id: string; twilio_call_sid_six: string | null };
+  call: {
+    id: string;
+    user_id: string;
+    twilio_call_sid_user: string | null;
+    twilio_conference_sid: string | null;
+  };
   userMessage: string;
 }): Promise<void> {
-  if (!args.call.twilio_call_sid_six) return;
+  if (!args.call.twilio_call_sid_user) return;
 
   // Mark speaking so a rapid-fire second wake-word doesn't double-fire.
   await patchCall(args.call.id, { six_speaking: true }).catch(() => null);
@@ -155,17 +159,39 @@ async function handleSixWakeWord(args: {
     context: { source: "six_spoken_reply" },
   }).catch(() => null);
 
-  await makeSixSpeak({
-    callSid: args.call.twilio_call_sid_six,
-    callId: args.call.id,
-    text: reply,
-  }).catch((e) => {
-    console.warn("[twilio/transcription] makeSixSpeak failed:", e);
-  });
+  // The conference SID is captured by the status webhook on
+  // conference-start, but the user could trigger a wake-word in the
+  // brief gap before that. Look it up via Twilio if we don't have it.
+  let conferenceSid = args.call.twilio_conference_sid;
+  if (!conferenceSid) {
+    const found = await findConferenceByFriendlyName({
+      friendlyName: args.call.id,
+    }).catch(() => ({ sid: null }));
+    conferenceSid = found.sid;
+    if (conferenceSid) {
+      await patchCall(args.call.id, {
+        twilio_conference_sid: conferenceSid,
+      }).catch(() => null);
+    }
+  }
 
-  // Clear the speaking flag a few seconds later — the actual Twilio
-  // <Say> takes 1-3s depending on text length, and we don't get a
-  // "finished speaking" callback. Give it a conservative 5s buffer.
+  if (conferenceSid) {
+    await announceToConference({
+      conferenceSid,
+      participantCallSid: args.call.twilio_call_sid_user,
+      text: reply,
+    }).catch((e) => {
+      console.warn("[twilio/transcription] announceToConference failed:", e);
+    });
+  } else {
+    console.warn(
+      "[twilio/transcription] no conferenceSid available for call",
+      args.call.id,
+    );
+  }
+
+  // Clear the speaking flag a few seconds later — Twilio Announce
+  // doesn't fire a "done" callback. Give a conservative 5s buffer.
   setTimeout(() => {
     patchCall(args.call.id, { six_speaking: false }).catch(() => null);
   }, 5000);

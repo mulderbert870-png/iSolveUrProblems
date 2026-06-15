@@ -1,5 +1,10 @@
-import { redirect } from "next/navigation";
+import { redirect } from "../../../src/i18n/routing";
 
-export default function DisclaimerPage() {
-  redirect("/terms");
+export default async function DisclaimerPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  redirect({ href: "/legal", locale });
 }

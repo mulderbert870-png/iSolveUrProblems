@@ -55,7 +55,7 @@ function callbackUrl(path: string): string {
 
 function buildTwiml(args: {
   callId: string;
-  participant: "user" | "contractor" | "six";
+  participant: "user" | "contractor";
 }): string {
   const conferenceName = args.callId;
   const transcriptionUrl = callbackUrl(
@@ -68,16 +68,13 @@ function buildTwiml(args: {
     `/api/webhooks/twilio/status?call_id=${args.callId}`,
   );
 
-  // The 6 leg joins muted + doesn't trigger conference end-on-leave (so
-  // if 6's leg hangs up the user/contractor stay connected).
-  const isSix = args.participant === "six";
-
   const conferenceAttrs = [
     `startConferenceOnEnter="true"`,
-    isSix ? `endConferenceOnExit="false"` : `endConferenceOnExit="true"`,
-    isSix ? `muted="true"` : `muted="false"`,
-    // Only attach STT + recording once — on the FIRST participant. Easier
-    // to just attach on the user leg since it'll always be present.
+    `endConferenceOnExit="true"`,
+    // Only attach STT + recording once — on the FIRST participant.
+    // We pick the user leg because it always exists (the contractor leg
+    // can fail to connect; recording attached to a failed leg never
+    // starts).
     args.participant === "user" ? `record="record-from-start"` : "",
     args.participant === "user"
       ? `recordingStatusCallback="${escapeXml(recordingCallback)}"`
@@ -101,9 +98,6 @@ function buildTwiml(args: {
         )}" inboundTrackLabel="homeowner" outboundTrackLabel="conference" /></Start>`
       : "";
 
-  // The 6 leg adds an extra <Pause> after joining the conference. This
-  // is a safety net — if the conference ends, the leg won't drop into
-  // some default Twilio behavior; it'll just pause briefly and end.
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<Response>`,
@@ -111,7 +105,6 @@ function buildTwiml(args: {
     `<Dial>`,
     `<Conference ${conferenceAttrs}>${escapeXml(conferenceName)}</Conference>`,
     `</Dial>`,
-    isSix ? `<Pause length="1" />` : "",
     `</Response>`,
   ].join("");
 }
@@ -137,11 +130,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "text/xml; charset=utf-8" },
     });
   }
-  if (
-    participantRaw !== "user" &&
-    participantRaw !== "contractor" &&
-    participantRaw !== "six"
-  ) {
+  if (participantRaw !== "user" && participantRaw !== "contractor") {
     return new NextResponse(badTwiml("unknown participant"), {
       status: 200,
       headers: { "Content-Type": "text/xml; charset=utf-8" },

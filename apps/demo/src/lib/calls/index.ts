@@ -21,7 +21,7 @@ export {
 export {
   isTwilioVoiceConfigured,
   createCallLeg,
-  makeSixSpeak,
+  announceToConference,
   endConference,
   findConferenceByFriendlyName,
 } from "./twilio";

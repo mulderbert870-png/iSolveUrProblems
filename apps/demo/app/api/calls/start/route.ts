@@ -132,9 +132,12 @@ export async function POST(request: NextRequest) {
   });
   if (!call) return bad("failed to create call row", 500);
 
-  // 2. Dial all three legs in parallel. Each Twilio Call.Url callback
-  //    returns TwiML to <Dial><Conference name=call.id /></Dial>.
-  const [userLeg, contractorLeg, sixLeg] = await Promise.all([
+  // 2. Dial homeowner + contractor in parallel. The "6 leg" is NOT
+  //    needed — 6 speaks into the conference via Twilio's Conference
+  //    Announce API (see twilio.ts → announceToConference), not as a
+  //    separate dialed leg. Saves a Twilio outbound minute per call
+  //    and simplifies state.
+  const [userLeg, contractorLeg] = await Promise.all([
     createCallLeg({
       to: body.to_user_phone,
       callId: call.id,
@@ -145,22 +148,12 @@ export async function POST(request: NextRequest) {
       callId: call.id,
       participant: "contractor",
     }),
-    // The "6" leg dials our own Twilio number — Twilio plays the inbound
-    // TwiML response from /api/webhooks/twilio/voice which routes the
-    // call into the same Conference room as a silent participant. This
-    // gives us a controllable handle via the call SID.
-    createCallLeg({
-      to: TWILIO_VOICE_FROM_NUMBER,
-      callId: call.id,
-      participant: "six",
-    }),
   ]);
 
-  if (!userLeg.ok || !contractorLeg.ok || !sixLeg.ok) {
+  if (!userLeg.ok || !contractorLeg.ok) {
     const errMsg = [
       !userLeg.ok ? `user: ${userLeg.error}` : "",
       !contractorLeg.ok ? `contractor: ${contractorLeg.error}` : "",
-      !sixLeg.ok ? `six: ${sixLeg.error}` : "",
     ]
       .filter(Boolean)
       .join("; ");
@@ -172,7 +165,6 @@ export async function POST(request: NextRequest) {
     status: "dialing",
     twilio_call_sid_user: userLeg.sid,
     twilio_call_sid_contractor: contractorLeg.sid,
-    twilio_call_sid_six: sixLeg.sid,
   });
 
   return NextResponse.json({
@@ -181,7 +173,6 @@ export async function POST(request: NextRequest) {
     sids: {
       user: userLeg.sid,
       contractor: contractorLeg.sid,
-      six: sixLeg.sid,
     },
   });
 }

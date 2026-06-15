@@ -85,7 +85,7 @@ function callbackUrl(path: string): string {
 export type CreateCallLegArgs = {
   to: string;            // E.164
   callId: string;        // our internal call.id (passed through as `call_id`)
-  participant: "user" | "contractor" | "six";
+  participant: "user" | "contractor";
 };
 
 /**
@@ -120,35 +120,40 @@ export async function createCallLeg(
 }
 
 /**
- * Update an in-progress call's TwiML to inject a `<Say>` (server-side
- * triggered 6 speech). The 6 participant's current TwiML is loop-paused
- * → updating it interrupts the pause and plays the Say.
+ * Inject 6's voice into the conference using Twilio's Conference
+ * Announce API:
+ *   POST /Conferences/{ConferenceSid}/Participants/{ParticipantCallSid}
+ *     with `Announce=<URL>` — Twilio fetches the URL, gets TwiML back,
+ *     plays it to ALL participants in the conference, then resumes.
  *
- * After the `<Say>`, control returns to /api/webhooks/twilio/voice which
- * re-enters the silent loop.
+ * The announce TwiML is served by /api/webhooks/twilio/announce, which
+ * reads `text` from the query string and returns `<Say>text</Say>`.
+ *
+ * Why this beats updating a "6 leg"'s TwiML: updating a leg's TwiML
+ * disconnects that leg from the conference and plays audio only to
+ * that leg's remote party — useless when the 6 leg is a self-call.
+ * Announce plays audio INSIDE the conference room, audible to both
+ * the homeowner and the contractor.
  */
-export async function makeSixSpeak(args: {
-  callSid: string;     // Twilio call SID of the 6 leg
-  text: string;        // what to say
-  callId: string;      // our internal call.id
+export async function announceToConference(args: {
+  conferenceSid: string;
+  /** Any participant's call SID — the API uses it as a routing handle;
+   *  the announcement is still conference-wide. */
+  participantCallSid: string;
+  text: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  // Build TwiML inline. The conference name is `<call_id>` so we don't
-  // need to look anything up.
-  const sayText = args.text.replace(/[<>&]/g, (c) =>
-    c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+  const trimmed = args.text.slice(0, 1200); // Twilio caps Say at ~1500 chars
+  const announceUrl =
+    `${callbackUrl("/api/webhooks/twilio/announce")}?text=${encodeURIComponent(
+      trimmed,
+    )}`;
+  const result = await twilioPost(
+    `/Conferences/${args.conferenceSid}/Participants/${args.participantCallSid}.json`,
+    {
+      Announce: announceUrl,
+      AnnounceMethod: "GET",
+    },
   );
-  const twiml =
-    `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<Response>` +
-    `<Say voice="Polly.Joanna-Neural">${sayText}</Say>` +
-    `<Redirect>${callbackUrl(
-      `/api/webhooks/twilio/voice?call_id=${args.callId}&participant=six`,
-    )}</Redirect>` +
-    `</Response>`;
-
-  const result = await twilioPost(`/Calls/${args.callSid}.json`, {
-    Twiml: twiml,
-  });
   if (!result.ok) return result;
   return { ok: true };
 }
