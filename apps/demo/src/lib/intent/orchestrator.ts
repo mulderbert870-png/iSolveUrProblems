@@ -147,6 +147,14 @@ export type OrchestratorInput = {
   /** Request origin (e.g. "https://app.example.com") — used by features
    *  that need to deep-link back (e.g. dispute escalation emails). */
   app_origin?: string | null;
+  /**
+   * IANA timezone of the homeowner (e.g. "America/New_York"). Used by
+   * M3.4 datetime parsing so "tomorrow at 10am" lands at 10am in the
+   * user's wall clock, not 10am UTC. Pulled from the client by the
+   * transcripts/append route (browser Intl.DateTimeFormat) and
+   * threaded here.
+   */
+  tz?: string | null;
 };
 
 export type OrchestratorOutput =
@@ -901,7 +909,7 @@ async function fetchHomeownerName(
     const res = await fetch(
       `${url}/rest/v1/users?id=eq.${encodeURIComponent(
         userId,
-      )}&select=email,display_name&limit=1`,
+      )}&select=email,full_name&limit=1`,
       {
         headers: {
           apikey: serviceRoleKey,
@@ -913,11 +921,11 @@ async function fetchHomeownerName(
     if (!res.ok) return { name: "Homeowner", email: null };
     const rows = (await res.json()) as Array<{
       email: string | null;
-      display_name: string | null;
+      full_name: string | null;
     }>;
     const row = rows[0];
     return {
-      name: row?.display_name ?? "Homeowner",
+      name: row?.full_name ?? "Homeowner",
       email: row?.email ?? null,
     };
   } catch {
@@ -1554,7 +1562,7 @@ async function handleGenerateEstimate(args: {
 export async function orchestrate(
   input: OrchestratorInput,
 ): Promise<OrchestratorOutput> {
-  const classified = classifyIntent(input.text);
+  const classified = classifyIntent(input.text, { tz: input.tz ?? null });
   if (!classified.matched) {
     return { kind: "none", reason: classified.reason };
   }

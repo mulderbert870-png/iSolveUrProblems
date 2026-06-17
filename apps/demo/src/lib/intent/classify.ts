@@ -1,5 +1,5 @@
 import { applyRules } from "./rules";
-import type { ClassifyResult } from "./types";
+import type { ClassifyResult, ClassifyContext } from "./types";
 
 /**
  * M3.0e — Top-level classifier.
@@ -11,7 +11,13 @@ import type { ClassifyResult } from "./types";
  *
  * Pure / synchronous / no I/O — safe to call repeatedly on every
  * transcript turn.
+ *
+ * `ctx.tz` flows into time-aware rules so "tomorrow at 10am" lands at
+ * 10am in the homeowner's wall clock, not 10am UTC.
  */
-export function classifyIntent(text: string): ClassifyResult {
-  return applyRules(text);
+export function classifyIntent(
+  text: string,
+  ctx: ClassifyContext = {},
+): ClassifyResult {
+  return applyRules(text, ctx);
 }

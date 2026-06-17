@@ -43,7 +43,7 @@ async function fetchUserChannelTarget(
     const res = await fetch(
       `${url}/rest/v1/users?id=eq.${encodeURIComponent(
         userId,
-      )}&select=email,phone,display_name&limit=1`,
+      )}&select=email,phone,full_name&limit=1`,
       {
         headers: {
           apikey: serviceRoleKey,
@@ -56,13 +56,13 @@ async function fetchUserChannelTarget(
     const rows = (await res.json()) as Array<{
       email: string | null;
       phone: string | null;
-      display_name: string | null;
+      full_name: string | null;
     }>;
     const row = rows[0];
     return {
       email: row?.email ?? null,
       phone: row?.phone ?? null,
-      name: row?.display_name ?? null,
+      name: row?.full_name ?? null,
     };
   } catch {
     return { email: null, phone: null, name: null };

@@ -64,6 +64,11 @@ export async function POST(request: NextRequest) {
      * / "Acme" references against what the user is actually looking at.
      */
     surface_snapshot?: unknown;
+    /**
+     * M3.4 — client-detected IANA timezone (browser `Intl.DateTimeFormat().resolvedOptions().timeZone`)
+     * so "tomorrow at 10am" lands at 10am in the user's wall clock.
+     */
+    tz?: unknown;
   };
   try {
     body = await request.json();
@@ -121,12 +126,17 @@ export async function POST(request: NextRequest) {
   if (body.speaker === "user") {
     const snapshot = parseSurfaceSnapshot(body.surface_snapshot);
     try {
+      const tz =
+        typeof body.tz === "string" && body.tz.length > 0 && body.tz.length < 64
+          ? body.tz
+          : null;
       const orch = await orchestrate({
         text: body.text,
         session_id: body.session_id,
         user_id: userId,
         currentSurface: snapshot,
         app_origin: new URL(request.url).origin,
+        tz,
       });
       return NextResponse.json({
         id: inserted.id,

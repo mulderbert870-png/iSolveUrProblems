@@ -102,25 +102,37 @@ export function extractLocation(
 
 // ─── Contractor reference extraction ────────────────────────────────
 
-/** Spelled-out small numbers we accept as ordinals. */
-const SPELLED_ORDINALS: Record<string, number> = {
-  "first": 1,
-  "1st": 1,
-  "top": 1,
-  "one": 1,
-  "second": 2,
-  "2nd": 2,
-  "two": 2,
-  "third": 3,
-  "3rd": 3,
-  "three": 3,
-  "fourth": 4,
-  "4th": 4,
-  "four": 4,
-  "fifth": 5,
-  "5th": 5,
-  "five": 5,
-};
+/**
+ * Spelled-out small numbers we accept as ordinals.
+ *
+ * Iteration order matters — we try entries in declaration order, and the
+ * regex matches the word with an OPTIONAL trailing "one" ("the second
+ * one"). Multi-word ordinals MUST come before the bare "one" entry, or
+ * "the second one" would match "one" first and resolve to position 1.
+ *
+ * The bare "one" handles "tell me about one of them" / "give me one"
+ * but is intentionally LAST so concrete ordinals win the precedence
+ * battle.
+ */
+const SPELLED_ORDINALS: Array<{ word: string; n: number }> = [
+  { word: "first",  n: 1 },
+  { word: "1st",    n: 1 },
+  { word: "top",    n: 1 },
+  { word: "second", n: 2 },
+  { word: "2nd",    n: 2 },
+  { word: "two",    n: 2 },
+  { word: "third",  n: 3 },
+  { word: "3rd",    n: 3 },
+  { word: "three",  n: 3 },
+  { word: "fourth", n: 4 },
+  { word: "4th",    n: 4 },
+  { word: "four",   n: 4 },
+  { word: "fifth",  n: 5 },
+  { word: "5th",    n: 5 },
+  { word: "five",   n: 5 },
+  // bare "one" last — see comment above
+  { word: "one",    n: 1 },
+];
 
 /**
  * Extract a contractor reference from a phrase like "the first one",
@@ -144,7 +156,7 @@ export function extractContractorRef(
   }
 
   // Pattern: "the first one", "the top one", "the second", "the 2nd"
-  for (const [word, n] of Object.entries(SPELLED_ORDINALS)) {
+  for (const { word, n } of SPELLED_ORDINALS) {
     const re = new RegExp(`\\b(?:the\\s+)?${word}(?:\\s+one)?\\b`, "i");
     if (re.test(t)) return { type: "ordinal", position: n };
   }

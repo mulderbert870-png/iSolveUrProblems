@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   APP_PUBLIC_BASE_URL,
 } from "../../../../api/secrets";
+import { verifyTwilioRequest } from "../../../../../src/lib/twilioSig";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,21 @@ function badTwiml(error: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Twilio signs every webhook. For POST routes the signature is over
+  // URL + sorted form params; this voice TwiML route receives a form
+  // body on the inbound call event.
+  let formParams = new URLSearchParams();
+  try {
+    const text = await request.clone().text();
+    formParams = new URLSearchParams(text);
+  } catch {
+    /* no body — that's fine, params stays empty */
+  }
+  const verified = await verifyTwilioRequest({ request, formParams });
+  if (!verified.ok) {
+    return new NextResponse("", { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const callId = searchParams.get("call_id") ?? "";
   const participantRaw = searchParams.get("participant") ?? "";

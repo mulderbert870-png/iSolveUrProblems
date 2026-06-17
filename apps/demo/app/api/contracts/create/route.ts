@@ -236,6 +236,10 @@ export async function POST(request: NextRequest) {
       user_id: userId,
       contractor_id: body.winner_id,
     },
+    // Stable dedup boundary — a retry of this contract attempt will
+    // get the SAME Checkout Session back from Stripe, never a second
+    // payable session. Stripe dedups by key for 24h.
+    idempotencyKey: `contract-${contract.id}`,
   });
 
   if (!session.ok) {

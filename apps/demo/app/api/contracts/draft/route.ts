@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
   const homeowner = await fetch(
     `${process.env.SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(
       userId,
-    )}&select=email,display_name&limit=1`,
+    )}&select=email,full_name&limit=1`,
     {
       headers: {
         apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -123,11 +123,11 @@ export async function POST(request: NextRequest) {
       r.ok ? r.json() : Promise.resolve([]),
     )
     .catch(() => []) as Promise<
-    Array<{ email: string | null; display_name: string | null }>
+    Array<{ email: string | null; full_name: string | null }>
   >;
   const userRow = (await homeowner)[0];
   const userEmail = userRow?.email ?? null;
-  const userName = userRow?.display_name ?? "Homeowner";
+  const userName = userRow?.full_name ?? "Homeowner";
 
   // 1. Insert a contract row with status='pending' and the e-sign scope.
   const platformFeeCents = computePlatformFeeCents(

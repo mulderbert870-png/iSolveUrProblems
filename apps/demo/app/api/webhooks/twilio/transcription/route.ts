@@ -7,6 +7,7 @@ import {
   getCallById,
   patchCall,
 } from "../../../../../src/lib/calls";
+import { verifyTwilioRequest } from "../../../../../src/lib/twilioSig";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -51,6 +52,11 @@ export async function POST(request: NextRequest) {
     form = new URLSearchParams(raw);
   } catch {
     return new NextResponse("", { status: 200 });
+  }
+
+  const verified = await verifyTwilioRequest({ request, formParams: form });
+  if (!verified.ok) {
+    return new NextResponse("", { status: 401 });
   }
 
   const event = form.get("TranscriptionEvent") ?? "";

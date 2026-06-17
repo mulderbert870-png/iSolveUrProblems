@@ -34,7 +34,7 @@ export type EscalationContext = {
 
 type AdminUser = {
   email: string | null;
-  display_name: string | null;
+  full_name: string | null;
 };
 
 async function fetchHomeownerForEscalation(
@@ -45,7 +45,7 @@ async function fetchHomeownerForEscalation(
     const res = await fetch(
       `${url}/rest/v1/users?id=eq.${encodeURIComponent(
         userId,
-      )}&select=email,display_name&limit=1`,
+      )}&select=email,full_name&limit=1`,
       {
         headers: {
           apikey: serviceRoleKey,
@@ -54,11 +54,11 @@ async function fetchHomeownerForEscalation(
         cache: "no-store",
       },
     );
-    if (!res.ok) return { email: null, display_name: null };
+    if (!res.ok) return { email: null, full_name: null };
     const rows = (await res.json()) as AdminUser[];
-    return rows[0] ?? { email: null, display_name: null };
+    return rows[0] ?? { email: null, full_name: null };
   } catch {
-    return { email: null, display_name: null };
+    return { email: null, full_name: null };
   }
 }
 
@@ -187,7 +187,7 @@ export async function notifyAdminEscalation(
     const text = buildSlackText({
       dispute: ctx.dispute,
       reason: ctx.reason,
-      userName: homeowner.display_name,
+      userName: homeowner.full_name,
       userEmail: homeowner.email,
       contractorName,
       threadUrl,
@@ -207,7 +207,7 @@ export async function notifyAdminEscalation(
       reason: ctx.reason,
       userId: ctx.dispute.user_id,
       userEmail: homeowner.email,
-      userName: homeowner.display_name,
+      userName: homeowner.full_name,
       contractorName,
       complaint: ctx.dispute.complaint,
       disputedAmountCents: ctx.dispute.disputed_amount_cents,

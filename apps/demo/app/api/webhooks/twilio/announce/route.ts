@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { verifyTwilioRequest } from "../../../../../src/lib/twilioSig";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,21 @@ function buildTwiml(text: string): string {
 }
 
 async function handle(request: NextRequest) {
+  // For POST Twilio sends form params; for GET there are none. The
+  // verifier handles both — empty params → HMAC over fullUrl only.
+  let formParams = new URLSearchParams();
+  if (request.method === "POST") {
+    try {
+      formParams = new URLSearchParams(await request.clone().text());
+    } catch {
+      /* fall through with empty params */
+    }
+  }
+  const verified = await verifyTwilioRequest({ request, formParams });
+  if (!verified.ok) {
+    return new NextResponse("", { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const text = (searchParams.get("text") ?? "").slice(0, 1200);
   return new NextResponse(buildTwiml(text), {

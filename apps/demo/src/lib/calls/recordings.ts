@@ -27,10 +27,38 @@ function basicAuthHeader(): string {
 }
 
 /**
+ * Twilio's API hosts — recording URLs MUST resolve to one of these
+ * before we attach the auth-token-bearing basic-auth header. Without
+ * this allowlist, a forged recording webhook could cause us to POST
+ * our Twilio credentials to an attacker-controlled URL.
+ */
+const ALLOWED_RECORDING_HOSTS = new Set([
+  "api.twilio.com",
+  "api.us1.twilio.com",
+  "api.dublin.ie1.twilio.com",
+  "api.sydney.au1.twilio.com",
+]);
+
+function isAllowedTwilioHost(urlString: string): boolean {
+  try {
+    const u = new URL(urlString);
+    if (u.protocol !== "https:") return false;
+    return ALLOWED_RECORDING_HOSTS.has(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch a Twilio recording (private — needs basic auth) and upload it
  * to the `call-recordings` Supabase Storage bucket.
  *
  * Returns the storage object path on success, or null on failure.
+ *
+ * Security: the source URL MUST be on a Twilio API host. We never
+ * attach Basic-auth creds to a fetch against an arbitrary host — that
+ * would leak the Account SID + Auth Token if the recording webhook
+ * was spoofed.
  */
 export async function mirrorTwilioRecordingToStorage(args: {
   call_id: string;
@@ -44,6 +72,14 @@ export async function mirrorTwilioRecordingToStorage(args: {
   const sourceUrl = args.twilio_recording_url.endsWith(`.${ext}`)
     ? args.twilio_recording_url
     : `${args.twilio_recording_url}.${ext}`;
+
+  if (!isAllowedTwilioHost(sourceUrl)) {
+    console.error(
+      "[recordings] refusing to fetch — recording URL is not on a Twilio host:",
+      sourceUrl,
+    );
+    return null;
+  }
 
   // 1. Download the recording from Twilio.
   let audio: Buffer;

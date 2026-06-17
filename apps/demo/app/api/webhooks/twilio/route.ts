@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import crypto from "node:crypto";
-import { TWILIO_AUTH_TOKEN } from "../../secrets";
+import { verifyTwilioRequest } from "../../../../src/lib/twilioSig";
 import { updateNotificationByProviderId } from "../../../../src/lib/notifications/store";
 import type { NotificationStatus } from "../../../../src/lib/notifications/types";
 
@@ -9,9 +8,8 @@ import type { NotificationStatus } from "../../../../src/lib/notifications/types
  *
  * Twilio signs with the X-Twilio-Signature header — HMAC-SHA1 over
  * `${requestUrl}${sortedFormParams}` using AUTH_TOKEN as the key.
- *
- * If TWILIO_AUTH_TOKEN is unset, signature verification is skipped
- * with a loud warning (dev convenience only).
+ * Verification is shared with the M3.1 voice webhooks via
+ * `src/lib/twilioSig.ts`.
  */
 
 const STATUS_MAP: Record<string, NotificationStatus | undefined> = {
@@ -24,32 +22,6 @@ const STATUS_MAP: Record<string, NotificationStatus | undefined> = {
   read: "opened",
 };
 
-function verifyTwilio(
-  fullUrl: string,
-  params: Record<string, string>,
-  headerSig: string | null,
-  authToken: string,
-): boolean {
-  if (!headerSig) return false;
-  const sortedKeys = Object.keys(params).sort();
-  const concat = sortedKeys.reduce(
-    (acc, k) => acc + k + (params[k] ?? ""),
-    fullUrl,
-  );
-  const expected = crypto
-    .createHmac("sha1", authToken)
-    .update(concat)
-    .digest("base64");
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(expected),
-      Buffer.from(headerSig),
-    );
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   const formText = await request.text();
   const form = new URLSearchParams(formText);
@@ -58,19 +30,9 @@ export async function POST(request: NextRequest) {
     params[k] = v;
   });
 
-  if (TWILIO_AUTH_TOKEN) {
-    const fullUrl = request.url; // Twilio signs the full request URL
-    const sig = request.headers.get("x-twilio-signature");
-    if (!verifyTwilio(fullUrl, params, sig, TWILIO_AUTH_TOKEN)) {
-      return NextResponse.json(
-        { error: "invalid signature" },
-        { status: 401 },
-      );
-    }
-  } else {
-    console.warn(
-      "[webhooks/twilio] TWILIO_AUTH_TOKEN unset — skipping verification",
-    );
+  const verified = await verifyTwilioRequest({ request, formParams: form });
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.reason }, { status: 401 });
   }
 
   const sid = params.MessageSid || params.SmsSid;

@@ -287,6 +287,15 @@ const useTranscriptCapture = (
       const trimmed = text.trim();
       if (!trimmed) return;
       try {
+        // Browser-detected IANA tz — server uses this for "tomorrow at 10am"
+        // style parsing so the appointment lands at 10am in the user's
+        // wall clock, not 10am UTC. Falls back to UTC server-side if absent.
+        let tz: string | null = null;
+        try {
+          tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+        } catch {
+          tz = null;
+        }
         const res = await fetch("/api/transcripts/append", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -295,6 +304,7 @@ const useTranscriptCapture = (
             speaker: "user",
             text: trimmed,
             surface_snapshot: buildSnapshot(),
+            tz,
           }),
         });
         if (!res.ok) return;

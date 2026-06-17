@@ -26,14 +26,14 @@ import {
   extractScope,
 } from "./slots";
 import { extractDateTime } from "../appointments/extractDateTime";
-import type { ClassifyResult, IntentSlots } from "./types";
+import type { ClassifyContext, ClassifyResult, IntentSlots } from "./types";
 
 type Rule = {
   id: string;
   /** Returns truthy if the rule matches; falsy otherwise. */
   match: (text: string) => boolean;
-  /** Builds slots from the text + extractors. */
-  build: (text: string) => IntentSlots;
+  /** Builds slots from the text + extractors + classification context. */
+  build: (text: string, ctx: ClassifyContext) => IntentSlots;
   /** The intent kind this rule produces. */
   kind:
     | "find_contractor"
@@ -144,8 +144,8 @@ const RULES: readonly Rule[] = [
       /\b(reschedule|move\s+it\s+to|push\s+(it\s+)?to|change\s+it\s+to|can\s+we\s+(move|push)|move\s+the\s+appointment)\b/i.test(
         t,
       ) && TIME_HINT_RE.test(t),
-    build: (t) => {
-      const dt = extractDateTime(t);
+    build: (t, ctx) => {
+      const dt = extractDateTime(t, new Date(), ctx.tz ?? "UTC");
       return dt
         ? { when: { iso_utc: dt.iso_utc, phrase: dt.matched_phrase } }
         : {};
@@ -174,8 +174,8 @@ const RULES: readonly Rule[] = [
       /\b(schedule|set\s+up|book\s+it|book\s+the\s+(visit|appointment|work)|let'?s\s+do|how\s+about|can\s+we\s+do)\b/i.test(
         t,
       ) && TIME_HINT_RE.test(t),
-    build: (t) => {
-      const dt = extractDateTime(t);
+    build: (t, ctx) => {
+      const dt = extractDateTime(t, new Date(), ctx.tz ?? "UTC");
       const agenda = extractAgenda(t);
       return {
         when: dt
@@ -341,13 +341,16 @@ const RULES: readonly Rule[] = [
 ];
 
 /** Try every rule in priority order. Returns the first match (or no-match). */
-export function applyRules(text: string): ClassifyResult {
+export function applyRules(
+  text: string,
+  ctx: ClassifyContext = {},
+): ClassifyResult {
   const trimmed = text.trim();
   if (!trimmed) return { matched: false, reason: "empty text" };
 
   for (const rule of RULES) {
     if (!rule.match(trimmed)) continue;
-    const slots = rule.build(trimmed);
+    const slots = rule.build(trimmed, ctx);
     const missingRequired = rule.required.filter(
       (k) => slots[k] === undefined,
     );

@@ -4,6 +4,7 @@ import {
   patchCall,
   setCallStatus,
 } from "../../../../../src/lib/calls";
+import { verifyTwilioRequest } from "../../../../../src/lib/twilioSig";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,11 @@ export async function POST(request: NextRequest) {
     form = new URLSearchParams(await request.text());
   } catch {
     return new NextResponse("", { status: 200 });
+  }
+
+  const verified = await verifyTwilioRequest({ request, formParams: form });
+  if (!verified.ok) {
+    return new NextResponse("", { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);

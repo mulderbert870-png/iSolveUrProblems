@@ -96,3 +96,12 @@ export type IntentClassification = {
 export type ClassifyResult =
   | { matched: true; classification: IntentClassification }
   | { matched: false; reason: string };
+
+/**
+ * Per-classification context — flows into rule.build() so time-aware
+ * rules can localize wall-clock phrases. Today carries the user's IANA
+ * timezone; future versions may carry locale, current surface, etc.
+ */
+export type ClassifyContext = {
+  tz?: string | null;
+};

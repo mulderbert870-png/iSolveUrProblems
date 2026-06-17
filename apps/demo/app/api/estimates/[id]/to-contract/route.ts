@@ -39,7 +39,7 @@ async function fetchHomeowner(
   try {
     const { url, serviceRoleKey } = getSupabaseAdminConfig();
     const res = await fetch(
-      `${url}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=email,display_name&limit=1`,
+      `${url}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=email,full_name&limit=1`,
       {
         headers: {
           apikey: serviceRoleKey,
@@ -51,11 +51,11 @@ async function fetchHomeowner(
     if (!res.ok) return { name: "Homeowner", email: null };
     const rows = (await res.json()) as Array<{
       email: string | null;
-      display_name: string | null;
+      full_name: string | null;
     }>;
     const row = rows[0];
     return {
-      name: row?.display_name ?? "Homeowner",
+      name: row?.full_name ?? "Homeowner",
       email: row?.email ?? null,
     };
   } catch {

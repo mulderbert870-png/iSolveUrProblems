@@ -37,13 +37,13 @@ A homeowner can now (end-to-end):
 | # | Item | Lead time | Blocks |
 |---|---|---|---|
 | 1 | Run the 4 new M3 migrations (Section 1.A) | 5 min | Everything M3 |
-| 2 | Create Supabase Storage bucket `call-recordings` | 2 min | M3.3 |
+| 2 | Create Supabase Storage bucket `call-recordings` (**PRIVATE** — toggle "Public bucket" OFF; signed URLs are issued on demand) | 2 min | M3.3 |
 | 3 | Buy Twilio Voice phone number + set `TWILIO_VOICE_FROM_NUMBER` | Same day | M3.1, M3.3, M3.6 |
 | 4 | Set `APP_PUBLIC_BASE_URL` (deployed domain or ngrok tunnel) | 1 min | M3.1 phone calls |
 | 5 | **Verify Resend sender domain** `isolveurproblems.ai` | 1–3 days | M1.7 email (already breaks today; see Section 4) |
 | 6 | Configure Dropbox Sign sandbox + set `DROPBOX_SIGN_API_KEY` | Same day; prod 3–5 days | M3.7 prod e-sign (mock provider works without it) |
 | 7 | Set `ADMIN_ESCALATION_SLACK_WEBHOOK_URL` or `ADMIN_ESCALATION_EMAIL` | 5 min | M3.9 admin handoff visibility |
-| 8 | Schedule Vercel cron for `/api/cron/appointment-reminders` (every 15 min) | 5 min | M3.5 reminders firing |
+| 8 | Vercel cron already configured in `vercel.json` (`*/15 * * * *` on `/api/cron/appointment-reminders`) — verify it's enabled in the Vercel dashboard after deploy | 1 min | M3.5 reminders firing |
 | 9 | Google OAuth verification (calendar sync) | 1–4 weeks | M3.4 prod-grade (works without — uses our own calendar table for now) |
 
 Once items 1–4 are done, the **full hire-contractor workflow tests end-to-end on Stripe TEST keys with mock contractors** — items 5–9 only matter for going live.

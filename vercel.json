@@ -1,6 +1,12 @@
 {
   "buildCommand": "cd ../.. && pnpm build",
   "installCommand": "pnpm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/appointment-reminders",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }
 
