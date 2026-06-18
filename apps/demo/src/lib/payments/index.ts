@@ -20,5 +20,7 @@ export {
   getContractorStripeRow,
   computePlatformFeeCents,
   statusFromStripeIntentStatus,
+  setContractEsign,
+  getContractByEnvelopeId,
 } from "./store";
 export { verifyStripeSignature } from "./webhookSig";

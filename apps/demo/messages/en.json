@@ -214,6 +214,181 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "6's assistant panel",
+      "close": "Close",
+      "variant": {
+        "contractors": "Contractors",
+        "summary": "Review summary",
+        "picks": "6's picks",
+        "pickResult": "Notifications sent",
+        "compare": "6 is helping you decide",
+        "appointment": "Appointments",
+        "contract": "Work agreement",
+        "dispute": "Dispute thread",
+        "call": "Phone call with 6",
+        "estimate": "Estimate"
+      },
+      "contractors": {
+        "empty": "No matches yet.",
+        "count": "Showing {shown} of {considered}.",
+        "badge": {
+          "licensed": "Licensed",
+          "sameDay": "Same day",
+          "locallyOwned": "Locally owned"
+        },
+        "website": "Website"
+      },
+      "summary": {
+        "fresh": "Fresh",
+        "cached": "Cached",
+        "strengths": "Strengths",
+        "weaknesses": "Watch-outs",
+        "sampleQuotes": "What people say"
+      },
+      "picks": {
+        "empty": "No picks worth showing yet.",
+        "basedOn": "Tuned by what 6 remembers:"
+      },
+      "pickResult": {
+        "title": "6 has notified the candidates",
+        "summary": "{sent} sent · {failed} failed",
+        "winnerLabel": "Winner",
+        "losersLabel": "{count, plural, =1 {Other candidate notified} other {# other candidates notified}}",
+        "delivered": "delivered",
+        "failed": "failed"
+      },
+      "compare": {
+        "empty": "No candidates to compare. Widen the search and try again.",
+        "activeConstraints": "Active filters:",
+        "basedOn": "Tuned by what 6 remembers:",
+        "badge": {
+          "licensed": "Licensed",
+          "sameDay": "Same day",
+          "locallyOwned": "Locally owned"
+        }
+      },
+      "appointment": {
+        "empty": "Nothing on your calendar right now.",
+        "withSomeone": "Appointment",
+        "header": {
+          "scheduled": "Appointment scheduled",
+          "rescheduled": "Appointment moved",
+          "cancelled": "Appointment cancelled",
+          "list": "Upcoming appointments"
+        },
+        "status": {
+          "cancelled": "Cancelled",
+          "rescheduled": "Moved from a prior time"
+        }
+      },
+      "contract": {
+        "title": "Work agreement drafted",
+        "contractorLabel": "Contractor",
+        "scopeLabel": "Scope of work",
+        "amountLabel": "Amount",
+        "platformFeeLabel": "Platform fee",
+        "signUserCta": "Review & sign your copy",
+        "signContractorCta": "Send contractor signing link",
+        "envelopeId": "Envelope {id}",
+        "provider": "via {name}",
+        "status": {
+          "draft": "Draft",
+          "awaiting": "Awaiting signature",
+          "signed": "Signed",
+          "declined": "Declined",
+          "cancelled": "Cancelled",
+          "expired": "Expired"
+        }
+      },
+      "call": {
+        "title": "Live phone call",
+        "contractorLabel": "Contractor",
+        "contractorPhoneLabel": "Number",
+        "waitingTranscript": "Waiting for the call to start…",
+        "noTranscript": "No transcript captured.",
+        "downloadRecording": "Download call recording",
+        "hangUpCta": "Hang up",
+        "estimateReady": "Estimate ready: #{id}",
+        "status": {
+          "queued": "Queued",
+          "dialing": "Dialing",
+          "in_progress": "On the call",
+          "completed": "Call ended",
+          "failed": "Failed",
+          "no_answer": "No answer",
+          "busy": "Busy",
+          "cancelled": "Cancelled"
+        },
+        "speaker": {
+          "user": "You",
+          "contractor": "Contractor",
+          "six": "6",
+          "system": "System"
+        }
+      },
+      "estimate": {
+        "title": "Voice estimate",
+        "contractorLabel": "Contractor",
+        "scopeLabel": "Scope of work",
+        "scopeEmpty": "(no scope summary)",
+        "noLineItems": "No priced line items yet. Ask the contractor for unit prices on the call.",
+        "colDescription": "Item",
+        "colQty": "Qty",
+        "colUnitPrice": "Unit",
+        "colTotal": "Total",
+        "subtotalLabel": "Subtotal",
+        "taxLabel": "Tax",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Turn into a contract",
+        "draftingContract": "Drafting…",
+        "status": {
+          "draft": "Draft",
+          "sent": "Sent",
+          "accepted": "Accepted",
+          "declined": "Declined",
+          "expired": "Expired"
+        }
+      },
+      "dispute": {
+        "title": "Dispute thread",
+        "complaintLabel": "Your complaint",
+        "contractorPrefix": "vs.",
+        "proposalLabel": "Mediator's proposed remedy",
+        "acceptCta": "Accept this remedy",
+        "escalateCta": "Get a human",
+        "escalateShort": "Escalate",
+        "escalateTooltip": "Hand this to a human admin",
+        "replyPlaceholder": "Reply to 6…",
+        "sendCta": "Send",
+        "sending": "Sending…",
+        "sender": {
+          "user": "You",
+          "contractor": "Contractor",
+          "mediator": "6 (mediator)",
+          "system": "System"
+        },
+        "kind": {
+          "remedy_proposal": "Remedy proposal",
+          "escalation_notice": "Escalated to human",
+          "resolution_confirmation": "Resolution confirmed"
+        },
+        "status": {
+          "open": "Open",
+          "awaiting_user": "Awaiting your reply",
+          "resolved": "Resolved",
+          "escalated": "Escalated to human",
+          "closed": "Closed"
+        },
+        "closedNote": {
+          "resolved": "This dispute is resolved.",
+          "escalated": "This dispute has been handed to a human admin. They'll be in touch.",
+          "closed": "This dispute is closed."
+        }
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Something went wrong.",

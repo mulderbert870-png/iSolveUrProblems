@@ -214,6 +214,181 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "Painel do 6",
+      "close": "Fechar",
+      "variant": {
+        "contractors": "Profissionais",
+        "summary": "Resumo das avaliações",
+        "picks": "As escolhas do 6",
+        "pickResult": "Notificações enviadas",
+        "compare": "O 6 te ajuda a decidir",
+        "appointment": "Agendamentos",
+        "contract": "Contrato de trabalho",
+        "dispute": "Tópico de disputa",
+        "call": "Chamada com o 6",
+        "estimate": "Orçamento"
+      },
+      "contractors": {
+        "empty": "Nenhum resultado ainda.",
+        "count": "Mostrando {shown} de {considered}.",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mesmo dia",
+          "locallyOwned": "Local"
+        },
+        "website": "Site"
+      },
+      "summary": {
+        "fresh": "Novo",
+        "cached": "Em cache",
+        "strengths": "Pontos fortes",
+        "weaknesses": "Atenção",
+        "sampleQuotes": "O que dizem os clientes"
+      },
+      "picks": {
+        "empty": "Nenhuma escolha relevante ainda.",
+        "basedOn": "Ajustado pelo que o 6 lembra:"
+      },
+      "pickResult": {
+        "title": "O 6 notificou os candidatos",
+        "summary": "{sent} enviadas · {failed} falharam",
+        "winnerLabel": "Vencedor",
+        "losersLabel": "{count, plural, =1 {Outro candidato notificado} other {# outros candidatos notificados}}",
+        "delivered": "entregue",
+        "failed": "falhou"
+      },
+      "compare": {
+        "empty": "Nenhum candidato para comparar. Amplie a busca e tente novamente.",
+        "activeConstraints": "Filtros ativos:",
+        "basedOn": "Ajustado pelo que o 6 lembra:",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mesmo dia",
+          "locallyOwned": "Local"
+        }
+      },
+      "appointment": {
+        "empty": "Nada na agenda no momento.",
+        "withSomeone": "Agendamento",
+        "header": {
+          "scheduled": "Agendamento marcado",
+          "rescheduled": "Agendamento remarcado",
+          "cancelled": "Agendamento cancelado",
+          "list": "Próximos agendamentos"
+        },
+        "status": {
+          "cancelled": "Cancelado",
+          "rescheduled": "Movido de um horário anterior"
+        }
+      },
+      "contract": {
+        "title": "Contrato de trabalho elaborado",
+        "contractorLabel": "Prestador",
+        "scopeLabel": "Escopo do trabalho",
+        "amountLabel": "Valor",
+        "platformFeeLabel": "Taxa da plataforma",
+        "signUserCta": "Revisar e assinar sua cópia",
+        "signContractorCta": "Enviar link de assinatura ao prestador",
+        "envelopeId": "Envelope {id}",
+        "provider": "via {name}",
+        "status": {
+          "draft": "Rascunho",
+          "awaiting": "Aguardando assinatura",
+          "signed": "Assinado",
+          "declined": "Recusado",
+          "cancelled": "Cancelado",
+          "expired": "Expirado"
+        }
+      },
+      "call": {
+        "title": "Chamada ao vivo",
+        "contractorLabel": "Prestador",
+        "contractorPhoneLabel": "Número",
+        "waitingTranscript": "Aguardando o início da chamada…",
+        "noTranscript": "Nenhuma transcrição capturada.",
+        "downloadRecording": "Baixar gravação da chamada",
+        "hangUpCta": "Desligar",
+        "estimateReady": "Orçamento pronto: #{id}",
+        "status": {
+          "queued": "Na fila",
+          "dialing": "Discando",
+          "in_progress": "Em chamada",
+          "completed": "Chamada encerrada",
+          "failed": "Falhou",
+          "no_answer": "Sem resposta",
+          "busy": "Ocupado",
+          "cancelled": "Cancelada"
+        },
+        "speaker": {
+          "user": "Você",
+          "contractor": "Prestador",
+          "six": "6",
+          "system": "Sistema"
+        }
+      },
+      "estimate": {
+        "title": "Orçamento por voz",
+        "contractorLabel": "Prestador",
+        "scopeLabel": "Escopo do trabalho",
+        "scopeEmpty": "(sem resumo)",
+        "noLineItems": "Ainda sem itens com preço. Peça preços unitários ao prestador na chamada.",
+        "colDescription": "Item",
+        "colQty": "Qtd",
+        "colUnitPrice": "Unit.",
+        "colTotal": "Total",
+        "subtotalLabel": "Subtotal",
+        "taxLabel": "Imposto",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Transformar em contrato",
+        "draftingContract": "Elaborando…",
+        "status": {
+          "draft": "Rascunho",
+          "sent": "Enviado",
+          "accepted": "Aceito",
+          "declined": "Recusado",
+          "expired": "Expirado"
+        }
+      },
+      "dispute": {
+        "title": "Tópico de disputa",
+        "complaintLabel": "Sua reclamação",
+        "contractorPrefix": "contra",
+        "proposalLabel": "Remédio proposto pelo mediador",
+        "acceptCta": "Aceitar este remédio",
+        "escalateCta": "Falar com um humano",
+        "escalateShort": "Encaminhar",
+        "escalateTooltip": "Encaminhar para um administrador humano",
+        "replyPlaceholder": "Responder ao 6…",
+        "sendCta": "Enviar",
+        "sending": "Enviando…",
+        "sender": {
+          "user": "Você",
+          "contractor": "Prestador",
+          "mediator": "6 (mediador)",
+          "system": "Sistema"
+        },
+        "kind": {
+          "remedy_proposal": "Proposta de remédio",
+          "escalation_notice": "Encaminhado a humano",
+          "resolution_confirmation": "Resolução confirmada"
+        },
+        "status": {
+          "open": "Aberto",
+          "awaiting_user": "Aguardando sua resposta",
+          "resolved": "Resolvido",
+          "escalated": "Encaminhado a humano",
+          "closed": "Fechado"
+        },
+        "closedNote": {
+          "resolved": "Esta disputa está resolvida.",
+          "escalated": "Esta disputa foi encaminhada a um administrador humano. Eles entrarão em contato.",
+          "closed": "Esta disputa está fechada."
+        }
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Algo deu errado.",

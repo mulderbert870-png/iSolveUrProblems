@@ -214,6 +214,181 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "Panneau de 6",
+      "close": "Fermer",
+      "variant": {
+        "contractors": "Artisans",
+        "summary": "Résumé des avis",
+        "picks": "Les choix de 6",
+        "pickResult": "Notifications envoyées",
+        "compare": "6 vous aide à décider",
+        "appointment": "Rendez-vous",
+        "contract": "Contrat de travail",
+        "dispute": "Fil de litige",
+        "call": "Appel avec 6",
+        "estimate": "Devis"
+      },
+      "contractors": {
+        "empty": "Aucun résultat pour l'instant.",
+        "count": "Affichage de {shown} sur {considered}.",
+        "badge": {
+          "licensed": "Agréé",
+          "sameDay": "Jour même",
+          "locallyOwned": "Local"
+        },
+        "website": "Site web"
+      },
+      "summary": {
+        "fresh": "Nouveau",
+        "cached": "Cache",
+        "strengths": "Points forts",
+        "weaknesses": "Points de vigilance",
+        "sampleQuotes": "Ce que disent les clients"
+      },
+      "picks": {
+        "empty": "Aucun choix à afficher pour l'instant.",
+        "basedOn": "Ajusté selon ce dont 6 se souvient :"
+      },
+      "pickResult": {
+        "title": "6 a notifié les candidats",
+        "summary": "{sent} envoyés · {failed} échoués",
+        "winnerLabel": "Gagnant",
+        "losersLabel": "{count, plural, =1 {Autre candidat notifié} other {# autres candidats notifiés}}",
+        "delivered": "livré",
+        "failed": "échec"
+      },
+      "compare": {
+        "empty": "Aucun candidat à comparer. Élargissez la recherche et réessayez.",
+        "activeConstraints": "Filtres actifs :",
+        "basedOn": "Ajusté selon ce dont 6 se souvient :",
+        "badge": {
+          "licensed": "Agréé",
+          "sameDay": "Jour même",
+          "locallyOwned": "Local"
+        }
+      },
+      "appointment": {
+        "empty": "Rien de prévu dans votre agenda.",
+        "withSomeone": "Rendez-vous",
+        "header": {
+          "scheduled": "Rendez-vous programmé",
+          "rescheduled": "Rendez-vous reprogrammé",
+          "cancelled": "Rendez-vous annulé",
+          "list": "Prochains rendez-vous"
+        },
+        "status": {
+          "cancelled": "Annulé",
+          "rescheduled": "Déplacé depuis un autre horaire"
+        }
+      },
+      "contract": {
+        "title": "Contrat de travail rédigé",
+        "contractorLabel": "Prestataire",
+        "scopeLabel": "Étendue des travaux",
+        "amountLabel": "Montant",
+        "platformFeeLabel": "Commission de la plateforme",
+        "signUserCta": "Examiner et signer votre exemplaire",
+        "signContractorCta": "Envoyer le lien de signature au prestataire",
+        "envelopeId": "Enveloppe {id}",
+        "provider": "via {name}",
+        "status": {
+          "draft": "Brouillon",
+          "awaiting": "En attente de signature",
+          "signed": "Signé",
+          "declined": "Refusé",
+          "cancelled": "Annulé",
+          "expired": "Expiré"
+        }
+      },
+      "call": {
+        "title": "Appel en cours",
+        "contractorLabel": "Prestataire",
+        "contractorPhoneLabel": "Numéro",
+        "waitingTranscript": "En attente du début de l'appel…",
+        "noTranscript": "Aucune transcription capturée.",
+        "downloadRecording": "Télécharger l'enregistrement",
+        "hangUpCta": "Raccrocher",
+        "estimateReady": "Devis prêt : #{id}",
+        "status": {
+          "queued": "En file d'attente",
+          "dialing": "Composition",
+          "in_progress": "En communication",
+          "completed": "Appel terminé",
+          "failed": "Échec",
+          "no_answer": "Pas de réponse",
+          "busy": "Occupé",
+          "cancelled": "Annulé"
+        },
+        "speaker": {
+          "user": "Vous",
+          "contractor": "Prestataire",
+          "six": "6",
+          "system": "Système"
+        }
+      },
+      "estimate": {
+        "title": "Devis vocal",
+        "contractorLabel": "Prestataire",
+        "scopeLabel": "Étendue des travaux",
+        "scopeEmpty": "(pas de résumé)",
+        "noLineItems": "Pas encore de lignes chiffrées. Demandez les prix unitaires sur l'appel.",
+        "colDescription": "Article",
+        "colQty": "Qté",
+        "colUnitPrice": "P.U.",
+        "colTotal": "Total",
+        "subtotalLabel": "Sous-total",
+        "taxLabel": "TVA",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Transformer en contrat",
+        "draftingContract": "Rédaction…",
+        "status": {
+          "draft": "Brouillon",
+          "sent": "Envoyé",
+          "accepted": "Accepté",
+          "declined": "Refusé",
+          "expired": "Expiré"
+        }
+      },
+      "dispute": {
+        "title": "Fil de litige",
+        "complaintLabel": "Votre réclamation",
+        "contractorPrefix": "contre",
+        "proposalLabel": "Solution proposée par le médiateur",
+        "acceptCta": "Accepter cette solution",
+        "escalateCta": "Parler à un humain",
+        "escalateShort": "Faire remonter",
+        "escalateTooltip": "Transférer à un administrateur humain",
+        "replyPlaceholder": "Répondre à 6…",
+        "sendCta": "Envoyer",
+        "sending": "Envoi…",
+        "sender": {
+          "user": "Vous",
+          "contractor": "Prestataire",
+          "mediator": "6 (médiateur)",
+          "system": "Système"
+        },
+        "kind": {
+          "remedy_proposal": "Proposition de solution",
+          "escalation_notice": "Transféré à un humain",
+          "resolution_confirmation": "Résolution confirmée"
+        },
+        "status": {
+          "open": "Ouvert",
+          "awaiting_user": "En attente de votre réponse",
+          "resolved": "Résolu",
+          "escalated": "Transféré à un humain",
+          "closed": "Clos"
+        },
+        "closedNote": {
+          "resolved": "Ce litige est résolu.",
+          "escalated": "Ce litige a été transféré à un administrateur humain. Il vous contactera.",
+          "closed": "Ce litige est clos."
+        }
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Une erreur s'est produite.",

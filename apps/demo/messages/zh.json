@@ -215,6 +215,181 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "6 的助理面板",
+      "close": "关闭",
+      "variant": {
+        "contractors": "承包商",
+        "summary": "评论概览",
+        "picks": "6 的首选",
+        "pickResult": "通知已发送",
+        "compare": "6 帮你做决定",
+        "appointment": "预约",
+        "contract": "施工协议",
+        "dispute": "争议会话",
+        "call": "与 6 通话",
+        "estimate": "估价单"
+      },
+      "contractors": {
+        "empty": "暂无匹配。",
+        "count": "在 {considered} 个中显示 {shown} 个。",
+        "badge": {
+          "licensed": "持证",
+          "sameDay": "当日",
+          "locallyOwned": "本地"
+        },
+        "website": "网站"
+      },
+      "summary": {
+        "fresh": "最新",
+        "cached": "已缓存",
+        "strengths": "优势",
+        "weaknesses": "需注意",
+        "sampleQuotes": "客户评价"
+      },
+      "picks": {
+        "empty": "暂无值得推荐的选项。",
+        "basedOn": "根据 6 记得的偏好微调："
+      },
+      "pickResult": {
+        "title": "6 已通知候选人",
+        "summary": "{sent} 已发 · {failed} 失败",
+        "winnerLabel": "中标",
+        "losersLabel": "{count, plural, other {另 # 位候选人已通知}}",
+        "delivered": "已送达",
+        "failed": "失败"
+      },
+      "compare": {
+        "empty": "暂无可比较的候选项。请放宽筛选并重试。",
+        "activeConstraints": "已应用筛选：",
+        "basedOn": "根据 6 记得的偏好微调：",
+        "badge": {
+          "licensed": "持证",
+          "sameDay": "当日",
+          "locallyOwned": "本地"
+        }
+      },
+      "appointment": {
+        "empty": "当前日程为空。",
+        "withSomeone": "预约",
+        "header": {
+          "scheduled": "预约已安排",
+          "rescheduled": "预约已改期",
+          "cancelled": "预约已取消",
+          "list": "即将到来的预约"
+        },
+        "status": {
+          "cancelled": "已取消",
+          "rescheduled": "由原时间改动"
+        }
+      },
+      "contract": {
+        "title": "施工协议已起草",
+        "contractorLabel": "承包商",
+        "scopeLabel": "工作范围",
+        "amountLabel": "金额",
+        "platformFeeLabel": "平台费用",
+        "signUserCta": "查看并签署你的副本",
+        "signContractorCta": "向承包商发送签署链接",
+        "envelopeId": "信封 {id}",
+        "provider": "通过 {name}",
+        "status": {
+          "draft": "草稿",
+          "awaiting": "等待签署",
+          "signed": "已签署",
+          "declined": "已拒绝",
+          "cancelled": "已取消",
+          "expired": "已过期"
+        }
+      },
+      "call": {
+        "title": "通话进行中",
+        "contractorLabel": "承包商",
+        "contractorPhoneLabel": "号码",
+        "waitingTranscript": "等待通话开始…",
+        "noTranscript": "未捕获到字幕。",
+        "downloadRecording": "下载通话录音",
+        "hangUpCta": "挂断",
+        "estimateReady": "估价单已就绪：#{id}",
+        "status": {
+          "queued": "队列中",
+          "dialing": "拨号中",
+          "in_progress": "通话中",
+          "completed": "通话结束",
+          "failed": "失败",
+          "no_answer": "无人接听",
+          "busy": "占线",
+          "cancelled": "已取消"
+        },
+        "speaker": {
+          "user": "你",
+          "contractor": "承包商",
+          "six": "6",
+          "system": "系统"
+        }
+      },
+      "estimate": {
+        "title": "语音估价单",
+        "contractorLabel": "承包商",
+        "scopeLabel": "工作范围",
+        "scopeEmpty": "（无摘要）",
+        "noLineItems": "尚无标价条目。请在通话中向承包商询问单价。",
+        "colDescription": "项目",
+        "colQty": "数量",
+        "colUnitPrice": "单价",
+        "colTotal": "合计",
+        "subtotalLabel": "小计",
+        "taxLabel": "税费",
+        "totalLabel": "总计",
+        "turnIntoContractCta": "生成合同",
+        "draftingContract": "起草中…",
+        "status": {
+          "draft": "草稿",
+          "sent": "已发送",
+          "accepted": "已接受",
+          "declined": "已拒绝",
+          "expired": "已过期"
+        }
+      },
+      "dispute": {
+        "title": "争议会话",
+        "complaintLabel": "你的投诉",
+        "contractorPrefix": "对方：",
+        "proposalLabel": "调解员建议的解决方案",
+        "acceptCta": "接受此方案",
+        "escalateCta": "请人工介入",
+        "escalateShort": "升级",
+        "escalateTooltip": "转交给人工管理员",
+        "replyPlaceholder": "回复 6…",
+        "sendCta": "发送",
+        "sending": "发送中…",
+        "sender": {
+          "user": "你",
+          "contractor": "承包商",
+          "mediator": "6（调解员）",
+          "system": "系统"
+        },
+        "kind": {
+          "remedy_proposal": "解决方案建议",
+          "escalation_notice": "已升级至人工",
+          "resolution_confirmation": "已确认解决"
+        },
+        "status": {
+          "open": "进行中",
+          "awaiting_user": "等待你的回复",
+          "resolved": "已解决",
+          "escalated": "已升级至人工",
+          "closed": "已关闭"
+        },
+        "closedNote": {
+          "resolved": "此争议已解决。",
+          "escalated": "此争议已转交人工管理员，他们会与你联系。",
+          "closed": "此争议已关闭。"
+        }
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "出了点问题。",

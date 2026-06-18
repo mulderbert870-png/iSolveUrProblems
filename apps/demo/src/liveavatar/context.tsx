@@ -17,6 +17,10 @@ import {
 } from "@heygen/liveavatar-web-sdk";
 import { LiveAvatarSessionMessage } from "./types";
 import { isVideoBusy } from "./videoRecordingState";
+import {
+  useAssistantSurface,
+  type SurfaceVariant,
+} from "../lib/assistantSurface";
 
 type LiveAvatarContextProps = {
   sessionRef: React.RefObject<LiveAvatarSession>;
@@ -126,6 +130,276 @@ const useVoiceChatState = (sessionRef: React.RefObject<LiveAvatarSession>) => {
   return { isMuted, voiceChatState, microphoneWarning };
 };
 
+/**
+ * M3.0c + M3.0e — Buffer per-turn USER_TRANSCRIPTION + AVATAR_TRANSCRIPTION
+ * events, flush each finalized turn to /api/transcripts/append on speak-ended,
+ * and on user turns consume the orchestrator's response: update the
+ * assistant surface drawer and queue any context message so HeyGen's brain
+ * narrates the actual backend result on the next AVATAR_SPEAK_ENDED.
+ *
+ * The avatar SDK fires transcription events repeatedly during a turn (each
+ * event carries the current cumulative text). We hold the latest text in
+ * a ref and persist exactly one row per turn — keeps row count proportional
+ * to utterance count, not event count, and matches what M3.0e + M3.9 want
+ * to read.
+ *
+ * Fire-and-forget for the POST itself — never breaks the avatar UI on
+ * persist failure. But the response IS consumed for orchestrator output.
+ *
+ * Concurrency strategy (Q3.0c default): we wait for AVATAR_SPEAK_ENDED
+ * before sending the context message via session.message(). This gives
+ * a natural "let me check… OK, here's what I found" rhythm. If HeyGen's
+ * brain isn't currently speaking when the orchestrator returns, we send
+ * immediately.
+ */
+const useTranscriptCapture = (
+  sessionRef: React.RefObject<LiveAvatarSession>,
+) => {
+  const userTurnRef = useRef<string>("");
+  const avatarTurnRef = useRef<string>("");
+  const pendingContextMessageRef = useRef<string | null>(null);
+  const isAvatarSpeakingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+
+    const applyVariant = (variant: SurfaceVariant) => {
+      const store = useAssistantSurface.getState();
+      switch (variant.kind) {
+        case "contractors":
+          store.showContractors(variant.hits, variant.total_considered);
+          break;
+        case "summary":
+          store.showSummary(variant.payload, variant.cached);
+          break;
+        case "picks":
+          store.showRecommendations(
+            variant.picks,
+            variant.preference_facts,
+          );
+          break;
+        case "pickResult":
+          store.showPickResult(variant.payload);
+          break;
+      }
+    };
+
+    const buildSnapshot = (): {
+      kind:
+        | "contractors"
+        | "summary"
+        | "picks"
+        | "pickResult"
+        | "compare"
+        | "appointment"
+        | "contract"
+        | "dispute"
+        | "call"
+        | "estimate"
+        | null;
+      contractorIds: string[];
+      deliberation?: {
+        category: string;
+        constraints: Record<string, unknown>;
+      };
+    } => {
+      const variant = useAssistantSurface.getState().variant;
+      if (!variant) return { kind: null, contractorIds: [] };
+      switch (variant.kind) {
+        case "contractors":
+          return {
+            kind: "contractors",
+            contractorIds: variant.hits.map((h) => h.id),
+          };
+        case "picks":
+          return {
+            kind: "picks",
+            contractorIds: variant.picks.map((p) => p.id),
+          };
+        case "summary":
+          return {
+            kind: "summary",
+            contractorIds: [variant.payload.contractor_id],
+          };
+        case "pickResult":
+          return {
+            kind: "pickResult",
+            contractorIds: variant.payload.winner
+              ? [variant.payload.winner.contractor_id]
+              : [],
+          };
+        case "compare":
+          return {
+            kind: "compare",
+            contractorIds: variant.payload.picks.map((p) => p.id),
+            deliberation: {
+              category: variant.payload.state.category,
+              constraints: variant.payload.state.constraints,
+            },
+          };
+        case "appointment":
+          // Pull contractor IDs from the listed appointments so a
+          // follow-up "tell me more about them" can resolve.
+          return {
+            kind: "appointment",
+            contractorIds: variant.payload.appointments
+              .map((a) => a.contractor_id)
+              .filter((id): id is string => !!id),
+          };
+        case "contract":
+          // No contractor IDs leak into the snapshot from a contract panel
+          // — the contract belongs to a contractor but we don't expose
+          // their ID through this surface in v1.
+          return { kind: "contract", contractorIds: [] };
+        case "dispute":
+          // Dispute panel doesn't expose contractor IDs to the snapshot;
+          // follow-up actions should reference the dispute directly.
+          return { kind: "dispute", contractorIds: [] };
+        case "call":
+          // Live call panel — only the contractor on the line is
+          // surfaced as the snapshot's contractor (resolves "tell me
+          // more about them" naturally).
+          return { kind: "call", contractorIds: [] };
+        case "estimate":
+          // Estimate panel — same as call: no contractor ID surfacing.
+          return { kind: "estimate", contractorIds: [] };
+      }
+    };
+
+    const sendOrQueueContextMessage = (msg: string) => {
+      const s = sessionRef.current;
+      if (!s) return;
+      if (isAvatarSpeakingRef.current) {
+        pendingContextMessageRef.current = msg;
+      } else {
+        try {
+          s.message(msg);
+        } catch (e) {
+          console.warn("session.message threw:", e);
+        }
+      }
+    };
+
+    const flushUser = async (text: string) => {
+      const sid = sessionRef.current?.sessionId;
+      if (!sid) return;
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      try {
+        // Browser-detected IANA tz — server uses this for "tomorrow at 10am"
+        // style parsing so the appointment lands at 10am in the user's
+        // wall clock, not 10am UTC. Falls back to UTC server-side if absent.
+        let tz: string | null = null;
+        try {
+          tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+        } catch {
+          tz = null;
+        }
+        const res = await fetch("/api/transcripts/append", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sid,
+            speaker: "user",
+            text: trimmed,
+            surface_snapshot: buildSnapshot(),
+            tz,
+          }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          id?: string;
+          orchestrator?: {
+            kind: "action" | "none";
+            variant?: SurfaceVariant;
+            contextMessage?: string;
+            reason?: string;
+          };
+        };
+        const orch = data.orchestrator;
+        if (orch?.kind === "action") {
+          if (orch.variant) applyVariant(orch.variant);
+          if (orch.contextMessage) {
+            sendOrQueueContextMessage(orch.contextMessage);
+          }
+        }
+      } catch (e) {
+        console.warn("transcripts append failed (user):", e);
+      }
+    };
+
+    const flushAvatar = async (text: string) => {
+      const sid = sessionRef.current?.sessionId;
+      if (!sid) return;
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      try {
+        await fetch("/api/transcripts/append", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sid,
+            speaker: "avatar",
+            text: trimmed,
+          }),
+        });
+      } catch (e) {
+        console.warn("transcripts append failed (avatar):", e);
+      }
+    };
+
+    const onUserTranscription = (event: { text: string }) => {
+      if (typeof event?.text === "string") {
+        userTurnRef.current = event.text;
+      }
+    };
+    const onAvatarTranscription = (event: { text: string }) => {
+      if (typeof event?.text === "string") {
+        avatarTurnRef.current = event.text;
+      }
+    };
+    const onUserSpeakEnded = () => {
+      const text = userTurnRef.current;
+      userTurnRef.current = "";
+      if (text) void flushUser(text);
+    };
+    const onAvatarSpeakStarted = () => {
+      isAvatarSpeakingRef.current = true;
+    };
+    const onAvatarSpeakEnded = () => {
+      isAvatarSpeakingRef.current = false;
+      const text = avatarTurnRef.current;
+      avatarTurnRef.current = "";
+      if (text) void flushAvatar(text);
+      // Any pending context message rides on the next avatar-silence.
+      const pending = pendingContextMessageRef.current;
+      pendingContextMessageRef.current = null;
+      if (pending) {
+        try {
+          sessionRef.current?.message(pending);
+        } catch (e) {
+          console.warn("session.message (pending) threw:", e);
+        }
+      }
+    };
+
+    session.on(AgentEventsEnum.USER_TRANSCRIPTION, onUserTranscription);
+    session.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, onAvatarTranscription);
+    session.on(AgentEventsEnum.USER_SPEAK_ENDED, onUserSpeakEnded);
+    session.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
+    session.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, onAvatarSpeakEnded);
+
+    return () => {
+      session.off(AgentEventsEnum.USER_TRANSCRIPTION, onUserTranscription);
+      session.off(AgentEventsEnum.AVATAR_TRANSCRIPTION, onAvatarTranscription);
+      session.off(AgentEventsEnum.USER_SPEAK_ENDED, onUserSpeakEnded);
+      session.off(AgentEventsEnum.AVATAR_SPEAK_STARTED, onAvatarSpeakStarted);
+      session.off(AgentEventsEnum.AVATAR_SPEAK_ENDED, onAvatarSpeakEnded);
+    };
+  }, [sessionRef]);
+};
+
 const useTalkingState = (sessionRef: React.RefObject<LiveAvatarSession>) => {
   const [isUserTalking, setIsUserTalking] = useState(false);
   const [isAvatarTalking, setIsAvatarTalking] = useState(false);
@@ -224,6 +498,8 @@ export const LiveAvatarContextProvider = ({
   const { isMuted, voiceChatState, microphoneWarning } =
     useVoiceChatState(sessionRef);
   const { isUserTalking, isAvatarTalking } = useTalkingState(sessionRef);
+  // M3.0c — persist every finalized USER + AVATAR utterance to Supabase.
+  useTranscriptCapture(sessionRef);
   // const { messages } = useChatHistoryState(sessionRef);
 
   const lastActivityAtRef = useRef(0);

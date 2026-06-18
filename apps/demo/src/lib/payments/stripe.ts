@@ -67,7 +67,17 @@ function flattenForStripe(
 
 async function stripeCall<T>(
   path: string,
-  init: { method?: "GET" | "POST"; body?: Record<string, unknown> } = {},
+  init: {
+    method?: "GET" | "POST";
+    body?: Record<string, unknown>;
+    /**
+     * Stripe's Idempotency-Key header. When set, Stripe returns the
+     * same response for a repeat request with this key, dedup'd for
+     * 24h. Pass a stable natural ID (e.g. contract.id) so retries
+     * don't mint duplicate sessions/charges.
+     */
+    idempotencyKey?: string;
+  } = {},
 ): Promise<StripeResult<T>> {
   if (!isStripeConfigured()) {
     return { ok: false, status: 0, error: "stripe not configured" };
@@ -78,6 +88,9 @@ async function stripeCall<T>(
     Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
     "Stripe-Version": STRIPE_API_VERSION,
   };
+  if (init.idempotencyKey) {
+    headers["Idempotency-Key"] = init.idempotencyKey;
+  }
   let body: string | undefined;
   if (method === "POST" && init.body) {
     const params = new URLSearchParams();
@@ -249,10 +262,18 @@ export async function createCheckoutSession(args: {
   productName: string;
   metadata: Record<string, string>;
   customerEmail?: string | null;
+  /**
+   * Stable per-contract idempotency key. Should be `contract.id` from
+   * the caller — Stripe dedups repeat requests for 24h, so a retry of
+   * the same /api/contracts/create attempt won't mint a duplicate
+   * Checkout Session and won't double-charge.
+   */
+  idempotencyKey?: string;
 }): Promise<StripeResult<StripeCheckoutSession>> {
   const guard = validateCheckoutInputs(args);
   if (!guard.ok) return { ok: false, status: 400, error: guard.error };
   return stripeCall<StripeCheckoutSession>("/checkout/sessions", {
+    idempotencyKey: args.idempotencyKey,
     body: {
       mode: "payment",
       success_url: args.successUrl,

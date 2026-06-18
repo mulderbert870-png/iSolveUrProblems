@@ -28,4 +28,14 @@ export type ContractRow = {
   paid_at: string | null;
   created_at: string;
   updated_at: string;
+  // M3.7 — e-signature lifecycle
+  scope: string | null;
+  esign_provider: string | null;
+  esign_envelope_id: string | null;
+  esign_envelope_status: string | null;
+  esign_signing_url_user: string | null;
+  esign_signing_url_contractor: string | null;
+  signed_at_user: string | null;
+  signed_at_contractor: string | null;
+  contract_doc_url: string | null;
 };

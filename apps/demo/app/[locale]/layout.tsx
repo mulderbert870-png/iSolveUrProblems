@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { setRequestLocale, getMessages } from "next-intl/server";
 import { routing } from "../../src/i18n/routing";
+import { AssistantSurface } from "../../src/components/AssistantSurface";
 
 /**
  * Locale layout — wraps every page under /[locale]/ in NextIntlClientProvider.
@@ -32,6 +33,12 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       {children}
+      {/*
+        M3.0b — Assistant Surface drawer. Mounted at the locale layout so it
+        persists across navigation between sibling routes. Non-modal: the
+        avatar UI stays interactive while the drawer is open.
+      */}
+      <AssistantSurface />
     </NextIntlClientProvider>
   );
 }

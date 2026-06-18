@@ -3,6 +3,11 @@ import welcomeTemplate from "./welcome";
 import reportDeliveryTemplate from "./report-delivery";
 import contractorWinTemplate from "./contractor-win";
 import contractorLoseTemplate from "./contractor-lose";
+import {
+  appointmentReminder24hTemplate,
+  appointmentReminder2hTemplate,
+} from "./appointment-reminder";
+import adminDisputeEscalationTemplate from "./admin-dispute-escalation";
 
 /**
  * Local-in-code template registry (Q1.7a).
@@ -20,6 +25,12 @@ const REGISTRY: Record<string, NotificationTemplate<never>> = {
   "report.delivery.v1": reportDeliveryTemplate as NotificationTemplate<never>,
   "contractor.win.v1": contractorWinTemplate as NotificationTemplate<never>,
   "contractor.lose.v1": contractorLoseTemplate as NotificationTemplate<never>,
+  "appointment.reminder.24h.v1":
+    appointmentReminder24hTemplate as NotificationTemplate<never>,
+  "appointment.reminder.2h.v1":
+    appointmentReminder2hTemplate as NotificationTemplate<never>,
+  "admin.dispute.escalation.v1":
+    adminDisputeEscalationTemplate as NotificationTemplate<never>,
 };
 
 export function getTemplate(id: string): NotificationTemplate<never> | null {

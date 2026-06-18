@@ -52,6 +52,12 @@ export const SERPAPI_API_KEY = process.env.SERPAPI_API_KEY || "";
 // Required to call privileged /api/admin/* routes. Set via Vercel env.
 export const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 
+// Cron auth (M3.4+) — guards /api/cron/* routes against public traffic.
+// On Vercel: set as a project env var and reference in vercel.json's
+// crons block. Locally: pass via Authorization: Bearer header when
+// triggering manually.
+export const CRON_SECRET = process.env.CRON_SECRET || "";
+
 // Payments — Stripe Connect Express (M2.5).
 // Q2.5a: Connect flavor = Express.
 // Q2.5b: charge at acceptance.
@@ -90,3 +96,41 @@ export const PLATFORM_CURRENCY = (
 // when the route is called server-side.
 export const STRIPE_CHECKOUT_RETURN_PATH =
   process.env.STRIPE_CHECKOUT_RETURN_PATH || "/checkout";
+
+// Dispute mediator — admin escalation queue (Q3.9a). When a dispute
+// trips the 3-strike rule, exceeds $500 disputed, or the user asks for
+// a human, the mediator hands off here. Either channel (Slack incoming
+// webhook OR a designated email) is enough — both is fine. If neither
+// is set we log a warning and the escalation persists in DB only.
+export const ADMIN_ESCALATION_SLACK_WEBHOOK_URL =
+  process.env.ADMIN_ESCALATION_SLACK_WEBHOOK_URL || "";
+export const ADMIN_ESCALATION_EMAIL =
+  process.env.ADMIN_ESCALATION_EMAIL || "";
+
+// M3.1 — Twilio Programmable Voice (3-way phone calls).
+// Reuses TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN. The Voice
+// number is separate from TWILIO_FROM_PHONE (SMS); both can be the
+// same or different E.164 numbers depending on Twilio plan.
+export const TWILIO_VOICE_FROM_NUMBER =
+  process.env.TWILIO_VOICE_FROM_NUMBER || "";
+
+// M3.1 — public app origin used to build absolute URLs for Twilio
+// webhooks (TwiML, status, transcription, recording). Twilio requires
+// publicly reachable HTTPS; in dev use ngrok / cloudflared tunnels.
+export const APP_PUBLIC_BASE_URL =
+  process.env.APP_PUBLIC_BASE_URL || "";
+
+// M3.3 — Supabase Storage bucket for call recordings. Created via
+// migration; private by default. Recordings reach Supabase via the
+// recording-completed webhook fetching from the Twilio media URL.
+export const CALL_RECORDINGS_BUCKET =
+  process.env.CALL_RECORDINGS_BUCKET || "call-recordings";
+
+// M3.7 — Dropbox Sign (production e-signature provider).
+// Set ESIGN_PROVIDER=dropbox_sign in env to flip the registry switch.
+// Mock provider stays the default while these are absent.
+export const ESIGN_PROVIDER = (process.env.ESIGN_PROVIDER || "mock").toLowerCase();
+export const DROPBOX_SIGN_API_KEY = process.env.DROPBOX_SIGN_API_KEY || "";
+export const DROPBOX_SIGN_CLIENT_ID = process.env.DROPBOX_SIGN_CLIENT_ID || "";
+export const DROPBOX_SIGN_WEBHOOK_SECRET =
+  process.env.DROPBOX_SIGN_WEBHOOK_SECRET || "";

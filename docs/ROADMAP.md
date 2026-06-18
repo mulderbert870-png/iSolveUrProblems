@@ -70,21 +70,26 @@ Roughly paragraphs 3–7 of the vision doc are partially live. Everything from p
 
 ---
 
-## 📞 Milestone 3 — "3-Way Communication + Contracts"
+## 📞 Milestone 3 — "Voice-First 6 + 3-Way Calls + Contracts"
 
-**Goal:** 6 actively joins phone & video calls, schedules meetings, drafts estimates and contracts. The product becomes irreplaceable.
+**Goal:** 6 actively joins phone calls, schedules meetings, drafts estimates and contracts. The whole site becomes voice + avatar first — homeowner talks to 6, 6 does the work, results pop up on screen. The product becomes irreplaceable.
+
+**Voice-first pivot (SG Dietz, 2026-06-04):** the entire UX moves to voice + avatar first. M2's form-driven `/contractors` page becomes a dev-only debug surface; the live experience is 6 driving everything by voice. **M3.2 video is deferred** — phone is the only call surface for M3; video can be added later if user demand warrants. **M3.1 is treated as a spike-first item** — prove feasibility quickly, then ship the rest of M3 in parallel so a stuck calling track doesn't block the milestone.
 
 | # | Feature | Notes |
 |---|---|---|
-| M3.1 | 3-way phone calls (user + contractor + 6) | Vision ¶12 — "real-time three-way conversations between users and contractors — he can literally be on the phone or videophone" |
-| M3.2 | 3-way video calls | Vision ¶12 — "videophone... 3-way conversation" |
-| M3.3 | Full call recording + searchable transcript index | Vision ¶12 — "it will all be on record" |
+| M3.0 | Voice-first foundation (overlay UI + transcript wiring + intent classifier + context-injection orchestrator) | *Enabling infrastructure — implied by vision ¶8 + ¶26 voice-first model. Ships before any M3.x. Stays in FULL avatar mode; voice-driven tool calls work via the context-injection pattern proven in the existing image-analysis flow.* |
+| M3.1 | 3-way phone calls (user + contractor + 6) | Vision ¶12 — "real-time three-way conversations between users and contractors — he can literally be on the phone or videophone". **Built spike-first.** |
+| ~~M3.2~~ | ~~3-way video calls~~ | **Deferred per SG Dietz 2026-06-04.** Phone is the priority; video can be added later if it matters. Vision ¶12 anchor preserved for the future. |
+| M3.3 | Full call recording + searchable transcript index | Vision ¶12 — "it will all be on record". Ships only if M3.1 spike succeeds. |
 | M3.4 | Appointment & reminder agent | Vision ¶14 — "before meetings or when work is to occur, 6 will message both parties to make sure they'll be on time and ready" |
 | M3.5 | Auto-reschedule flow | Vision ¶14 — "If not, he'll coordinate rescheduling" |
 | M3.6 | Voice-driven estimate generator (contractor talks → line-item estimate) | Vision ¶17 — "help estimate projects... simply by talking to the contractor, which can be done as the contractor drives down the road" |
 | M3.7 | Contract drafter + e-signature delivery | Vision ¶17 — "write up contracts... deliver the contract in writing in their email box" |
 | M3.8 | Decision-support chat ("which contractor should I pick?") | Vision ¶18 — "help the user work through uncertainties and come to decisions" |
 | M3.9 | Dispute mediator agent | Vision ¶16 — "6 will be the front line for disputes, to help work out problems in the moment" |
+
+**M3 first deliverable for SG Dietz to test-drive personally:** voice-driven contractor search → recommend → pick → simulated payment, end-to-end on mock data. Ships immediately after M3.0 lands, before the heavier M3.1 / M3.6 / M3.7 work.
 
 ---
 
@@ -124,9 +129,9 @@ Roughly paragraphs 3–7 of the vision doc are partially live. Everything from p
 ## ⚠️ Risk-Adjusted Notes
 
 1. **M2's scraping pipeline is the single biggest schedule risk** — Google Maps / Yelp ToS, IP rotation, captcha. Budget extra time or buy data via SerpAPI / Outscraper to de-risk.
-2. **M3's 3-way calling is technically the hardest item** — real-time STT → LLM → TTS with sub-second barge-in latency is non-trivial. Build a thin spike at the end of M2 to prove feasibility before committing to M3 scope.
+2. **M3's 3-way calling is technically the hardest item** — real-time STT → LLM → TTS with sub-second barge-in latency is non-trivial. **Per SG Dietz 2026-06-04: time-box a small spike early in M3, then build everything else (M3.4–M3.9) in parallel so a stuck calling track doesn't block the milestone.** Video (M3.2) is deferred indefinitely; phone only.
 3. **M5.6 data buyer portal** depends on having data volume — won't be sellable until M3–M4 produce meaningful job records. Start sales conversations during M3.
-4. **Parallelization wins:** scraping (M2.1) and review summarization (M2.3) can run in parallel tracks. Same for M3.1/M3.2 (calling) vs M3.6/M3.7 (contracts).
+4. **Parallelization wins:** scraping (M2.1) and review summarization (M2.3) can run in parallel tracks. For M3 the explicit rule is: spike M3.1 first to get a yes/no, then run M3.4/M3.5/M3.6/M3.7/M3.8/M3.9 in parallel regardless of M3.1's outcome.
 5. **External approvals to kick off ASAP** (start early so they don't block later milestones):
    - WhatsApp Business sender registration (Twilio) — needed for M1.4
    - Payments platform account (e.g. Stripe Connect) — needed by M2.5
@@ -141,3 +146,7 @@ Roughly paragraphs 3–7 of the vision doc are partially live. Everything from p
 |---|---|---|
 | 1 | Initial 5-milestone plan derived from vision doc | SG Dietz / Claude |
 | 2 | Removed all timeline / duration / calendar content — roadmap is now scope-only | Bert / Claude |
+| 3 | M3 pivoted to voice + avatar first; M3.2 video deferred; M3.1 calling becomes spike-first; explicit "voice test drive" deliverable for SG Dietz before heavy build | SG Dietz / Bert / Claude (2026-06-04) |
+| 4 | M3 architecture refined: stay in FULL avatar mode; phone-call pipeline absorbs M3.6 (voice estimates) + M3.9 (dispute); M3.8 (decision support) ships as drawer text v1; CUSTOM-mode fix deferred to optional Phase 4 behind explicit SG Dietz greenlight | Bert / Claude (2026-06-05) |
+| 5 | Bert spotted context-injection pattern already in production in image-analysis flow ([LiveAvatarSession.tsx:975-978](../apps/demo/src/components/LiveAvatarSession.tsx#L975-L978)): backend computes a result, wraps it as a "context message" prompt, and sends via `session.message()` so HeyGen's FULL-mode brain narrates the actual data. M3.0e refactored from "detect-and-populate-drawer-only" to "detect-and-inject-into-brain"; M3.8 voice-on-avatar surface promoted from "Phase 4 only" to "v1 viable"; CUSTOM-mode spike further demoted to truly-optional | Bert / Claude (2026-06-05) |
+| 6 | CUSTOM-mode fix spike **removed from M3 scope entirely.** On honest review, every M3 conversational feature is satisfied by either (a) the context-injection pattern on the avatar UI, or (b) the phone-call pipeline (M3.6, M3.9). No concrete M3 deliverable depends on CUSTOM mode. The 1–2 week spike is moved to a Future Considerations note — revisited only if a future-milestone feature genuinely requires it | Bert / Claude (2026-06-05) |

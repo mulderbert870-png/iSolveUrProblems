@@ -214,6 +214,181 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "Panel de 6",
+      "close": "Cerrar",
+      "variant": {
+        "contractors": "Contratistas",
+        "summary": "Resumen de reseñas",
+        "picks": "Las opciones de 6",
+        "pickResult": "Notificaciones enviadas",
+        "compare": "6 te ayuda a decidir",
+        "appointment": "Citas",
+        "contract": "Acuerdo de trabajo",
+        "dispute": "Hilo de disputa",
+        "call": "Llamada con 6",
+        "estimate": "Presupuesto"
+      },
+      "contractors": {
+        "empty": "Aún no hay coincidencias.",
+        "count": "Mostrando {shown} de {considered}.",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mismo día",
+          "locallyOwned": "Local"
+        },
+        "website": "Sitio web"
+      },
+      "summary": {
+        "fresh": "Nuevo",
+        "cached": "En caché",
+        "strengths": "Fortalezas",
+        "weaknesses": "Cuidado con",
+        "sampleQuotes": "Lo que dicen"
+      },
+      "picks": {
+        "empty": "Aún no hay opciones que mostrar.",
+        "basedOn": "Ajustado por lo que 6 recuerda:"
+      },
+      "pickResult": {
+        "title": "6 ha notificado a los candidatos",
+        "summary": "{sent} enviados · {failed} fallidos",
+        "winnerLabel": "Ganador",
+        "losersLabel": "{count, plural, =1 {Otro candidato notificado} other {# otros candidatos notificados}}",
+        "delivered": "entregado",
+        "failed": "fallido"
+      },
+      "compare": {
+        "empty": "No hay candidatos para comparar. Amplía la búsqueda e intenta de nuevo.",
+        "activeConstraints": "Filtros activos:",
+        "basedOn": "Ajustado por lo que 6 recuerda:",
+        "badge": {
+          "licensed": "Licenciado",
+          "sameDay": "Mismo día",
+          "locallyOwned": "Local"
+        }
+      },
+      "appointment": {
+        "empty": "No tienes nada en tu calendario por ahora.",
+        "withSomeone": "Cita",
+        "header": {
+          "scheduled": "Cita agendada",
+          "rescheduled": "Cita reprogramada",
+          "cancelled": "Cita cancelada",
+          "list": "Próximas citas"
+        },
+        "status": {
+          "cancelled": "Cancelada",
+          "rescheduled": "Cambiada desde una hora anterior"
+        }
+      },
+      "contract": {
+        "title": "Acuerdo de trabajo redactado",
+        "contractorLabel": "Contratista",
+        "scopeLabel": "Alcance del trabajo",
+        "amountLabel": "Importe",
+        "platformFeeLabel": "Comisión de la plataforma",
+        "signUserCta": "Revisar y firmar tu copia",
+        "signContractorCta": "Enviar enlace de firma al contratista",
+        "envelopeId": "Sobre {id}",
+        "provider": "vía {name}",
+        "status": {
+          "draft": "Borrador",
+          "awaiting": "Esperando firma",
+          "signed": "Firmado",
+          "declined": "Rechazado",
+          "cancelled": "Cancelado",
+          "expired": "Expirado"
+        }
+      },
+      "call": {
+        "title": "Llamada en curso",
+        "contractorLabel": "Contratista",
+        "contractorPhoneLabel": "Número",
+        "waitingTranscript": "Esperando que comience la llamada…",
+        "noTranscript": "No se capturó transcripción.",
+        "downloadRecording": "Descargar grabación de la llamada",
+        "hangUpCta": "Colgar",
+        "estimateReady": "Presupuesto listo: #{id}",
+        "status": {
+          "queued": "En cola",
+          "dialing": "Marcando",
+          "in_progress": "En la llamada",
+          "completed": "Llamada terminada",
+          "failed": "Fallida",
+          "no_answer": "Sin respuesta",
+          "busy": "Ocupado",
+          "cancelled": "Cancelada"
+        },
+        "speaker": {
+          "user": "Tú",
+          "contractor": "Contratista",
+          "six": "6",
+          "system": "Sistema"
+        }
+      },
+      "estimate": {
+        "title": "Presupuesto por voz",
+        "contractorLabel": "Contratista",
+        "scopeLabel": "Alcance del trabajo",
+        "scopeEmpty": "(sin resumen de alcance)",
+        "noLineItems": "Aún no hay partidas con precio. Pide precios unitarios al contratista en la llamada.",
+        "colDescription": "Concepto",
+        "colQty": "Cant",
+        "colUnitPrice": "Unitario",
+        "colTotal": "Total",
+        "subtotalLabel": "Subtotal",
+        "taxLabel": "Impuestos",
+        "totalLabel": "Total",
+        "turnIntoContractCta": "Convertir en contrato",
+        "draftingContract": "Redactando…",
+        "status": {
+          "draft": "Borrador",
+          "sent": "Enviado",
+          "accepted": "Aceptado",
+          "declined": "Rechazado",
+          "expired": "Expirado"
+        }
+      },
+      "dispute": {
+        "title": "Hilo de disputa",
+        "complaintLabel": "Tu reclamo",
+        "contractorPrefix": "contra",
+        "proposalLabel": "Remedio propuesto por el mediador",
+        "acceptCta": "Aceptar este remedio",
+        "escalateCta": "Hablar con una persona",
+        "escalateShort": "Escalar",
+        "escalateTooltip": "Pasar esto a un administrador humano",
+        "replyPlaceholder": "Responde a 6…",
+        "sendCta": "Enviar",
+        "sending": "Enviando…",
+        "sender": {
+          "user": "Tú",
+          "contractor": "Contratista",
+          "mediator": "6 (mediador)",
+          "system": "Sistema"
+        },
+        "kind": {
+          "remedy_proposal": "Propuesta de remedio",
+          "escalation_notice": "Escalado a un humano",
+          "resolution_confirmation": "Resolución confirmada"
+        },
+        "status": {
+          "open": "Abierto",
+          "awaiting_user": "Esperando tu respuesta",
+          "resolved": "Resuelto",
+          "escalated": "Escalado a humano",
+          "closed": "Cerrado"
+        },
+        "closedNote": {
+          "resolved": "Esta disputa está resuelta.",
+          "escalated": "Esta disputa fue enviada a un administrador humano. Se pondrán en contacto.",
+          "closed": "Esta disputa está cerrada."
+        }
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Algo salió mal.",

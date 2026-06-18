@@ -214,6 +214,181 @@
       }
     }
   },
+  "assistant": {
+    "surface": {
+      "ariaLabel": "6s Assistenz-Panel",
+      "close": "Schließen",
+      "variant": {
+        "contractors": "Handwerker",
+        "summary": "Bewertungs-Zusammenfassung",
+        "picks": "6s Auswahl",
+        "pickResult": "Benachrichtigungen versendet",
+        "compare": "6 hilft dir bei der Entscheidung",
+        "appointment": "Termine",
+        "contract": "Arbeitsvereinbarung",
+        "dispute": "Streit-Thread",
+        "call": "Anruf mit 6",
+        "estimate": "Kostenvoranschlag"
+      },
+      "contractors": {
+        "empty": "Noch keine Treffer.",
+        "count": "Zeige {shown} von {considered}.",
+        "badge": {
+          "licensed": "Lizenziert",
+          "sameDay": "Same-day",
+          "locallyOwned": "Lokal"
+        },
+        "website": "Website"
+      },
+      "summary": {
+        "fresh": "Neu",
+        "cached": "Zwischengespeichert",
+        "strengths": "Stärken",
+        "weaknesses": "Worauf zu achten",
+        "sampleQuotes": "Stimmen aus Bewertungen"
+      },
+      "picks": {
+        "empty": "Noch keine Auswahl, die es wert ist.",
+        "basedOn": "Abgestimmt auf das, woran 6 sich erinnert:"
+      },
+      "pickResult": {
+        "title": "6 hat die Kandidaten benachrichtigt",
+        "summary": "{sent} gesendet · {failed} fehlgeschlagen",
+        "winnerLabel": "Gewinner",
+        "losersLabel": "{count, plural, =1 {Ein weiterer benachrichtigt} other {# weitere benachrichtigt}}",
+        "delivered": "zugestellt",
+        "failed": "fehlgeschlagen"
+      },
+      "compare": {
+        "empty": "Keine Kandidaten zum Vergleichen. Erweitere die Suche und versuche es erneut.",
+        "activeConstraints": "Aktive Filter:",
+        "basedOn": "Abgestimmt auf das, woran 6 sich erinnert:",
+        "badge": {
+          "licensed": "Lizenziert",
+          "sameDay": "Same-day",
+          "locallyOwned": "Lokal"
+        }
+      },
+      "appointment": {
+        "empty": "Aktuell steht nichts in deinem Kalender.",
+        "withSomeone": "Termin",
+        "header": {
+          "scheduled": "Termin vereinbart",
+          "rescheduled": "Termin verschoben",
+          "cancelled": "Termin abgesagt",
+          "list": "Nächste Termine"
+        },
+        "status": {
+          "cancelled": "Abgesagt",
+          "rescheduled": "Von einem früheren Zeitpunkt verschoben"
+        }
+      },
+      "contract": {
+        "title": "Arbeitsvereinbarung entworfen",
+        "contractorLabel": "Auftragnehmer",
+        "scopeLabel": "Leistungsumfang",
+        "amountLabel": "Betrag",
+        "platformFeeLabel": "Plattformgebühr",
+        "signUserCta": "Deine Kopie prüfen und unterschreiben",
+        "signContractorCta": "Signatur-Link an Auftragnehmer senden",
+        "envelopeId": "Umschlag {id}",
+        "provider": "über {name}",
+        "status": {
+          "draft": "Entwurf",
+          "awaiting": "Warten auf Unterschrift",
+          "signed": "Unterschrieben",
+          "declined": "Abgelehnt",
+          "cancelled": "Abgesagt",
+          "expired": "Abgelaufen"
+        }
+      },
+      "call": {
+        "title": "Laufender Anruf",
+        "contractorLabel": "Auftragnehmer",
+        "contractorPhoneLabel": "Nummer",
+        "waitingTranscript": "Warten auf Beginn des Anrufs…",
+        "noTranscript": "Keine Transkription erfasst.",
+        "downloadRecording": "Anrufaufzeichnung herunterladen",
+        "hangUpCta": "Auflegen",
+        "estimateReady": "Kostenvoranschlag bereit: #{id}",
+        "status": {
+          "queued": "In Warteschlange",
+          "dialing": "Wählt",
+          "in_progress": "Im Gespräch",
+          "completed": "Anruf beendet",
+          "failed": "Fehlgeschlagen",
+          "no_answer": "Keine Antwort",
+          "busy": "Besetzt",
+          "cancelled": "Abgebrochen"
+        },
+        "speaker": {
+          "user": "Du",
+          "contractor": "Auftragnehmer",
+          "six": "6",
+          "system": "System"
+        }
+      },
+      "estimate": {
+        "title": "Sprach-Kostenvoranschlag",
+        "contractorLabel": "Auftragnehmer",
+        "scopeLabel": "Leistungsumfang",
+        "scopeEmpty": "(keine Übersicht)",
+        "noLineItems": "Noch keine Posten mit Preis. Frag im Anruf nach Einheitspreisen.",
+        "colDescription": "Posten",
+        "colQty": "Menge",
+        "colUnitPrice": "Einzeln",
+        "colTotal": "Gesamt",
+        "subtotalLabel": "Zwischensumme",
+        "taxLabel": "Steuer",
+        "totalLabel": "Gesamt",
+        "turnIntoContractCta": "In Vertrag umwandeln",
+        "draftingContract": "Wird entworfen…",
+        "status": {
+          "draft": "Entwurf",
+          "sent": "Gesendet",
+          "accepted": "Angenommen",
+          "declined": "Abgelehnt",
+          "expired": "Abgelaufen"
+        }
+      },
+      "dispute": {
+        "title": "Streit-Thread",
+        "complaintLabel": "Deine Beschwerde",
+        "contractorPrefix": "gegen",
+        "proposalLabel": "Vom Mediator vorgeschlagene Lösung",
+        "acceptCta": "Diese Lösung akzeptieren",
+        "escalateCta": "Mit einem Menschen sprechen",
+        "escalateShort": "Eskalieren",
+        "escalateTooltip": "An einen menschlichen Admin übergeben",
+        "replyPlaceholder": "Antworte 6…",
+        "sendCta": "Senden",
+        "sending": "Wird gesendet…",
+        "sender": {
+          "user": "Du",
+          "contractor": "Auftragnehmer",
+          "mediator": "6 (Mediator)",
+          "system": "System"
+        },
+        "kind": {
+          "remedy_proposal": "Lösungsvorschlag",
+          "escalation_notice": "An Mensch eskaliert",
+          "resolution_confirmation": "Lösung bestätigt"
+        },
+        "status": {
+          "open": "Offen",
+          "awaiting_user": "Warten auf deine Antwort",
+          "resolved": "Gelöst",
+          "escalated": "An Mensch eskaliert",
+          "closed": "Geschlossen"
+        },
+        "closedNote": {
+          "resolved": "Dieser Streit ist gelöst.",
+          "escalated": "Dieser Streit wurde an einen menschlichen Admin übergeben. Sie melden sich bei dir.",
+          "closed": "Dieser Streit ist geschlossen."
+        }
+      }
+    }
+  },
   "errors": {
     "general": {
       "title": "Etwas ist schiefgegangen.",
