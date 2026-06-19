@@ -62,8 +62,8 @@ export function AssistantSurface() {
       <div
         className={
           // The drawer panel itself.
-          "pointer-events-auto flex flex-col bg-zinc-900/95 backdrop-blur " +
-          "border-zinc-800 text-zinc-100 shadow-2xl " +
+          "pointer-events-auto flex flex-col bg-[#241406]/95 backdrop-blur brand-scroll " +
+          "border-[#e0aa62]/40 text-[#f3d9b0] shadow-2xl " +
           "w-full sm:w-[400px] " +
           "h-[80vh] sm:h-full " +
           "rounded-t-2xl sm:rounded-none " +
@@ -74,21 +74,21 @@ export function AssistantSurface() {
             : "translate-y-full sm:translate-y-0 sm:translate-x-full")
         }
       >
-        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-800">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-amber-300">
+        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e0aa62]/30">
+          <p className="brand-grad-text text-[11px] uppercase tracking-[0.18em]">
             {labelForVariant(variant.kind, t)}
           </p>
           <button
             type="button"
             onClick={dismiss}
-            className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+            className="rounded-md border border-[#e0aa62]/40 bg-[#3a2108]/40 px-2 py-1 text-xs text-[#e0aa62] hover:bg-[#4a2a0c]/60"
             aria-label={t("close")}
           >
             ✕
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="brand-scroll flex-1 overflow-y-auto px-4 py-4">
           {variant.kind === "contractors" && (
             <ContractorsPanel
               hits={variant.hits}
