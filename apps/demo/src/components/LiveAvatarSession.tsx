@@ -2561,10 +2561,10 @@ const LiveAvatarSessionComponent: React.FC<{
       {/* Text overlays at the top */}
       <div className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center pt-2 pb-2">
         <div className="text-center px-4 mb-2">
-          <h1 className="inline-block text-gold text-[1.2rem] sm:text-[1.7rem] font-bold tracking-tight leading-tight">
+          <h1 className="aiasap-logo-mark brand-grad-text inline-block overflow-visible px-2 text-[1.5rem] sm:text-[2rem] font-bold italic leading-[1.12] tracking-tight">
             {t("title")}
           </h1>
-          <p className="mx-auto max-w-[16.5rem] text-gold-light text-[0.72rem] sm:text-[0.78rem] font-medium leading-snug">
+          <p className="brand-grad-text mx-auto mt-1 max-w-[22rem] text-[0.7rem] sm:text-[0.8rem] font-bold uppercase tracking-[0.22em] leading-snug">
             {t("subtitle")}
           </p>
           <HeaderControls />
@@ -2601,7 +2601,7 @@ const LiveAvatarSessionComponent: React.FC<{
           className={`${
             isCameraActive
               ? "absolute top-24 left-4 w-24 h-44 object-contain z-20 rounded-lg border-2 border-white shadow-2xl"
-              : "h-full w-full object-contain"
+              : "h-full w-full object-cover md:object-contain md:object-center md:h-[94vh] md:max-h-[80rem] md:w-auto md:aspect-[9/16] rounded-[2.25rem] border border-[#d7a05a]/40 md:shadow-[0_0_0_1px_rgba(215,160,90,0.45),0_30px_90px_rgba(0,0,0,0.72)]"
           }`}
         />
 
@@ -2612,7 +2612,20 @@ const LiveAvatarSessionComponent: React.FC<{
             paint, so users briefly saw a black screen. */}
         {!isStreamReady && !isCameraActive && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black">
-            <div className="text-inset text-xl">{t("loading")}</div>
+            <div className="text-center">
+              <p
+                className="brand-grad-text text-[1.35rem] sm:text-[1.6rem] italic"
+                style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 700 }}
+              >
+                {t("loading")}
+              </p>
+              <div className="mx-auto mt-3 h-1.5 w-36 overflow-hidden rounded-full bg-white/10">
+                <span
+                  className="block h-full w-1/2 rounded-full bg-[#e0aa62]"
+                  style={{ animation: "loading-sweep 2.15s ease-in-out infinite" }}
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -2829,7 +2842,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 <div className="grid grid-cols-2 gap-3 mb-2.5">
                   <button
                     type="button"
-                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    className="brand-pill py-2 px-3 rounded-full flex items-center justify-center text-sm font-semibold whitespace-nowrap min-h-[2.85rem]"
                     onClick={() => {
                       // Functional guard (no `disabled` attribute) so the browser
                       // doesn't apply :disabled styling that makes this button
@@ -2884,39 +2897,39 @@ const LiveAvatarSessionComponent: React.FC<{
                         <polygon points="10 10 14 12 10 14" fill="currentColor" stroke="none" />
                       </svg>
                     )}
-                    {isActive ? t("stop") : t("start")}
+                    <span className="brand-grad-text">{isActive ? t("stop") : t("start")}</span>
                   </button>
                   <button
                     type="button"
-                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    className="brand-pill py-2 px-3 rounded-full flex items-center justify-center text-sm font-semibold whitespace-nowrap min-h-[2.85rem]"
                     onClick={async () => {
                       await unlockAudio();
                       handleGoLive();
                     }}
                   >
                     <Radio className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
-                    {t("goLive")}
+                    <span className="brand-grad-text">{t("goLive")}</span>
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-2.5">
                   <button
                     type="button"
-                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    className="brand-pill py-2 px-3 rounded-full flex items-center justify-center text-sm font-semibold whitespace-nowrap min-h-[2.85rem]"
                     onClick={async () => {
                       await unlockAudio();
                       void handleCameraClick();
                     }}
                   >
                     <Camera className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
-                    {t("camera")}
+                    <span className="brand-grad-text">{t("camera")}</span>
                   </button>
                   <button
                     type="button"
-                    className="btn-inset py-2 px-2.5 rounded-md flex items-center justify-center text-sm font-medium whitespace-nowrap min-h-[2.75rem]"
+                    className="brand-pill py-2 px-3 rounded-full flex items-center justify-center text-sm font-semibold whitespace-nowrap min-h-[2.85rem]"
                     onClick={() => void handleGalleryClick()}
                   >
                     <Images className="mr-1.5 w-4 h-4 shrink-0" strokeWidth={3} aria-hidden />
-                    {t("gallery")}
+                    <span className="brand-grad-text">{t("gallery")}</span>
                   </button>
                 </div>
               </div>
@@ -2924,7 +2937,7 @@ const LiveAvatarSessionComponent: React.FC<{
                 <Link
                   href="/terms"
                   target="_blank"
-                  className="block text-center text-[10px] sm:text-[11px] text-gold/60 hover:text-gold transition-colors whitespace-nowrap"
+                  className="brand-grad-text block text-center text-[10px] sm:text-[11px] hover:opacity-90 transition-opacity whitespace-nowrap"
                 >
                   {t("footer")}
                 </Link>
@@ -2970,7 +2983,7 @@ const LiveAvatarSessionComponent: React.FC<{
             <Link
               href="/terms"
               target="_blank"
-              className="block text-center text-[11px] sm:text-xs text-gold/60 hover:text-gold transition-colors py-1"
+              className="brand-grad-text block text-center text-[11px] sm:text-xs hover:opacity-90 transition-opacity py-1"
             >
               Terms
             </Link>
