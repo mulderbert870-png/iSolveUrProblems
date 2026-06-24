@@ -1,7 +1,7 @@
 {
   "home": {
     "title": "iSolveUrProblems.ai - beta",
-    "subtitle": "Your Home & Garden Solution Center",
+    "subtitle": "Your Ai-Powered Home & Garden Solution Center",
     "loading": "Loading...",
     "sessionEnded": "Session Ended",
     "thankYou": "Thank you for using iSolveUrProblems.ai",
@@ -9,7 +9,7 @@
     "restart": "Restart",
     "retry": "Retry",
     "failedToStart": "Failed to start session",
-    "footer": "© 2026 iSolveUrProblems.ai All Rights Reserved · Terms",
+    "footer": "Ai Guarantee · © 2026 iSolveUrProblems.ai · Terms · Privacy",
     "tapStartToBegin": "Tap Start to Begin",
     "tell6": "Tell 6 What's Wrong",
     "or": "or",
